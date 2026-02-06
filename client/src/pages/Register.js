@@ -32,7 +32,7 @@ export default function Register() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/auth/register', form);
+      const res = await api.post('/api/auth/register', form);
       setMessage(res.data?.message || 'Registered. Please login.');
       if (form.role === "user") {
         setTimeout(() =>
