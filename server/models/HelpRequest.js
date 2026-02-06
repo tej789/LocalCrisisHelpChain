@@ -1,0 +1,29 @@
+const mongoose = require('mongoose');
+
+const HelpRequestSchema = new mongoose.Schema({
+  title: { type: String },
+  name: { type: String, required: true },
+  contact: { type: String, required: true },
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
+    address: { type: String }
+  },
+  type: { type: String, required: true }, // e.g., food, medicine, shelter, rescue
+  urgency: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+  description: { type: String },
+  status: { type: String, enum: ['open', 'assigned', 'resolved'], default: 'open' },
+  assignedAt: { type: Date },
+  claimedBy: {
+    name: { type: String },
+    contact: { type: String }
+  },
+  createdAt: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' },
+  handledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' }
+}, { timestamps: { createdAt: false, updatedAt: 'updatedAt' } });
+
+HelpRequestSchema.index({ location: '2dsphere' });
+
+module.exports = mongoose.model('HelpRequest', HelpRequestSchema); 

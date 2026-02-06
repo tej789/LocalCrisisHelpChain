@@ -1,0 +1,90 @@
+import React, { useEffect, useState } from 'react';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Button, Typography, FormControl, InputLabel, Select, MenuItem, CircularProgress, Alert } from '@mui/material';
+import api from '../api/axios';
+
+export default function AssignVolunteerDialog({ open, requestId, onClose, onAssigned }) {
+  const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [volunteers, setVolunteers] = useState([]);
+  const [volunteerId, setVolunteerId] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setListLoading(true);
+    setError('');
+    api.get('/volunteers?verified=true&available=true')
+      .then(res => {
+        const arr = Array.isArray(res.data) ? res.data : [];
+        setVolunteers(arr);
+      })
+      .catch(() => {
+        setError('Failed to load volunteers');
+        setVolunteers([]);
+      })
+      .finally(() => setListLoading(false));
+  }, [open]);
+
+  const handleAssign = async () => {
+    if (!volunteerId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.put(`/requests/${requestId}/assign`, { volunteerId });
+      if (onAssigned) onAssigned(data);
+      if (onClose) onClose();
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) setError('You are not authorized to assign this request.');
+      else if (status === 400) setError(err.response?.data?.error || 'Invalid request.');
+      else if (status === 404) setError(err.response?.data?.error || 'Request or volunteer not found.');
+      else setError('Failed to assign request.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disabled = loading || listLoading || !volunteerId;
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 700, textAlign: 'center' }}>Assign Verified Volunteer</DialogTitle>
+      <DialogContent>
+        {listLoading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : volunteers.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
+            No verified volunteers available
+          </Typography>
+        ) : (
+          <Box sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel id="assign-volunteer-label">Volunteer</InputLabel>
+              <Select
+                labelId="assign-volunteer-label"
+                value={volunteerId}
+                label="Volunteer"
+                onChange={(e) => setVolunteerId(e.target.value)}
+              >
+                {volunteers.map(v => (
+                  <MenuItem key={v._id} value={v._id}>
+                    {v.name} — {v.email}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2, pt: 0 }}>
+        <Button onClick={onClose} variant="outlined" disabled={loading}>Cancel</Button>
+        <Button onClick={handleAssign} variant="contained" disabled={disabled}>
+          {loading ? 'Assigning…' : 'Assign'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
