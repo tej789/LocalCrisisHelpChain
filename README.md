@@ -1,38 +1,49 @@
-<<<<<<< HEAD
-PROJECT CONTEXT:
-Local Crisis HelpChain — a MERN stack role-based crisis management platform.
-The project includes:
-- JWT authentication
-- Role-based dashboards (User, NGO, Volunteer, Admin)
-- Real-time updates (Socket.io)
-- Admin verification of NGOs & Volunteers
-- Seeded demo accounts
+# Local Crisis HelpChain
 
-TASK:
-Generate a professional README.md for GitHub.
+Local Crisis HelpChain is a MERN stack based crisis management platform that connects citizens, NGOs, volunteers, and administrators to coordinate help efficiently during emergencies.
 
-README SHOULD INCLUDE:
-1. Project title and short description
-2. Problem statement
-3. Features (User / NGO / Volunteer / Admin)
-4. Tech stack
-5. System architecture (high-level)
-6. Authentication & role-based access explanation
-7. Setup instructions (backend + frontend)
-8. Environment variables
-9. Demo login credentials (admin / ngo / volunteer / user)
-10. How to run seed scripts (admin + demo users)
-11. Screenshots section (placeholders)
-12. Future enhancements
+## Problem Statement
+During crises, communication gaps delay help delivery. This platform centralizes requests and connects affected individuals with NGOs and volunteers in real time.
 
-STYLE:
-- Clear headings
-- Simple English
-- Resume and interviewer friendly
-- No emojis, professional tone
+## Features
 
-OUTPUT:
-- Complete README.md content
-=======
-# LocalCrisisHelpChain
->>>>>>> e8cda62d824450818a1d6b740e09b8d7b952b268
+### User
+- Register and login
+- Raise crisis requests
+- Track request status
+- View nearby help providers
+
+### NGO
+- Manage crisis requests
+- Assign volunteers
+- Update request progress
+
+### Volunteer
+- Accept assigned requests
+- Update assistance status
+
+### Admin
+- Verify NGOs and volunteers
+- Manage users and requests
+- Monitor platform activity
+
+## Tech Stack
+- Frontend: React.js
+- Backend: Node.js, Express.js
+- Database: MongoDB
+- Authentication: JWT
+- Real-time updates: Socket.io
+
+## System Architecture
+Client (React) communicates with Express backend APIs, which interact with MongoDB database. Socket.io enables real-time request updates.
+
+## Authentication & Role Access
+JWT authentication ensures secure login. Role-based access controls dashboards and actions for User, NGO, Volunteer, and Admin.
+
+## Setup Instructions
+
+### Backend Setup
+```bash
+cd server
+npm install
+npm start
