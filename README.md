@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 PROJECT CONTEXT:
 Local Crisis HelpChain — a MERN stack role-based crisis management platform.
 The project includes:
@@ -32,3 +33,6 @@ STYLE:
 
 OUTPUT:
 - Complete README.md content
+=======
+# LocalCrisisHelpChain
+>>>>>>> e8cda62d824450818a1d6b740e09b8d7b952b268
