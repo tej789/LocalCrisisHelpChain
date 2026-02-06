@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import api from "../api/axios";
 
 function VerifyOtp() {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ function VerifyOtp() {
     }, 2000);
   };
 
+  // Verify OTP
   const verifyOtp = async () => {
     console.log("Sending OTP request:", email, otp);
 
@@ -30,22 +31,22 @@ function VerifyOtp() {
     }
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/verify-otp",
-        { email, otp }
-      );
+      const res = await api.post("/api/auth/verify-otp", {
+        email,
+        otp,
+      });
 
       console.log("Verify success:", res.data);
-      showSnackbar(res.data.message);
+      showSnackbar(res.data.message || "OTP verified");
 
       setTimeout(() => navigate("/login"), 1500);
-
     } catch (err) {
       console.log("Verify error:", err.response?.data || err.message);
       showSnackbar("Invalid OTP");
     }
   };
 
+  // Resend OTP
   const resendOtp = async () => {
     if (!email) {
       showSnackbar("Email missing");
@@ -53,45 +54,42 @@ function VerifyOtp() {
     }
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/resend-otp",
-        { email }
-      );
+      const res = await api.post("/api/auth/resend-otp", { email });
 
-      showSnackbar(res.data.message);
+      showSnackbar(res.data.message || "OTP sent again");
     } catch (err) {
       showSnackbar("Error sending OTP");
     }
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg)'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '28rem',
-        padding: '2rem',
-        boxSizing: 'border-box'
-      }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        backgroundColor: "var(--bg)",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "28rem",
+          padding: "2rem",
+          boxSizing: "border-box",
+        }}
+      >
         <div className="auth-card">
-
           <div className="brand">
             <div className="brand-badge" />
             <div className="brand-title">LCHC</div>
           </div>
 
           <div className="auth-title">Verify OTP</div>
-          <div className="auth-sub">
-            Enter the OTP sent to your email
-          </div>
+          <div className="auth-sub">Enter the OTP sent to your email</div>
 
           <div className="form">
-
             <div>
               <div className="label">Email</div>
               <input
@@ -113,12 +111,10 @@ function VerifyOtp() {
               />
             </div>
 
-            <button
-              className="button"
-              onClick={verifyOtp}
-            >
+            <button className="button" onClick={verifyOtp}>
               Verify OTP
             </button>
+
             <div className="helper">
               Didn’t receive OTP?{" "}
               <span
@@ -128,26 +124,11 @@ function VerifyOtp() {
                 Resend OTP
               </span>
             </div>
-
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  snackbar: {
-    position: "fixed",
-    bottom: "20px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    background: "#323232",
-    color: "white",
-    padding: "12px 24px",
-    borderRadius: "6px",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-  },
-};
 
 export default VerifyOtp;

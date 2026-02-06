@@ -25,6 +25,7 @@ export default function Register() {
     e.preventDefault(); // IMPORTANT: stop default GET submit
     
   if (loading) return;
+  setLoading(true);
     if (!form.name || !form.email || !form.password) {
       setError('Name, email and password are required');
       return;
