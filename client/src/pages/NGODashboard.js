@@ -21,7 +21,6 @@ import api from '../api/axios';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
 import Footer from '../components/Footer';
 
-import { io } from "socket.io-client";
 
 const socket = io(process.env.REACT_APP_API_URL);
 

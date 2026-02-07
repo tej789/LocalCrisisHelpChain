@@ -21,9 +21,6 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Footer from '../components/Footer';
 
-
-import { io } from "socket.io-client";
-
 const socket = io(process.env.REACT_APP_API_URL);
 
 const typeIcons = {
