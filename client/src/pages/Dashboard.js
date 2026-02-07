@@ -34,7 +34,7 @@ function Dashboard() {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const { data } = await api.get('/requests');
+        const { data } = await api.get('/api/requests');
         setRequests(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching requests:', error);
@@ -337,7 +337,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
         )}
       </Box>
       <Box mt={2} textAlign="center">
-        <Button variant="outlined" color="primary" onClick={() => navigate('/requests')}>
+        <Button variant="outlined" color="primary" onClick={() => navigate('/api/requests')}>
           View All Requests
         </Button>
       </Box>

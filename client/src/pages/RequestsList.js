@@ -12,7 +12,7 @@ const RequestsList = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await api.get("/requests");
+        const res = await api.get("/api/requests");
         setRequests(res.data);
         setFiltered(res.data);
       } catch {

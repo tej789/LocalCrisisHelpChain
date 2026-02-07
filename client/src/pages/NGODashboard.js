@@ -21,7 +21,9 @@ import api from '../api/axios';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
 import Footer from '../components/Footer';
 
-const socket = io('http://localhost:5000');
+import { io } from "socket.io-client";
+
+const socket = io(process.env.REACT_APP_API_URL);
 
 function NGODashboard() {
   const navigate = useNavigate();
@@ -43,7 +45,7 @@ function NGODashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get('/requests');
+        const { data } = await api.get('/api/requests');
         const list = Array.isArray(data) ? data : [];
         const nameMap = {};
         list.forEach(r => {

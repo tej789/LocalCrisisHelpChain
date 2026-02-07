@@ -22,7 +22,9 @@ import api from '../api/axios';
 import Footer from '../components/Footer';
 
 
-const socket = io('http://localhost:5000'); // Adjust if backend runs elsewhere
+import { io } from "socket.io-client";
+
+const socket = io(process.env.REACT_APP_API_URL);
 
 const typeIcons = {
   food: <RestaurantIcon color="primary" />,
@@ -68,7 +70,7 @@ function VolunteerDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get('/requests');
+        const { data } = await api.get('/api/requests');
         setRequests(Array.isArray(data) ? data : []);
       } catch (err) {
         setError(err.response?.data?.error || err.message || 'Failed to fetch requests');
@@ -168,13 +170,13 @@ function VolunteerDashboard() {
   const handleClaimSelf = async (requestId) => {
     setActionLoading(true);
     try {
-      await api.post(`/requests/${requestId}/claim/self`);
+      await api.post(`/api/requests/${requestId}/claim/self`);
       setSnackbar({ open: true, message: 'Request claimed successfully!', severity: 'success' });
       // Optimistically update local state so it appears in "My Assigned" immediately
       setRequests(prev => prev.map(r => r._id === requestId ? { ...r, status: 'assigned', assignedTo: auth.user?.id } : r));
       // Ensure server state is synced (in case other fields changed) and switch to 'assigned' view
       try {
-        const { data } = await api.get('/requests');
+        const { data } = await api.get('/api/requests');
         setRequests(Array.isArray(data) ? data : []);
       } catch {}
       setView('assigned');
@@ -187,13 +189,13 @@ function VolunteerDashboard() {
   const handleResolve = async (requestId) => {
     setActionLoading(true);
     try {
-      await api.post(`/requests/${requestId}/resolve`);
+      await api.post(`/api/requests/${requestId}/resolve`);
       setSnackbar({ open: true, message: 'Request marked as resolved!', severity: 'success' });
       // Optimistically update to resolved
       setRequests(prev => prev.map(r => r._id === requestId ? { ...r, status: 'resolved' } : r));
       // Refetch to ensure full sync
       try {
-        const { data } = await api.get('/requests');
+        const { data } = await api.get('/api/requests');
         setRequests(Array.isArray(data) ? data : []);
       } catch {}
     } catch (err) {
