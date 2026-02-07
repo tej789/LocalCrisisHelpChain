@@ -110,30 +110,54 @@ function SubmitRequest() {
       return;
     }
     setLoading(true);
-    try {
-      const payload = {
-        name: form.name,
-        contact: form.contact,
-        location: {
-          type: 'Point',
-          coordinates: [parseFloat(form.longitude), parseFloat(form.latitude)],
-          address: form.address,
-        },
-        type: form.type,
-        urgency: form.urgency,
-        description: form.description,
-      };
-      const res = await api.post('/requests', payload);
-      setSuccess('Request submitted successfully!');
-      setForm({ name: '', contact: '', latitude: '', longitude: '', address: '', type: '', urgency: '', description: '' });
-    } catch (err) {
-      setError('Failed to submit request.');
-    }
-    setLoading(false);
+   try {
+  const payload = {
+    name: form.name,
+    contact: form.contact,
+    location: {
+      type: 'Point',
+      coordinates: [
+        parseFloat(form.longitude),
+        parseFloat(form.latitude)
+      ],
+      address: form.address,
+    },
+    type: form.type,
+    urgency: form.urgency,
+    description: form.description,
   };
 
+  await api.post('/api/requests', payload);
+
+  setSuccess('Request submitted successfully!');
+
+  setForm({
+    name: '',
+    contact: '',
+    latitude: '',
+    longitude: '',
+    address: '',
+    type: '',
+    urgency: '',
+    description: '',
+  });
+
+} catch (err) {
+  setError(
+    err.response?.data?.error ||
+    'Failed to submit request.'
+  );
+} finally {
+  setLoading(false);
+}
+};
   // Map preview logic
-  const hasLatLng = form.latitude && form.longitude && !isNaN(form.latitude) && !isNaN(form.longitude);
+const hasLatLng =
+  form.latitude !== '' &&
+  form.longitude !== '' &&
+  !isNaN(parseFloat(form.latitude)) &&
+  !isNaN(parseFloat(form.longitude));
+
   const mapCenter = hasLatLng ? [parseFloat(form.latitude), parseFloat(form.longitude)] : [20.5937, 78.9629];
 
   return (
@@ -170,24 +194,37 @@ function SubmitRequest() {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Contact Number"
-                  name="contact"
-                  value={form.contact}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                        <LocalHospitalIcon color="primary" />
-                      </Box>
-                    )
-                  }}
-                  helperText={!form.contact ? 'Contact is required' : ' '}
-                  error={!form.contact}
-                />
-              </Grid>
+  <TextField
+    label="Contact Number"
+    name="contact"
+    value={form.contact}
+    onChange={(e) => {
+      const value = e.target.value.replace(/\D/g, ""); // only numbers
+      if (value.length <= 10) {
+        setForm({ ...form, contact: value });
+      }
+    }}
+    fullWidth
+    required
+    inputProps={{ maxLength: 10 }}
+    InputProps={{
+      startAdornment: (
+        <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+          <LocalHospitalIcon color="primary" />
+        </Box>
+      )
+    }}
+    helperText={
+      !form.contact
+        ? "Contact is required"
+        : form.contact.length !== 10
+        ? "Enter valid 10-digit number"
+        : " "
+    }
+    error={!form.contact || form.contact.length !== 10}
+  />
+</Grid>
+
               <Grid item xs={6}>
                 <TextField
                   label="Latitude"
@@ -236,7 +273,7 @@ function SubmitRequest() {
               {/* Map Preview */}
               <Grid item xs={12}>
                 <Box sx={{ height: 180, borderRadius: 2, overflow: 'hidden', mb: 2, boxShadow: 2, border: '1px solid #e0e0e0' }}>
-                  <MapContainer center={mapCenter} zoom={hasLatLng ? 14 : 4} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} dragging={false} doubleClickZoom={false} zoomControl={false}>
+                  <MapContainer center={mapCenter} zoom={hasLatLng ? 14 : 5} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} dragging={false} doubleClickZoom={false} zoomControl={false}>
                     <TileLayer
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
