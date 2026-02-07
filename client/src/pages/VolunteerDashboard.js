@@ -15,13 +15,15 @@ import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import io from 'socket.io-client';
+import { io } from "socket.io-client";
+
 // removed useNavigate; volunteers don't file requests from this dashboard
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Footer from '../components/Footer';
 
 const socket = io(process.env.REACT_APP_API_URL);
+
 
 const typeIcons = {
   food: <RestaurantIcon color="primary" />,

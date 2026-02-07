@@ -7,7 +7,8 @@ import {
 import Grid from '@mui/material/Grid';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import io from 'socket.io-client';
+import { io } from "socket.io-client";
+
 import GroupsIcon from '@mui/icons-material/Groups';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
@@ -23,6 +24,7 @@ import Footer from '../components/Footer';
 
 
 const socket = io(process.env.REACT_APP_API_URL);
+
 
 function NGODashboard() {
   const navigate = useNavigate();
