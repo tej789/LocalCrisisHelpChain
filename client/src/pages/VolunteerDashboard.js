@@ -118,7 +118,7 @@ function VolunteerDashboard() {
     setAvailLoading(true);
     try {
       const desired = !myAvailability;
-      const { data } = await api.patch('/volunteers/me/availability', { isAvailable: desired });
+      const { data } = await api.patch('/api/volunteers/me/availability', { isAvailable: desired });
       setMyAvailability(!!data?.isAvailable);
       // Persist into AuthContext so state survives across app
       try {
