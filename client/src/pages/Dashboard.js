@@ -64,32 +64,45 @@ function Dashboard() {
   };
 
   // Save updates only to local auth context to avoid backend changes
-  const handleSaveChanges = async () => {
-    console.log("SAVE BUTTON CLICKED");
-    try {
-      await api.put(
-        "/api/users/update-profile",
-        {
-          name: profile.name,
-          phone: profile.phone,
+ const handleSaveChanges = async () => {
+  console.log("SAVE BUTTON CLICKED");
+
+  try {
+    await api.put(
+      "/api/users/update-profile",
+      {
+        name: profile.name,
+        phone: profile.phone,
+        city: profile.city, // optional if backend supports
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${auth?.token}`,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${auth?.token}`,
-          },
-        }
-      );
-      setSnackbar({
-        open: true,
-        message: 'Profile updated successfully',
-        severity: 'success',
-      });
-      
-    } catch (error) {
-      console.error("Profile update failed", error);
-      alert("Failed to update profile");
-    }
-  };
+      }
+    );
+
+    // ✅ reload updated profile from backend
+    const res = await api.get("/api/users/me", {
+      headers: {
+        Authorization: `Bearer ${auth?.token}`,
+      },
+    });
+
+    setProfile(res.data);
+
+    setSnackbar({
+      open: true,
+      message: "Profile updated successfully",
+      severity: "success",
+    });
+
+  } catch (error) {
+    console.error("Profile update failed", error);
+    alert("Failed to update profile");
+  }
+};
+
   
 
   // Stats
