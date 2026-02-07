@@ -337,7 +337,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
         )}
       </Box>
       <Box mt={2} textAlign="center">
-        <Button variant="outlined" color="primary" onClick={() => navigate('/api/requests')}>
+        <Button variant="outlined" color="primary" onClick={() => navigate('/requests')}>
           View All Requests
         </Button>
       </Box>
