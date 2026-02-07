@@ -1,6 +1,6 @@
-import Brevo from "@getbrevo/brevo";
+const Brevo = require("@getbrevo/brevo");
 
-export const generateOTP = () => {
+exports.generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
@@ -11,7 +11,7 @@ apiInstance.setApiKey(
   process.env.BREVO_API_KEY
 );
 
-export const sendOtpEmail = async (email, otp) => {
+exports.sendOtpEmail = async (email, otp) => {
   try {
     const sendSmtpEmail = {
       sender: {
@@ -30,6 +30,6 @@ export const sendOtpEmail = async (email, otp) => {
 
     console.log("OTP email sent");
   } catch (error) {
-    console.log(error);
+    console.error("Brevo error:", error);
   }
 };

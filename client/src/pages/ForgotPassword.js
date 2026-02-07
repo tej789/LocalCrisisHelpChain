@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
+
 import { useNavigate } from "react-router-dom";
 import PasswordInput from '../components/PasswordInput';
 
