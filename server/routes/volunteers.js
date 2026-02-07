@@ -14,28 +14,39 @@ router.get('/', verifyToken, requireAnyRole(['ngo', 'admin']), async (req, res) 
 
     const filters = {};
 
-    // Backward compatible verification filter
+    // verified filter
     if (String(verified).toLowerCase() === 'true') {
       filters.$or = [
         { isVerified: true },
-        { $and: [ { isVerified: { $exists: false } }, { verified: true } ] }
+        { $and: [
+            { isVerified: { $exists: false } },
+            { verified: true }
+          ]
+        }
       ];
     }
 
+    // availability filter
     if (String(available).toLowerCase() === 'true') {
       filters.isAvailable = true;
     }
 
-    // Projection: restrict to allowed fields only
-    const projection = { name: 1, email: 1, isAvailable: 1 };
+    const projection = {
+      name: 1,
+      email: 1,
+      isAvailable: 1
+    };
 
-    const volunteers = await Volunteer.find(filters, projection).lean();
+    const volunteers = await Volunteer
+      .find(filters, projection)
+      .lean();
 
-    return res.json(volunteers || []);
+    res.json(volunteers || []);
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to fetch volunteers' });
+    res.status(500).json({ error: 'Failed to fetch volunteers' });
   }
 });
+
 
 module.exports = router;
  

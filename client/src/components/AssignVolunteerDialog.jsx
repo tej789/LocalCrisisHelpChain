@@ -13,7 +13,7 @@ export default function AssignVolunteerDialog({ open, requestId, onClose, onAssi
     if (!open) return;
     setListLoading(true);
     setError('');
-    api.get('/volunteers?verified=true&available=true')
+    api.get('/api/volunteers?verified=true&available=true')
       .then(res => {
         const arr = Array.isArray(res.data) ? res.data : [];
         setVolunteers(arr);
@@ -30,7 +30,7 @@ export default function AssignVolunteerDialog({ open, requestId, onClose, onAssi
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.put(`/requests/${requestId}/assign`, { volunteerId });
+      const { data } = await api.put(`/api/requests/${requestId}/assign`, { volunteerId });
       if (onAssigned) onAssigned(data);
       if (onClose) onClose();
     } catch (err) {
