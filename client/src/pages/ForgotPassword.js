@@ -56,10 +56,11 @@ function ForgotPassword() {
     setSuccess("");
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/reset-password",
-        { email, otp, newPassword: password }
-      );
+      const res = await api.post(
+  "/api/auth/reset-password",
+  { email, otp, newPassword: password }
+);
+
       setSuccess(res.data.message || "Password reset successful. Redirecting to login...");
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
