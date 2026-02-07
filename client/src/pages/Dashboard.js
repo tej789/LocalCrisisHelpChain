@@ -68,7 +68,7 @@ function Dashboard() {
     console.log("SAVE BUTTON CLICKED");
     try {
       await api.put(
-        "/users/update-profile",
+        "/api/users/update-profile",
         {
           name: profile.name,
           phone: profile.phone,
