@@ -25,10 +25,11 @@ function ForgotPassword() {
     setSuccess("");
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password",
+      const res = await api.post(
+        "/api/auth/forgot-password",
         { email }
       );
+      
       setSuccess(res.data.message || "OTP sent to your email");
       setOtpSent(true);
     } catch (err) {
