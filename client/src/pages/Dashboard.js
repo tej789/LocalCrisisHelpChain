@@ -130,8 +130,10 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   const mapCenter = firstWithCoords ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]] : defaultPosition;
 
   return (
-    <Box sx={{ py: 4, minHeight: '100vh', backgroundColor: 'background.default' }}>
-    <Container maxWidth="">
+    <Box sx={{ py: { xs: 2, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
+      
+      {/* FIXED: container width */}
+      <Container maxWidth="lg">
  {/* Header */}
 <Stack
   direction={{ xs: 'column', sm: 'row' }}
@@ -200,8 +202,14 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
        {/* Stats */}
 <Grid container spacing={3} justifyContent="center" alignItems="stretch" sx={{ mb: 6 }}>
   <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
-    <Paper elevation={3} sx={{ p: 3, textAlign: 'center', borderRadius: 3, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 8 }, flex: 1 }}>
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" mb={1}>
+<Paper elevation={3} sx={{
+      p: { xs: 2, md: 3 },   // FIXED
+      textAlign: 'center',
+      borderRadius: 3,
+      transition: 'box-shadow 0.2s',
+      '&:hover': { boxShadow: 8 },
+      flex: 1
+    }}>      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" mb={1}>
         <AssignmentIcon color="primary" />
         <Typography variant="h4" color="primary">{totalRequests}</Typography>
       </Stack>
@@ -235,7 +243,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
         <CategoryIcon color="primary" />
         <Typography variant="h6">Requests by Type</Typography>
       </Stack>
-      <Box sx={{ flex: 1, minHeight: { xs: 240, md: 260 } }}>
+      <Box sx={{ flex: 1, minHeight: { xs: 200, md: 260 } }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={typeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
