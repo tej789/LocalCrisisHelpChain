@@ -82,7 +82,7 @@ function Dashboard() {
       }
     );
 
-    // ✅ reload updated profile from backend
+    //  reload updated profile from backend
     const res = await api.get("/api/users/me", {
       headers: {
         Authorization: `Bearer ${auth?.token}`,
