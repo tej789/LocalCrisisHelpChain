@@ -32,38 +32,38 @@ export default function UserDashboard() {
     fetchProfile();
   }, []);
 
-  // Save profile changes
+  // Save name & phone to MongoDB
   const handleSaveChanges = async () => {
-    setLoading(true);
+    console.log("SAVE BUTTON CLICKED");
     try {
       await api.put(
         "/api/users/update-profile",
-        { name, phone },
+        {
+          name: profile.name,
+          phone: profile.phone,
+        },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${auth?.token}`,
           },
         }
       );
-
-      alert("Profile updated successfully");
+  
+      setSnackbar({
+        open: true,
+        message: 'Profile updated successfully',
+        severity: 'success',
+      });
+      
     } catch (error) {
       console.error("Profile update failed", error);
       alert("Failed to update profile");
-    } finally {
-      setLoading(false);
     }
   };
+  
 
   return (
-    <div
-      style={{
-        padding: '20px',
-        paddingBottom: '80px',
-        minHeight: '100vh',
-        background: '#f7f9fc',
-      }}
-    >
+    <div style={{ padding: '20px', paddingBottom: '80px', minHeight: '100vh' }}>
       {/* Header */}
       <header
         style={{
@@ -71,64 +71,61 @@ export default function UserDashboard() {
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '20px',
-          flexWrap: 'wrap',
-          gap: '10px',
         }}
       >
-        <h2 style={{ margin: 0 }}>User Dashboard</h2>
+        <h2>User Dashboard</h2>
         <LogoutButton />
       </header>
 
-      {/* Profile Card */}
+      {/* USER PROFILE */}
       <section
         style={{
-          maxWidth: '600px',
-          padding: '24px',
-          borderRadius: '12px',
+          maxWidth: '500px',
+          padding: '20px',
+          border: '1px solid #ddd',
+          borderRadius: '8px',
           background: '#fff',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          margin: '0 auto',
         }}
       >
-        <h3 style={{ marginBottom: '16px' }}>User Profile</h3>
+        <h3>User Profile</h3>
 
-        <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <label>Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            style={inputStyle}
+            style={{ width: '100%', padding: '8px' }}
           />
         </div>
 
-        <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <label>Email</label>
           <input
             type="email"
             value={email}
             disabled
-            style={{ ...inputStyle, background: '#f1f1f1' }}
+            style={{ width: '100%', padding: '8px', background: '#f3f3f3' }}
           />
         </div>
 
-        <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <label>Phone</label>
           <input
             type="text"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            style={inputStyle}
+            style={{ width: '100%', padding: '8px' }}
           />
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: '15px' }}>
           <label>Role</label>
           <input
             type="text"
             value={role}
             disabled
-            style={{ ...inputStyle, background: '#f1f1f1' }}
+            style={{ width: '100%', padding: '8px', background: '#f3f3f3' }}
           />
         </div>
 
@@ -136,31 +133,22 @@ export default function UserDashboard() {
           onClick={handleSaveChanges}
           disabled={loading}
           style={{
-            width: '100%',
-            padding: '12px',
+            padding: '10px 16px',
             background: '#1976d2',
             color: '#fff',
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: '4px',
             cursor: 'pointer',
-            fontWeight: 'bold',
           }}
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </button>
       </section>
 
-      {/* Footer */}
+      {/* Existing dashboard content can remain below */}
+      {/* ...your maps, requests, charts, buttons stay untouched... */}
+
       <Footer text="© 2026 Local Crisis HelpChain · Volunteer Dashboard" />
     </div>
   );
 }
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px',
-  marginTop: '4px',
-  borderRadius: '6px',
-  border: '1px solid #ccc',
-  boxSizing: 'border-box',
-};
