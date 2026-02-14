@@ -243,7 +243,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
         <CategoryIcon color="primary" />
         <Typography variant="h6">Requests by Type</Typography>
       </Stack>
-      <Box sx={{ flex: 1, minHeight: { xs: 240, md: 260 } }}>
+      <Box sx={{ flex: 1, minHeight: { xs: 200, md: 260 } }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={typeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
