@@ -412,7 +412,10 @@ function VolunteerDashboard() {
                   boxShadow: 4,
                   borderRadius: 4,
                   transition: 'box-shadow 0.2s, transform 0.2s',
-                  '&:hover': { boxShadow: 10, transform: 'translateY(-4px) scale(1.03)' },
+                 '&:hover': {
+    boxShadow: 10,
+    transform: 'translateY(-4px)'
+  },
                   p: 0,
                   background: '#fff',
                 }}
