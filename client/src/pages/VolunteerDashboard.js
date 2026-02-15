@@ -434,7 +434,7 @@ const sortedRequests = useMemo(() => {
               </Paper>
             </Grid>
           )}
-          {(view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : filteredRequests).map((req) => (
+          {(view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : sortedRequests).map((req) => (
             <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
               <Card
                 variant="outlined"
