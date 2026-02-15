@@ -147,6 +147,13 @@ function VolunteerDashboard() {
   });
 }, [requests, typeFilter, urgencyFilter]);
 
+const sortedRequests = useMemo(() => {
+  return [...filteredRequests].sort((a, b) => {
+    const ua = urgencyPriority[a.urgency?.toLowerCase()] || 0;
+    const ub = urgencyPriority[b.urgency?.toLowerCase()] || 0;
+    return ub - ua; // high first
+  });
+}, [filteredRequests]);
 
 
   const openRequests = filteredRequests.filter(r => (r.status || 'open') === 'open');
