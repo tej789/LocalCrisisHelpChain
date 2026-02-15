@@ -454,7 +454,20 @@ function VolunteerDashboard() {
                       />
                     </Box>
                   </Stack>
-                  <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, minHeight: 48 }}>
+                  <Typography
+  variant="body1"
+  sx={{
+    mb: 1,
+    fontWeight: 500,
+    minHeight: 48,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical'
+  }}
+>
+
                     {req.description}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
