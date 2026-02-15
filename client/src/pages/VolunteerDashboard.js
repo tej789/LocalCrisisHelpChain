@@ -370,9 +370,16 @@ function VolunteerDashboard() {
       </Box>
     )}
   </Box>
-       
-      <Divider sx={{ my: 2 }} />
-      <Box sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
+       <Divider sx={{ my: 2 }} />
+
+<Stack direction="row" spacing={2} justifyContent="center" mb={2} flexWrap="wrap">
+  <Chip label={`Open: ${openRequests.length}`} color="warning" />
+  <Chip label={`Assigned: ${myAssignedRequests.length}`} color="primary" />
+  <Chip label={`Total: ${filteredRequests.length}`} />
+</Stack>
+
+<Box sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
+
 <Paper
   elevation={2}
   sx={{
