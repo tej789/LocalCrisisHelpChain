@@ -401,7 +401,7 @@ function VolunteerDashboard() {
             </Grid>
           )}
           {(view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : filteredRequests).map((req) => (
-            <Grid xs={12} sm={6} md={4} key={req._id || req.id}>
+            <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
               <Card
                 variant="outlined"
                 sx={{
