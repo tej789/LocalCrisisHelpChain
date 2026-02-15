@@ -135,11 +135,14 @@ function VolunteerDashboard() {
     }
   };
 
-  const filteredRequests = requests.filter((req) => {
+  const filteredRequests = useMemo(() => {
+  return requests.filter((req) => {
     const typeMatch = typeFilter ? req.type === typeFilter : true;
     const urgencyMatch = urgencyFilter ? req.urgency === urgencyFilter : true;
     return typeMatch && urgencyMatch;
   });
+}, [requests, typeFilter, urgencyFilter]);
+
 
   const openRequests = filteredRequests.filter(r => (r.status || 'open') === 'open');
   // Show requests assigned to the logged-in volunteer (by userId)
