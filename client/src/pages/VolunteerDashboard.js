@@ -392,7 +392,8 @@ function VolunteerDashboard() {
         </Paper>
         <Grid container spacing={3}>
           {((view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : filteredRequests).length === 0) && (
-            <Grid xs={12}>
+           <Grid item xs={12}>
+
               <Paper elevation={1} sx={{ p: 5, textAlign: 'center', background: '#f5f7fa' }}>
                 <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary">No {view === 'open' ? 'open' : view === 'assigned' ? 'assigned' : 'requests'} found.</Typography>
