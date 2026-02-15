@@ -243,7 +243,6 @@ function VolunteerDashboard() {
 
 <Box
   sx={{
-    width: "100%",
     display: "flex",
     flexDirection: { xs: "column", sm: "row" },
     alignItems: "center",
