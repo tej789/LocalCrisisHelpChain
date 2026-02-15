@@ -370,7 +370,19 @@ function VolunteerDashboard() {
        
       <Divider sx={{ my: 2 }} />
       <Box sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
-        <Paper elevation={2} sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+<Paper
+  elevation={2}
+  sx={{
+    p: 2,
+    mb: 2,
+    display: 'flex',
+    gap: 2,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.02)'
+  }}
+>
           <FormControl variant="standard" sx={{ minWidth: 140 }}>
             <InputLabel>Type</InputLabel>
             <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} label="Type">
