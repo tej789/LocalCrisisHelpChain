@@ -319,6 +319,7 @@ function VolunteerDashboard() {
       </Button>
 
       <Button
+      sx={{ flex: { xs: '1 1 100%', sm: 'unset' } }}
         variant={view === 'open' ? 'contained' : 'outlined'}
         onClick={() => setView('open')}
       >
