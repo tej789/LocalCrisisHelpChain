@@ -328,6 +328,7 @@ function VolunteerDashboard() {
       </Button>
 
       <Button
+      sx={{ flex: { xs: '1 1 100%', sm: 'unset' } }}
         variant={view === 'assigned' ? 'contained' : 'outlined'}
         onClick={() => setView('assigned')}
       >
