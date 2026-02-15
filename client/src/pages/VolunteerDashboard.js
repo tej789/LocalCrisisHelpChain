@@ -42,6 +42,12 @@ const urgencyIcons = {
   medium: <ReportProblemIcon fontSize="small" color="warning" sx={{ mr: 0.5 }} />,
   low: <CheckCircleIcon fontSize="small" color="success" sx={{ mr: 0.5 }} />,
 };
+const urgencyPriority = {
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
 
 function VolunteerDashboard() {
   const auth = useAuth();
@@ -140,6 +146,7 @@ function VolunteerDashboard() {
     return typeMatch && urgencyMatch;
   });
 }, [requests, typeFilter, urgencyFilter]);
+
 
 
   const openRequests = filteredRequests.filter(r => (r.status || 'open') === 'open');
