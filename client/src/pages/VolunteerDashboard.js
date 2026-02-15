@@ -405,7 +405,7 @@ function VolunteerDashboard() {
                 variant="outlined"
                 sx={{
                   mb: 2,
-                  minHeight: 360,
+                  minHeight: { xs: 'auto', md: 340 },
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
