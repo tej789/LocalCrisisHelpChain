@@ -425,7 +425,7 @@ const sortedRequests = useMemo(() => {
           </FormControl>
         </Paper>
         <Grid container spacing={3}>
-          {((view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : filteredRequests).length === 0) && (
+          {((view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : sortedRequests).length === 0) && (
            <Grid item xs={12}>
 
               <Paper elevation={1} sx={{ p: 5, textAlign: 'center', background: '#f5f7fa' }}>
