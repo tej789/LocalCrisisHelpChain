@@ -461,10 +461,22 @@ function VolunteerDashboard() {
                           ? `Lat: ${req.location.coordinates[1]}, Lng: ${req.location.coordinates[0]}`
                           : 'N/A')}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    <strong>Status:</strong> {req.status || 'open'}
-                  </Typography>
-                 
+                 <Box sx={{ mb: 1 }}>
+  <strong>Status: </strong>
+  <Chip
+    label={req.status || 'open'}
+    color={
+      req.status === 'resolved'
+        ? 'success'
+        : req.status === 'assigned'
+        ? 'primary'
+        : 'warning'
+    }
+    size="small"
+    sx={{ ml: 1 }}
+  />
+</Box>
+
                 </CardContent>
                 <Box sx={{ px: 3, pb: 2, pt: 0, display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
                   <Button variant="outlined" size="small" onClick={() => handleOpenDetailsDialog(req)}>
