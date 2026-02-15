@@ -515,7 +515,7 @@ function VolunteerDashboard() {
       {/* Map at the bottom */}
       <Paper elevation={1} sx={{ p: 2, mt: 4, width: '100%', borderRadius: 2, boxShadow: 1 }}>
         <Typography variant="h6" gutterBottom>Live Request Map</Typography>
-        <Box sx={{ height: { xs: 300, md: 450 }, width: '100%' }}>
+        <Box sx={{ height: { xs: 240, md: 450 }, width: '100%' }}>
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
