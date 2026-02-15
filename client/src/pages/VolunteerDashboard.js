@@ -300,15 +300,17 @@ function VolunteerDashboard() {
     </Typography>
 
     {/* View filters */}
-    <Box
-      sx={{
-        mt: 2,
-        display: 'flex',
-        gap: 1,
-        flexWrap: 'wrap',
-        justifyContent: 'center'
-      }}
-    >
+   <Box
+  sx={{
+    mt: 2,
+    display: 'flex',
+    gap: 1,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%'
+  }}
+>
+
       <Button
         variant={view === 'all' ? 'contained' : 'outlined'}
         onClick={() => setView('all')}
