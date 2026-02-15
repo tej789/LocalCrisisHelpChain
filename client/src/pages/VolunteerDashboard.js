@@ -156,7 +156,7 @@ const sortedRequests = useMemo(() => {
 }, [filteredRequests]);
 
 
-  const openRequests = filteredRequests.filter(r => (r.status || 'open') === 'open');
+ const openRequests = sortedRequests.filter(r => (r.status || 'open') === 'open');
   // Show requests assigned to the logged-in volunteer (by userId)
   const myAssignedRequests = filteredRequests.filter(r => {
     const status = r.status || 'open';
