@@ -158,7 +158,7 @@ const sortedRequests = useMemo(() => {
 
  const openRequests = sortedRequests.filter(r => (r.status || 'open') === 'open');
   // Show requests assigned to the logged-in volunteer (by userId)
-  const myAssignedRequests = filteredRequests.filter(r => {
+  const myAssignedRequests = sortedRequests.filter(r => {
     const status = r.status || 'open';
     if (status !== 'assigned' && status !== 'resolved') return false;
   
