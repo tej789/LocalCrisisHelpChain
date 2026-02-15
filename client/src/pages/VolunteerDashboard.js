@@ -240,6 +240,7 @@ function VolunteerDashboard() {
   }}
 >
 {/* Header */}
+
 <Box
   sx={{
     width: "100%",
@@ -248,9 +249,11 @@ function VolunteerDashboard() {
     alignItems: "center",
     justifyContent: "space-between",
     mb: 2,
-    gap: 1
+    gap: 1,
+    textAlign: "center"
   }}
 >
+
   <Typography
     variant="h4"
     sx={{
