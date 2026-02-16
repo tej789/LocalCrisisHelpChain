@@ -260,7 +260,7 @@ const urgencyPriority = {
 >
 
   {/* TYPE */}
-  <Grid item xs={12} sm={3}>
+<Grid item xs={12} sm={6} md={3}>
     <FormControl fullWidth size="small">
       <InputLabel>Type</InputLabel>
       <Select
