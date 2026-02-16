@@ -454,7 +454,7 @@ const sortedRequests = useMemo(() => {
       : '1px solid rgba(0,0,0,0.12)',
 
   background:
-    req.urgency === 'high'
+    req.urgency?.toLowerCase() === 'high'
       ? 'rgba(211,47,47,0.05)'
       : '#fff',
 
