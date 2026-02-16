@@ -243,68 +243,90 @@ const urgencyPriority = {
 {/* FILTER PANEL */}
 <Paper
   sx={{
-    p: 2,
-    mb: 3,
-    display: "flex",
-    gap: 2,
-    flexWrap: "wrap",
-    justifyContent: "center",
-    borderRadius: 3,
-    boxShadow: 2
-  }}
+  mb: 3,
+  p: 2,
+  borderRadius: 4,
+  boxShadow: 2,
+  maxWidth: 900,
+  mx: "auto"
+}}
+
 >
-  <FormControl size="small" sx={{ minWidth: 150 }}>
-    <InputLabel>Type</InputLabel>
-    <Select
-      value={typeFilter}
-      label="Type"
-      onChange={(e) => setTypeFilter(e.target.value)}
-    >
-      <MenuItem value="">All</MenuItem>
-      {[...new Set(requests.map(r => r.type))].map(type => (
-        <MenuItem key={type} value={type}>{type}</MenuItem>
-      ))}
-    </Select>
-  </FormControl>
+<Grid
+  container
+  spacing={2}
+  alignItems="center"
+  justifyContent="center"
+>
 
-  <FormControl size="small" sx={{ minWidth: 150 }}>
-    <InputLabel>Urgency</InputLabel>
-    <Select
-      value={urgencyFilter}
-      label="Urgency"
-      onChange={(e) => setUrgencyFilter(e.target.value)}
-    >
-      <MenuItem value="">All</MenuItem>
-      <MenuItem value="high">High</MenuItem>
-      <MenuItem value="medium">Medium</MenuItem>
-      <MenuItem value="low">Low</MenuItem>
-    </Select>
-  </FormControl>
+  {/* TYPE */}
+  <Grid item xs={12} sm={3}>
+    <FormControl fullWidth size="small">
+      <InputLabel>Type</InputLabel>
+      <Select
+        value={typeFilter}
+        label="Type"
+        onChange={(e) => setTypeFilter(e.target.value)}
+      >
+        <MenuItem value="">All</MenuItem>
+        {[...new Set(requests.map(r => r.type))].map(type => (
+          <MenuItem key={type} value={type}>{type}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Grid>
 
-  <FormControl size="small" sx={{ minWidth: 150 }}>
-    <InputLabel>Status</InputLabel>
-    <Select
-      value={statusFilter}
-      label="Status"
-      onChange={(e) => setStatusFilter(e.target.value)}
-    >
-      <MenuItem value="">All</MenuItem>
-      <MenuItem value="open">Open</MenuItem>
-      <MenuItem value="assigned">Assigned</MenuItem>
-      <MenuItem value="resolved">Resolved</MenuItem>
-    </Select>
-  </FormControl>
+  {/* URGENCY */}
+  <Grid item xs={12} sm={3}>
+    <FormControl fullWidth size="small">
+      <InputLabel>Urgency</InputLabel>
+      <Select
+        value={urgencyFilter}
+        label="Urgency"
+        onChange={(e) => setUrgencyFilter(e.target.value)}
+      >
+        <MenuItem value="">All</MenuItem>
+        <MenuItem value="high">High</MenuItem>
+        <MenuItem value="medium">Medium</MenuItem>
+        <MenuItem value="low">Low</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
 
-  <Button
-    variant="outlined"
-    onClick={() => {
-      setTypeFilter("");
-      setUrgencyFilter("");
-      setStatusFilter("");
-    }}
-  >
-    Clear Filters
-  </Button>
+  {/* STATUS */}
+  <Grid item xs={12} sm={3}>
+    <FormControl fullWidth size="small">
+      <InputLabel>Status</InputLabel>
+      <Select
+        value={statusFilter}
+        label="Status"
+        onChange={(e) => setStatusFilter(e.target.value)}
+      >
+        <MenuItem value="">All</MenuItem>
+        <MenuItem value="open">Open</MenuItem>
+        <MenuItem value="assigned">Assigned</MenuItem>
+        <MenuItem value="resolved">Resolved</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
+
+  {/* CLEAR BUTTON */}
+  <Grid item xs={12} sm={3}>
+    <Button
+      fullWidth
+      variant="contained"
+      onClick={() => {
+        setTypeFilter("");
+        setUrgencyFilter("");
+        setStatusFilter("");
+      }}
+    >
+      Clear Filters
+    </Button>
+  </Grid>
+
+</Grid>
+
 </Paper>
 
 
