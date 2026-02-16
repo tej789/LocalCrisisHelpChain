@@ -247,7 +247,7 @@ const urgencyPriority = {
   p: 2,
   borderRadius: 4,
   boxShadow: 2,
-  maxWidth: 900,
+  maxWidth:1500,
   mx: "auto"
 }}
 
