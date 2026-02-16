@@ -156,15 +156,29 @@ function NGODashboard() {
     flexDirection: { xs: "column", sm: "row" },
     alignItems: "center",
     justifyContent: "space-between",
+    mb: 2,
     gap: 1,
     textAlign: "center"
   }}
 >
-<Typography variant="h4" sx={{ width: "100%" }}>
-  NGO Dashboard
-</Typography>
-        <Button variant="outlined" color="error" size="small" onClick={auth.logout}>Logout</Button>
-      </Box>
+  <Typography
+    variant="h4"
+    sx={{ width: "100%", fontWeight: 700 }}
+  >
+    NGO Dashboard
+  </Typography>
+
+  <Button
+    variant="outlined"
+    color="error"
+    size="small"
+    onClick={auth.logout}
+    sx={{ alignSelf: { xs: "flex-end", sm: "auto" } }}
+  >
+    Logout
+  </Button>
+</Box>
+
       <Divider sx={{ my: 2 }} />   
 {/* STATS */}
 <Grid
