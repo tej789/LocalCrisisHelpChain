@@ -449,7 +449,7 @@ const sortedRequests = useMemo(() => {
   borderRadius: 4,
 
   border:
-    req.urgency === 'high'
+    req.urgency?.toLowerCase() === 'high'
       ? '2px solid #d32f2f'
       : '1px solid rgba(0,0,0,0.12)',
 
