@@ -445,20 +445,23 @@ const sortedRequests = useMemo(() => {
   flexDirection: 'column',
   justifyContent: 'space-between',
 
-  boxShadow: req.urgency?.toLowerCase() === 'high' &&
-(req.status || 'open') === 'open'
-? 10 : 4,
+  boxShadow:
+    req.urgency?.toLowerCase() === 'high' &&
+    (req.status || 'open') === 'open'
+      ? 10
+      : 4,
+
   borderRadius: 4,
 
   border:
     req.urgency?.toLowerCase() === 'high' &&
-(req.status || 'open') === 'open'
+    (req.status || 'open') === 'open'
       ? '2px solid #d32f2f'
       : '1px solid rgba(0,0,0,0.12)',
 
-  background:   req.urgency?.toLowerCase() === 'high' &&
-(req.status || 'open') === 'open'
-
+  background:
+    req.urgency?.toLowerCase() === 'high' &&
+    (req.status || 'open') === 'open'
       ? 'rgba(211,47,47,0.05)'
       : '#fff',
 
@@ -471,6 +474,7 @@ const sortedRequests = useMemo(() => {
 
   p: 0,
 }}
+
 
               >
                 <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3 }}>
