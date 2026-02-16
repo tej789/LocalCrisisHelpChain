@@ -291,7 +291,15 @@ function NGODashboard() {
         )}
       </Box>
       {/* TABLE */}
-      <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 1, display: { xs: 'none', md: 'block' } }}>
+<TableContainer
+  component={Paper}
+  sx={{
+    borderRadius: 3,
+    boxShadow: 3,
+    overflow: "hidden",
+    display: { xs: 'none', md: 'block' }
+  }}
+>
         <Table>
           <TableHead>
             <TableRow>
