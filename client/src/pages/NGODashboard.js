@@ -197,15 +197,19 @@ function NGODashboard() {
       xs={6} sm={3}
       key={label}
       sx={{ display: 'flex', justifyContent: 'center' }}
-    >
-      <Paper
-        sx={{
-          p: 2,
-          textAlign: 'center',
-          width: '100%',
-          maxWidth: 140
-        }}
-      >
+    ><Paper
+  sx={{
+    p: 2,
+    textAlign: "center",
+    width: "100%",
+    maxWidth: 140,
+    borderRadius: 3,
+    boxShadow: 3,
+    transition: "0.2s",
+    "&:hover": { boxShadow: 6, transform: "translateY(-3px)" }
+  }}
+>
+
         <Typography variant="h4">{value}</Typography>
         <Typography>{label}</Typography>
       </Paper>
@@ -335,11 +339,13 @@ function NGODashboard() {
 <TableRow
   key={req._id}
   sx={{
-    "&:hover": {
-      backgroundColor: "rgba(25,118,210,0.05)"
-    }
+    backgroundColor:
+      req.urgency === "high" && req.status === "open"
+        ? "#fff4f4"
+        : "inherit"
   }}
 >
+
                 <TableCell>{req.type}</TableCell>
                 <TableCell>{req.urgency}</TableCell>
                 <TableCell>{req.description}</TableCell>
