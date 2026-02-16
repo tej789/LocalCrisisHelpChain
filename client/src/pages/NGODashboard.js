@@ -231,16 +231,18 @@ function NGODashboard() {
             {filteredRequests.map(req => (
               <Grid item xs={12} key={req._id}>
 <Paper
-  sx={{
-    p: 2,
-    textAlign: "center",
-    width: "100%",
-    maxWidth: 140,
-    borderRadius: 3,
-    boxShadow: 3,
-    transition: "0.2s",
-    "&:hover": { boxShadow: 6, transform: "translateY(-3px)" }
-  }}
+ sx={{
+  p: 2,
+  borderRadius: 3,
+  boxShadow: 2,
+  transition: "0.2s",
+  backgroundColor:
+    req.urgency === "high" && req.status === "open"
+      ? "#fff4f4"
+      : "#fff",
+  "&:hover": { boxShadow: 4 }
+}}
+
 >
 
                   <Box display="flex" justifyContent="space-between" alignItems="center">
