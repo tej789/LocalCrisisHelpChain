@@ -247,7 +247,17 @@ function NGODashboard() {
 >
   {req.type}
 </Typography>
-                    <Chip label={req.urgency} size="small" />
+<Chip
+  label={req.urgency}
+  size="small"
+  color={
+    req.urgency === "high"
+      ? "error"
+      : req.urgency === "medium"
+      ? "warning"
+      : "success"
+  }
+/>
                   </Box>
 
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
