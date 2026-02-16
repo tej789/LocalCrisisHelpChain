@@ -105,10 +105,21 @@ const urgencyPriority = {
     return t && u && s;
   })
   .sort((a, b) => {
-    const ua = urgencyPriority[a.urgency?.toLowerCase()] || 0;
-    const ub = urgencyPriority[b.urgency?.toLowerCase()] || 0;
-    return ub - ua; // high first
-  });
+  const urgencyPriority = { high: 3, medium: 2, low: 1 };
+
+  const ua = urgencyPriority[a.urgency?.toLowerCase()] || 0;
+  const ub = urgencyPriority[b.urgency?.toLowerCase()] || 0;
+
+  const aOpen = a.status === "open" ? 1 : 0;
+  const bOpen = b.status === "open" ? 1 : 0;
+
+  // First prioritize OPEN
+  if (bOpen !== aOpen) return bOpen - aOpen;
+
+  // Then prioritize urgency
+  return ub - ua;
+});
+
 
 
   // ================= ASSIGN HANDLERS =================
@@ -228,6 +239,73 @@ const urgencyPriority = {
     </Grid>
   ))}
 </Grid>
+
+{/* FILTER PANEL */}
+<Paper
+  sx={{
+    p: 2,
+    mb: 3,
+    display: "flex",
+    gap: 2,
+    flexWrap: "wrap",
+    justifyContent: "center",
+    borderRadius: 3,
+    boxShadow: 2
+  }}
+>
+  <FormControl size="small" sx={{ minWidth: 150 }}>
+    <InputLabel>Type</InputLabel>
+    <Select
+      value={typeFilter}
+      label="Type"
+      onChange={(e) => setTypeFilter(e.target.value)}
+    >
+      <MenuItem value="">All</MenuItem>
+      {[...new Set(requests.map(r => r.type))].map(type => (
+        <MenuItem key={type} value={type}>{type}</MenuItem>
+      ))}
+    </Select>
+  </FormControl>
+
+  <FormControl size="small" sx={{ minWidth: 150 }}>
+    <InputLabel>Urgency</InputLabel>
+    <Select
+      value={urgencyFilter}
+      label="Urgency"
+      onChange={(e) => setUrgencyFilter(e.target.value)}
+    >
+      <MenuItem value="">All</MenuItem>
+      <MenuItem value="high">High</MenuItem>
+      <MenuItem value="medium">Medium</MenuItem>
+      <MenuItem value="low">Low</MenuItem>
+    </Select>
+  </FormControl>
+
+  <FormControl size="small" sx={{ minWidth: 150 }}>
+    <InputLabel>Status</InputLabel>
+    <Select
+      value={statusFilter}
+      label="Status"
+      onChange={(e) => setStatusFilter(e.target.value)}
+    >
+      <MenuItem value="">All</MenuItem>
+      <MenuItem value="open">Open</MenuItem>
+      <MenuItem value="assigned">Assigned</MenuItem>
+      <MenuItem value="resolved">Resolved</MenuItem>
+    </Select>
+  </FormControl>
+
+  <Button
+    variant="outlined"
+    onClick={() => {
+      setTypeFilter("");
+      setUrgencyFilter("");
+      setStatusFilter("");
+    }}
+  >
+    Clear Filters
+  </Button>
+</Paper>
 
 
 
