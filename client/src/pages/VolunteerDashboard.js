@@ -439,21 +439,35 @@ const sortedRequests = useMemo(() => {
               <Card
                 variant="outlined"
                 sx={{
-                  mb: 2,
-                  minHeight: { xs: 'auto', md: 340 },
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: 4,
-                  borderRadius: 4,
-                  transition: 'box-shadow 0.2s, transform 0.2s',
-                 '&:hover': {
-    boxShadow: 10,
+  mb: 2,
+  minHeight: { xs: 'auto', md: 340 },
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+
+  boxShadow: req.urgency === 'high' ? 10 : 4,
+  borderRadius: 4,
+
+  border:
+    req.urgency === 'high'
+      ? '2px solid #d32f2f'
+      : '1px solid rgba(0,0,0,0.12)',
+
+  background:
+    req.urgency === 'high'
+      ? 'rgba(211,47,47,0.05)'
+      : '#fff',
+
+  transition: 'box-shadow 0.2s, transform 0.2s',
+
+  '&:hover': {
+    boxShadow: 12,
     transform: 'translateY(-4px)'
   },
-                  p: 0,
-                  background: '#fff',
-                }}
+
+  p: 0,
+}}
+
               >
                 <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3 }}>
                   <Stack direction="row" alignItems="center" spacing={2} mb={2}>
