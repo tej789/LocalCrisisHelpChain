@@ -229,12 +229,16 @@ function NGODashboard() {
 <Paper
   sx={{
     p: 2,
+    textAlign: "center",
+    width: "100%",
+    maxWidth: 140,
     borderRadius: 3,
-    boxShadow: 2,
+    boxShadow: 3,
     transition: "0.2s",
-    "&:hover": { boxShadow: 4 }
+    "&:hover": { boxShadow: 6, transform: "translateY(-3px)" }
   }}
 >
+
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="subtitle1" fontWeight={600}>{req.type}</Typography>
                     <Chip label={req.urgency} size="small" />
