@@ -285,9 +285,16 @@ function NGODashboard() {
                   <Box sx={{ mt: 2, textAlign: 'right' }}>
                     {req.status === 'open' && !req.assignedTo ? (
                       <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => handleOpenAssignDialog(req._id)}
+                       size="small"
+  variant="contained"
+  sx={{
+    fontWeight: 600,
+    borderRadius: 2,
+    px: 2,
+    boxShadow: 2,
+    "&:hover": { boxShadow: 4 }
+  }}
+   onClick={() => handleOpenAssignDialog(req._id)}
                       >
                         Assign Volunteer
                       </Button>
@@ -357,7 +364,14 @@ function NGODashboard() {
                   {req.status === 'open' && !req.assignedTo ? (
                     <Button
                       size="small"
-                      variant="contained"
+  variant="contained"
+  sx={{
+    fontWeight: 600,
+    borderRadius: 2,
+    px: 2,
+    boxShadow: 2,
+    "&:hover": { boxShadow: 4 }
+  }}
                       onClick={() => handleOpenAssignDialog(req._id)}
                     >
                       Assign Volunteer
