@@ -180,7 +180,7 @@ function NGODashboard() {
   ].map(([label, value]) => (
     <Grid
       item
-      xs={6}
+      xs={6} sm={3}
       key={label}
       sx={{ display: 'flex', justifyContent: 'center' }}
     >
@@ -212,7 +212,15 @@ function NGODashboard() {
           <Grid container spacing={2}>
             {filteredRequests.map(req => (
               <Grid item xs={12} key={req._id}>
-                <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
+<Paper
+  sx={{
+    p: 2,
+    borderRadius: 3,
+    boxShadow: 2,
+    transition: "0.2s",
+    "&:hover": { boxShadow: 4 }
+  }}
+>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="subtitle1" fontWeight={600}>{req.type}</Typography>
                     <Chip label={req.urgency} size="small" />
