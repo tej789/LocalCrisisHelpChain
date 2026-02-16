@@ -240,7 +240,13 @@ function NGODashboard() {
 >
 
                   <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="subtitle1" fontWeight={600}>{req.type}</Typography>
+<Typography
+  variant="subtitle1"
+  fontWeight={700}
+  color="primary"
+>
+  {req.type}
+</Typography>
                     <Chip label={req.urgency} size="small" />
                   </Box>
 
