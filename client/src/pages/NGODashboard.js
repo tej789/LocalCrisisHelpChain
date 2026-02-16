@@ -90,6 +90,11 @@ function NGODashboard() {
       socket.off('newRequest');
     };
   }, []);
+const urgencyPriority = {
+  high: 3,
+  medium: 2,
+  low: 1
+};
 
   // ================= FILTERING =================
   const filteredRequests = requests.filter(req => {
