@@ -97,12 +97,19 @@ const urgencyPriority = {
 };
 
   // ================= FILTERING =================
-  const filteredRequests = requests.filter(req => {
+  const filteredRequests = requests
+  .filter(req => {
     const t = typeFilter ? req.type === typeFilter : true;
     const u = urgencyFilter ? req.urgency === urgencyFilter : true;
     const s = statusFilter ? req.status === statusFilter : true;
     return t && u && s;
+  })
+  .sort((a, b) => {
+    const ua = urgencyPriority[a.urgency?.toLowerCase()] || 0;
+    const ub = urgencyPriority[b.urgency?.toLowerCase()] || 0;
+    return ub - ua; // high first
   });
+
 
   // ================= ASSIGN HANDLERS =================
   const handleOpenAssignDialog = (requestId) => {
