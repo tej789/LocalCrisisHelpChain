@@ -314,7 +314,14 @@ function NGODashboard() {
 
           <TableBody>
             {filteredRequests.map(req => (
-              <TableRow key={req._id}>
+<TableRow
+  key={req._id}
+  sx={{
+    "&:hover": {
+      backgroundColor: "rgba(25,118,210,0.05)"
+    }
+  }}
+>
                 <TableCell>{req.type}</TableCell>
                 <TableCell>{req.urgency}</TableCell>
                 <TableCell>{req.description}</TableCell>
