@@ -160,7 +160,9 @@ function NGODashboard() {
     textAlign: "center"
   }}
 >
-        <Typography variant="h4">NGO Dashboard</Typography>
+<Typography variant="h4" sx={{ width: "100%" }}>
+  NGO Dashboard
+</Typography>
         <Button variant="outlined" color="error" size="small" onClick={auth.logout}>Logout</Button>
       </Box>
       <Divider sx={{ my: 2 }} />   
