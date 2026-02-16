@@ -150,7 +150,16 @@ function NGODashboard() {
 
   return (
     <Box sx={{ p: 4, pb: 8, minHeight: '100vh', backgroundColor: 'background.default' }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", sm: "row" },
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 1,
+    textAlign: "center"
+  }}
+>
         <Typography variant="h4">NGO Dashboard</Typography>
         <Button variant="outlined" color="error" size="small" onClick={auth.logout}>Logout</Button>
       </Box>
