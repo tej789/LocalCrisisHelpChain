@@ -445,7 +445,9 @@ const sortedRequests = useMemo(() => {
   flexDirection: 'column',
   justifyContent: 'space-between',
 
-  boxShadow: req.urgency?.toLowerCase() === 'high'? 10 : 4,
+  boxShadow: req.urgency?.toLowerCase() === 'high' &&
+(req.status || 'open') === 'open'
+? 10 : 4,
   borderRadius: 4,
 
   border:
