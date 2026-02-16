@@ -265,7 +265,18 @@ function NGODashboard() {
                   </Typography>
 
                   <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Chip label={req.status} size="small" />
+<Chip
+  label={req.status}
+  size="small"
+  color={
+    req.status === "open"
+      ? "warning"
+      : req.status === "assigned"
+      ? "primary"
+      : "success"
+  }
+  sx={{ fontWeight: 600 }}
+/>
                     <Typography variant="caption">
                       Assigned: {req.assignedTo?.name || '-'}
                     </Typography>
@@ -326,7 +337,18 @@ function NGODashboard() {
                 <TableCell>{req.urgency}</TableCell>
                 <TableCell>{req.description}</TableCell>
                 <TableCell>
-                  <Chip label={req.status} size="small" />
+<Chip
+  label={req.status}
+  size="small"
+  color={
+    req.status === "open"
+      ? "warning"
+      : req.status === "assigned"
+      ? "primary"
+      : "success"
+  }
+  sx={{ fontWeight: 600 }}
+/>
                 </TableCell>
                 <TableCell>
                   {req.assignedTo?.name || '-'}
