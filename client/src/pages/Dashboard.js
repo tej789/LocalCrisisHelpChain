@@ -23,6 +23,7 @@ import {
   DialogActions,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import HandshakeIcon from '@mui/icons-material/Handshake';
 
 
 
@@ -274,44 +275,46 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   </DialogActions>
 </Dialog>
 
-      {/* HERO SECTION */}
+ {/* HERO SECTION */}
 <Paper
+  elevation={2}
   sx={{
     mb: 4,
     p: { xs: 3, md: 5 },
     borderRadius: 4,
     textAlign: "center",
-    background: "linear-gradient(135deg,#1976d2 0%,#42a5f5 100%)",
-    color: "#fff",
-    boxShadow: 3
+    background: "#f5f7fa"
   }}
 >
-  <Typography variant="h4" fontWeight={700} gutterBottom>
+  {/* Logo / Icon */}
+  <HandshakeIcon
+    sx={{
+      fontSize: 56,
+      color: "primary.main",
+      mb: 1
+    }}
+  />
+
+  {/* Title */}
+  <Typography variant="h5" fontWeight={700} gutterBottom>
     Welcome to Crisis Help Dashboard
   </Typography>
 
-  <Typography variant="body1" sx={{ opacity: 0.9, mb: 3 }}>
-    Track requests, monitor urgent cases, and help communities faster.
+  {/* Subtitle */}
+  <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+    Track requests and stay connected with crisis support in your community.
   </Typography>
 
+  {/* CTA */}
   <Button
     variant="contained"
     size="large"
-    sx={{
-      backgroundColor: "#fff",
-      color: "#1976d2",
-      fontWeight: 600,
-      px: 4,
-      "&:hover": { backgroundColor: "#f5f5f5" }
-    }}
     onClick={() => navigate("/submit-request")}
+    sx={{ px: 4, fontWeight: 600 }}
   >
     File Help Request
   </Button>
 </Paper>
-
-  
-  
 
 
         <Divider sx={{ my: 3 }} />
