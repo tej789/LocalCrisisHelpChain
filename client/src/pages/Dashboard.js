@@ -465,61 +465,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
     </Paper>
   </Grid>
 </Grid>
-        {/* User Profile (presentational, non-breaking) */}
-        <Box sx={{ mt: 6 }}>
-          <Paper elevation={1} sx={{ p: 3, borderRadius: 3, boxShadow: 1 }}>
-            <Typography variant="h5" fontWeight={700} gutterBottom color="primary">User Profile</Typography>
-            <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-
-                <TextField
-                  fullWidth
-                  label="Name"
-                  value={profile.name}
-                  onChange={handleProfileChange('name')}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={profile.email}
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-
-                <TextField
-                  fullWidth
-                  label="Phone"
-                  value={profile.phone}
-                  onChange={handleProfileChange('phone')}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-
-                <TextField
-                  fullWidth
-                  label="Role"
-                  value={(profile.role || '').charAt(0).toUpperCase() + (profile.role || '').slice(1)}
-                  InputProps={{ readOnly: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="City / Area (optional)"
-                  value={profile.city}
-                  onChange={handleProfileChange('city')}
-                />
-              </Grid>
-            </Grid>
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button variant="contained" color="primary" onClick={handleSaveChanges}>Save Changes</Button>
-            </Box>
-          </Paper>
-        </Box>
+       
         {/* Footer */}
         <Box mt={8} textAlign="center" color="text.secondary" fontSize={16}>
           &copy; {new Date().getFullYear()} Local Crisis HelpChain. All rights reserved.
