@@ -274,26 +274,42 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   </DialogActions>
 </Dialog>
 
-      {/* Subtitle centered */}
-      <Typography
-        variant="h6"
-        color="text.secondary"
-        align="center"
-        sx={{ mb: 2 }}
-      >
-        Real-time overview of crisis help activity in your community
-      </Typography>
-  
-      {/* Button centered */}
-      <Box display="flex" justifyContent="center" mb={3}>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() => navigate('/submit-request')}
-        >
-          File Help Request
-        </Button>
-      </Box>
+      {/* HERO SECTION */}
+<Paper
+  sx={{
+    mb: 4,
+    p: { xs: 3, md: 5 },
+    borderRadius: 4,
+    textAlign: "center",
+    background: "linear-gradient(135deg,#1976d2 0%,#42a5f5 100%)",
+    color: "#fff",
+    boxShadow: 3
+  }}
+>
+  <Typography variant="h4" fontWeight={700} gutterBottom>
+    Welcome to Crisis Help Dashboard
+  </Typography>
+
+  <Typography variant="body1" sx={{ opacity: 0.9, mb: 3 }}>
+    Track requests, monitor urgent cases, and help communities faster.
+  </Typography>
+
+  <Button
+    variant="contained"
+    size="large"
+    sx={{
+      backgroundColor: "#fff",
+      color: "#1976d2",
+      fontWeight: 600,
+      px: 4,
+      "&:hover": { backgroundColor: "#f5f5f5" }
+    }}
+    onClick={() => navigate("/submit-request")}
+  >
+    File Help Request
+  </Button>
+</Paper>
+
   
   
 
