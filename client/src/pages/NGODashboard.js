@@ -252,7 +252,12 @@ const urgencyPriority = {
   }}
 >
 
-  <Grid container spacing={2} alignItems="center">
+<Grid
+  container
+  spacing={2}
+  alignItems="center"
+  direction={{ xs: "column", md: "row" }}
+>
 
     {/* TYPE */}
     <Grid item xs={12} sm={6} md={3}>
@@ -310,7 +315,10 @@ const urgencyPriority = {
       <Button
         fullWidth
         variant="contained"
-        sx={{ height: 40, fontWeight: 600 }}
+sx={{
+  height: { xs: 36, md: 40 },
+  fontWeight: 600
+}}
         onClick={() => {
           setTypeFilter("");
           setUrgencyFilter("");
