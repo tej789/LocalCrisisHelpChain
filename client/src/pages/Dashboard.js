@@ -192,11 +192,15 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   onClose={() => setProfileOpen(false)}
   maxWidth="sm"
   fullWidth
+  scroll="paper"
 >
-  <DialogTitle>User Profile</DialogTitle>
+  {/* Title */}
+  <DialogTitle sx={{ fontWeight: 600 }}>
+    User Profile
+  </DialogTitle>
 
+  {/* Content */}
   <DialogContent dividers>
-
     <TextField
       fullWidth
       label="Name"
@@ -228,25 +232,56 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
       InputProps={{ readOnly: true }}
       margin="normal"
     />
-
   </DialogContent>
 
-  <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
-
-    <Button color="error" onClick={() => setLogoutOpen(true)}>
+  {/* Actions */}
+  <DialogActions
+    sx={{
+      px: 3,
+      py: 2,
+      borderTop: "1px solid #eee",
+      flexDirection: { xs: "column", sm: "row" },
+      alignItems: { xs: "stretch", sm: "center" },
+      gap: 1,
+    }}
+  >
+    {/* Logout */}
+    <Button
+      color="error"
+      onClick={() => setLogoutOpen(true)}
+      sx={{
+        alignSelf: { sm: "flex-start" },
+        order: { xs: 3, sm: 1 },
+      }}
+    >
       Logout
     </Button>
 
-    <Button variant="contained" onClick={handleSaveChanges}>
-      Save
+    {/* Spacer for desktop */}
+    <Box sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }} />
+
+    {/* Save */}
+    <Button
+      variant="contained"
+      onClick={handleSaveChanges}
+      sx={{
+        minWidth: 180,
+        order: { xs: 1, sm: 2 },
+      }}
+    >
+      Save Changes
     </Button>
 
-    <Button onClick={() => setProfileOpen(false)}>
+    {/* Close */}
+    <Button
+      onClick={() => setProfileOpen(false)}
+      sx={{ order: { xs: 2, sm: 3 } }}
+    >
       Close
     </Button>
-
   </DialogActions>
 </Dialog>
+
 
 <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
   <DialogTitle>Confirm Logout</DialogTitle>
@@ -280,7 +315,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   elevation={2}
   sx={{
     mb: 4,
-    p: { xs: 3, md: 5 },
+    p: { xs: 2.5, md: 4 },
     borderRadius: 4,
     textAlign: "center",
     background: "#f5f7fa"
@@ -305,7 +340,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
     variant="contained"
     size="large"
     onClick={() => navigate("/submit-request")}
-    sx={{ px: 4, fontWeight: 600 }}
+    sx={{ px: 4, fontWeight: 600,mt: 2  }}
   >
     File Help Request
   </Button>
