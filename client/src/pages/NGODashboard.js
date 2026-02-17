@@ -260,7 +260,7 @@ const urgencyPriority = {
 >
 
     {/* TYPE */}
-    <Grid item xs={12} sm={6} md={3}>
+<Grid item xs={12} md={3}>
       <FormControl fullWidth size="small">
         <InputLabel>Request Type</InputLabel>
         <Select
@@ -277,7 +277,7 @@ const urgencyPriority = {
     </Grid>
 
     {/* URGENCY */}
-    <Grid item xs={12} sm={6} md={3}>
+<Grid item xs={12} md={3}>
       <FormControl fullWidth size="small">
         <InputLabel>Urgency Level</InputLabel>
         <Select
@@ -294,7 +294,7 @@ const urgencyPriority = {
     </Grid>
 
     {/* STATUS */}
-    <Grid item xs={12} sm={6} md={3}>
+<Grid item xs={12} md={3}>
       <FormControl fullWidth size="small">
         <InputLabel>Request Status</InputLabel>
         <Select
@@ -311,7 +311,7 @@ const urgencyPriority = {
     </Grid>
 
     {/* CLEAR BUTTON */}
-    <Grid item xs={12} sm={6} md={3}>
+<Grid item xs={12} md={3}>
       <Button
         fullWidth
         variant="contained"
