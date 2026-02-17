@@ -203,6 +203,34 @@ const urgencyPriority = {
 </Box>
 
       <Divider sx={{ my: 2 }} />   
+      {/* HERO SECTION */}
+<Box
+  sx={{
+    textAlign: "center",
+    mb: 4
+  }}
+>
+  <GroupsIcon
+    sx={{
+      fontSize: 50,
+      color: "primary.main",
+      mb: 1
+    }}
+  />
+
+  <Typography variant="h6" color="text.secondary">
+    Coordinate, assign and resolve crisis support requests efficiently.
+  </Typography>
+
+  <Typography
+    variant="body2"
+    color="text.secondary"
+    sx={{ mt: 1 }}
+  >
+    Monitor requests, assign volunteers, and help communities faster.
+  </Typography>
+</Box>
+
 {/* STATS */}
 <Grid
   container
@@ -247,7 +275,7 @@ const urgencyPriority = {
     p: { xs: 1.5, md: 3 },
     borderRadius: 4,
     boxShadow: 2,
-    maxWidth: { xs: "95%", md: 1100 },
+    maxWidth: { xs: "95%", md: 900 },
     mx: "auto"
   }}
 >
@@ -255,13 +283,13 @@ const urgencyPriority = {
 <Grid
   container
   spacing={2}
-  alignItems="center"
-  direction={{ xs: "column", md: "row" }}
+  alignItems="stretch"
 >
 
     {/* TYPE */}
-<Grid item xs={12} md={3}>
+<Grid item xs={12} md={3} sx={{ width: "100%" }}>
       <FormControl fullWidth size="small">
+
         <InputLabel>Request Type</InputLabel>
         <Select
           value={typeFilter}
@@ -277,7 +305,7 @@ const urgencyPriority = {
     </Grid>
 
     {/* URGENCY */}
-<Grid item xs={12} md={3}>
+<Grid item xs={12} md={3} sx={{ width: "100%" }}>
       <FormControl fullWidth size="small">
         <InputLabel>Urgency Level</InputLabel>
         <Select
@@ -294,7 +322,7 @@ const urgencyPriority = {
     </Grid>
 
     {/* STATUS */}
-<Grid item xs={12} md={3}>
+<Grid item xs={12} md={3} sx={{ width: "100%" }}>
       <FormControl fullWidth size="small">
         <InputLabel>Request Status</InputLabel>
         <Select
@@ -311,23 +339,29 @@ const urgencyPriority = {
     </Grid>
 
     {/* CLEAR BUTTON */}
-<Grid item xs={12} md={3}>
-      <Button
-        fullWidth
-        variant="contained"
-sx={{
-  height: { xs: 36, md: 40 },
-  fontWeight: 600
-}}
-        onClick={() => {
-          setTypeFilter("");
-          setUrgencyFilter("");
-          setStatusFilter("");
-        }}
-      >
-        Clear Filters
-      </Button>
-    </Grid>
+<Grid
+  item
+  xs={12}
+  md={3}
+  sx={{ display: "flex", justifyContent: "center" }}
+>
+  <Button
+    variant="contained"
+    sx={{
+      height: { xs: 38, md: 40 },
+      fontWeight: 600,
+      px: 3,
+      width: { xs: "100%", md: "auto" } // full on mobile, natural on PC
+    }}
+    onClick={() => {
+      setTypeFilter("");
+      setUrgencyFilter("");
+      setStatusFilter("");
+    }}
+  >
+    Clear Filters
+  </Button>
+</Grid>
 
   </Grid>
 </Paper>
