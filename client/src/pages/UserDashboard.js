@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import LogoutButton from '../components/LogoutButton';
 import api from '../api/axios';
 import Footer from '../components/Footer';
+import UserProfile from "./UserProfile";
+import { Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 export default function UserDashboard() {
   const [name, setName] = useState('');
@@ -9,6 +11,8 @@ export default function UserDashboard() {
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
+const [profileOpen, setProfileOpen] = useState(false);
+const auth = useAuth();
 
   // Fetch logged-in user profile
   useEffect(() => {
@@ -39,8 +43,9 @@ export default function UserDashboard() {
       await api.put(
         "/api/users/update-profile",
         {
-          name: profile.name,
-          phone: profile.phone,
+          name,
+phone,
+
         },
         {
           headers: {
@@ -64,21 +69,54 @@ export default function UserDashboard() {
 
   return (
     <div style={{ padding: '20px', paddingBottom: '80px', minHeight: '100vh' }}>
-      {/* Header */}
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-        }}
-      >
-        <h2>User Dashboard</h2>
-        <LogoutButton />
-      </header>
+ <header
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+  }}
+>
+  <h2 style={{ margin: 0 }}>User Dashboard</h2>
+
+  <Button
+    variant="outlined"
+    size="small"
+    sx={{ borderRadius: 2, fontWeight: 600 }}
+    onClick={() => setProfileOpen(true)}
+  >
+    Profile
+  </Button>
+</header>
+
+<Dialog
+  open={profileOpen}
+  onClose={() => setProfileOpen(false)}
+  maxWidth="sm"
+  fullWidth
+>
+  <DialogTitle>User Profile</DialogTitle>
+
+  <DialogContent>
+    <UserProfile />
+  </DialogContent>
+
+  <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
+    <Button color="error" onClick={auth.logout}>
+      Logout
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={() => setProfileOpen(false)}
+    >
+      Close
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* USER PROFILE */}
-      <section
+      {/* <section
         style={{
           maxWidth: '500px',
           padding: '20px',
@@ -143,7 +181,7 @@ export default function UserDashboard() {
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </button>
-      </section>
+      </section> */}
 
       {/* Existing dashboard content can remain below */}
       {/* ...your maps, requests, charts, buttons stay untouched... */}

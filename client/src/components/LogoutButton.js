@@ -6,8 +6,14 @@ export default function LogoutButton({ className, children }) {
 
   const handleLogout = (e) => {
     e.preventDefault();
-    // AuthContext.logout clears storage and redirects to /login
-    auth.logout();
+
+    const confirmLogout = window.confirm(
+      "Are you sure you want to logout?"
+    );
+
+    if (confirmLogout) {
+      auth.logout();
+    }
   };
 
   return (
@@ -16,11 +22,20 @@ export default function LogoutButton({ className, children }) {
       className={className}
       aria-label="Logout"
       style={{
-        padding: '6px 10px',
-        borderRadius: 4,
-        border: '1px solid #ccc',
-        background: 'white',
-        cursor: 'pointer'
+        padding: '8px 14px',
+        borderRadius: 8,
+        border: '1px solid #e57373',
+        background: '#fff',
+        color: '#d32f2f',
+        fontWeight: 600,
+        cursor: 'pointer',
+        transition: '0.2s',
+      }}
+      onMouseOver={(e) => {
+        e.target.style.background = '#fdecea';
+      }}
+      onMouseOut={(e) => {
+        e.target.style.background = '#fff';
       }}
     >
       {children || 'Logout'}

@@ -15,9 +15,23 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Snackbar, Alert } from '@mui/material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+} from "@mui/material";
+import LogoutIcon from "@mui/icons-material/Logout";
+
+
+
+
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 function Dashboard() {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -142,7 +156,6 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   spacing={2}
   sx={{ mb: 2 }}
 >
-  {/* Spacer for desktop centering */}
   <Box sx={{ display: { xs: 'none', sm: 'block' }, width: 96 }} />
 
   <Typography
@@ -165,14 +178,101 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   >
     <Button
       variant="outlined"
-      color="error"
       size="small"
-      onClick={auth.logout}
+      sx={{ borderRadius: 2, fontWeight: 600 }}
+      onClick={() => setProfileOpen(true)}
     >
-      Logout
+      Profile
     </Button>
   </Box>
 </Stack>
+<Dialog
+  open={profileOpen}
+  onClose={() => setProfileOpen(false)}
+  maxWidth="sm"
+  fullWidth
+>
+  <DialogTitle>User Profile</DialogTitle>
+
+  <DialogContent dividers>
+
+    <TextField
+      fullWidth
+      label="Name"
+      value={profile.name}
+      onChange={handleProfileChange("name")}
+      margin="normal"
+    />
+
+    <TextField
+      fullWidth
+      label="Email"
+      value={profile.email}
+      InputProps={{ readOnly: true }}
+      margin="normal"
+    />
+
+    <TextField
+      fullWidth
+      label="Phone"
+      value={profile.phone}
+      onChange={handleProfileChange("phone")}
+      margin="normal"
+    />
+
+    <TextField
+      fullWidth
+      label="Role"
+      value={profile.role}
+      InputProps={{ readOnly: true }}
+      margin="normal"
+    />
+
+  </DialogContent>
+
+  <DialogActions sx={{ justifyContent: "space-between", px: 3 }}>
+
+    <Button color="error" onClick={() => setLogoutOpen(true)}>
+      Logout
+    </Button>
+
+    <Button variant="contained" onClick={handleSaveChanges}>
+      Save
+    </Button>
+
+    <Button onClick={() => setProfileOpen(false)}>
+      Close
+    </Button>
+
+  </DialogActions>
+</Dialog>
+
+<Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
+  <DialogTitle>Confirm Logout</DialogTitle>
+
+  <DialogContent>
+    <DialogContentText>
+      You will be signed out of your account.
+    </DialogContentText>
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setLogoutOpen(false)}>
+      Cancel
+    </Button>
+
+    <Button
+      color="error"
+      variant="contained"
+      onClick={() => {
+        setLogoutOpen(false);
+        auth.logout();
+      }}
+    >
+      Logout
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* Subtitle centered */}
       <Typography
