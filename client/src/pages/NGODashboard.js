@@ -243,14 +243,15 @@ const urgencyPriority = {
 {/* FILTER PANEL */}
 <Paper
   sx={{
-    mb: 3,
-    p: { xs: 2, md: 3 },
+    mb: 2,
+    p: { xs: 1.5, md: 3 },
     borderRadius: 4,
     boxShadow: 2,
-    maxWidth: 1100,
+    maxWidth: { xs: "95%", md: 1100 },
     mx: "auto"
   }}
 >
+
   <Grid container spacing={2} alignItems="center">
 
     {/* TYPE */}
