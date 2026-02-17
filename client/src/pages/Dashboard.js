@@ -287,13 +287,8 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   }}
 >
   {/* Logo / Icon */}
-  <HandshakeIcon
-    sx={{
-      fontSize: 56,
-      color: "primary.main",
-      mb: 1
-    }}
-  />
+ <HandshakeIcon sx={{ fontSize: 40, mb: 1, color: 'primary.main' }} />
+
 
   {/* Title */}
   <Typography variant="h5" fontWeight={700} gutterBottom>
