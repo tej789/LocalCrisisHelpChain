@@ -110,18 +110,37 @@ router.put('/:id/assign', verifyToken, requireRole('ngo'), async (req, res) => {
       return res.status(400).json({ error: 'Request is not assignable in current state' });
     }
 
-    // Load volunteer and validate verification (backward compatible)
+   // Load volunteer and validate verification
 const vol = await Volunteer.findById(volunteerId);
-    if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
-    const isVerified = vol.isVerified === true || (vol.isVerified === undefined && vol.verified === true);
-    if (!isVerified) return res.status(400).json({ error: 'Volunteer not verified' });
+if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
 
-    // Apply assignment
-    let updated = await HelpRequest.findByIdAndUpdate(
-      req.params.id,
-      { $set: { assignedTo: volunteerId, status: 'assigned', assignedAt: new Date() } },
-      { new: true }
-    ).populate('assignedTo', 'name email');
+const isVerified =
+  vol.isVerified === true ||
+  (vol.isVerified === undefined && vol.verified === true);
+
+if (!isVerified)
+  return res.status(400).json({ error: 'Volunteer not verified' });
+
+if (!vol.isAvailable)
+  return res.status(400).json({ error: 'Volunteer not available' });
+
+// Apply assignment
+let updated = await HelpRequest.findByIdAndUpdate(
+  req.params.id,
+  {
+    $set: {
+      assignedTo: volunteerId,
+      status: 'assigned',
+      assignedAt: new Date()
+    }
+  },
+  { new: true }
+).populate('assignedTo', 'name email');
+
+// Make volunteer unavailable
+vol.isAvailable = false;
+await vol.save();
+
 
     // Should not happen but guard
     if (!updated) return res.status(404).json({ error: 'Request not found' });
