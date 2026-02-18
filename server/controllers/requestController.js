@@ -60,7 +60,12 @@ exports.assignVolunteer = async (req, res) => {
     if (!vol)
       return res.status(404).json({ error: 'Volunteer not found' });
 
-    if (!vol.isVerified)
+    // ✅ safer verification check
+    const verified =
+      vol.isVerified === true ||
+      (vol.isVerified === undefined && vol.verified === true);
+
+    if (!verified)
       return res.status(400).json({ error: 'Volunteer not verified' });
 
     if (!vol.isAvailable)
@@ -76,6 +81,7 @@ exports.assignVolunteer = async (req, res) => {
       { new: true }
     ).populate('assignedTo', 'name email');
 
+    // volunteer becomes unavailable
     vol.isAvailable = false;
     await vol.save();
 
@@ -83,7 +89,8 @@ exports.assignVolunteer = async (req, res) => {
     if (io) io.emit('requestAssigned', updated);
 
     res.json(updated);
-  } catch {
+  } catch (err) {
+    console.error("Assign error:", err);
     res.status(500).json({ error: 'Assignment failed' });
   }
 };
@@ -103,11 +110,15 @@ exports.resolveRequest = async (req, res) => {
       { new: true }
     );
 
+    if (!updated)
+      return res.status(404).json({ error: 'Request not found' });
+
     const io = req.app.get('io');
     if (io) io.emit('requestResolved', updated);
 
     res.json(updated);
-  } catch {
+  } catch (err) {
+    console.error("Resolve error:", err);
     res.status(400).json({ error: 'Resolve failed' });
   }
 };
