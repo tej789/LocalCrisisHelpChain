@@ -388,52 +388,7 @@ const sortedRequests = useMemo(() => {
       </Button>
     </Box>
 
-    {/* Availability control */}
-    {computedVerified && (
-    <Box
-  sx={{
-    mt: 2,
-    display: 'flex',
-    gap: 2,
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    justifyContent: 'center'
-  }}
->
-  <Typography variant="body1">
-    Status: <strong>{myAvailability ? 'Available' : 'Offline'}</strong>
-  </Typography>
-
-  <Button
-    variant={myAvailability ? 'outlined' : 'contained'}
-    color={myAvailability ? 'warning' : 'success'}
-    onClick={handleToggleAvailability}
-    disabled={availLoading}
-  >
-    {availLoading
-      ? 'Updating...'
-      : myAvailability
-      ? 'Go Offline'
-      : 'Go Available'}
-  </Button>
-
-  {/* ✅ Location Button Added */}
-  <Button
-    variant="outlined"
-    onClick={handleUseLocation}
-    disabled={locLoading}
-  >
-    {locLoading ? 'Updating location...' : 'Use My Location'}
-  </Button>
-
-  {/* Location message */}
-  {locMsg && (
-    <Typography variant="body2">
-      {locMsg}
-    </Typography>
-  )}
-</Box>
-)}
+    
 </Box>
 
        <Divider sx={{ my: 2 }} />
