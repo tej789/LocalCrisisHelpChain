@@ -15,6 +15,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
 
+
+
 // removed useNavigate; volunteers don't file requests from this dashboard
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -50,6 +52,42 @@ const urgencyPriority = {
 
 
 function VolunteerDashboard() {
+  const [locLoading, setLocLoading] = useState(false);
+const [locMsg, setLocMsg] = useState('');
+// Use device location and save to backend
+const handleUseLocation = () => {
+  if (!navigator.geolocation) {
+    setLocMsg('Geolocation not supported');
+    return;
+  }
+
+  setLocLoading(true);
+  setLocMsg('');
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+
+        await api.patch('/api/volunteers/me/location', {
+          latitude,
+          longitude
+        });
+
+        setLocMsg('Location updated successfully');
+      } catch {
+        setLocMsg('Failed to update location');
+      } finally {
+        setLocLoading(false);
+      }
+    },
+    () => {
+      setLocLoading(false);
+      setLocMsg('Permission denied');
+    }
+  );
+};
+
   const auth = useAuth();
   console.log('AUTH USER FROM CONTEXT:', auth?.user);
 
@@ -353,35 +391,52 @@ const sortedRequests = useMemo(() => {
 
     {/* Availability control */}
     {computedVerified && (
-      <Box
-        sx={{
-          mt: 2,
-          display: 'flex',
-          gap: 2,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
-        }}
-      >
-        <Typography variant="body1">
-          Status: <strong>{myAvailability ? 'Available' : 'Offline'}</strong>
-        </Typography>
+    <Box
+  sx={{
+    mt: 2,
+    display: 'flex',
+    gap: 2,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center'
+  }}
+>
+  <Typography variant="body1">
+    Status: <strong>{myAvailability ? 'Available' : 'Offline'}</strong>
+  </Typography>
 
-        <Button
-          variant={myAvailability ? 'outlined' : 'contained'}
-          color={myAvailability ? 'warning' : 'success'}
-          onClick={handleToggleAvailability}
-          disabled={availLoading}
-        >
-          {availLoading
-            ? 'Updating...'
-            : myAvailability
-            ? 'Go Offline'
-            : 'Go Available'}
-        </Button>
-      </Box>
-    )}
-  </Box>
+  <Button
+    variant={myAvailability ? 'outlined' : 'contained'}
+    color={myAvailability ? 'warning' : 'success'}
+    onClick={handleToggleAvailability}
+    disabled={availLoading}
+  >
+    {availLoading
+      ? 'Updating...'
+      : myAvailability
+      ? 'Go Offline'
+      : 'Go Available'}
+  </Button>
+
+  {/* ✅ Location Button Added */}
+  <Button
+    variant="outlined"
+    onClick={handleUseLocation}
+    disabled={locLoading}
+  >
+    {locLoading ? 'Updating location...' : 'Use My Location'}
+  </Button>
+
+  {/* Location message */}
+  {locMsg && (
+    <Typography variant="body2">
+      {locMsg}
+    </Typography>
+  )}
+</Box>
+)}
+</Box>
+
        <Divider sx={{ my: 2 }} />
 
 <Stack direction="row" spacing={2} justifyContent="center" mb={2} flexWrap="wrap">

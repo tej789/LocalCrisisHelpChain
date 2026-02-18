@@ -1,20 +1,42 @@
 const mongoose = require('mongoose');
+
 const VolunteerSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   password: String,
   contact: String,
   role: { type: String, default: 'volunteer' },
+
   verified: { type: Boolean, default: false },
+
   // Preferred verification flag (legacy 'verified' retained)
   isVerified: { type: Boolean, default: false },
-  // Availability flag: volunteers are offline by default until they opt-in
+
+  // Availability flag
   isAvailable: { type: Boolean, default: false },
+
+  // ✅ Location for distance calculation
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    }
+  },
+
   otp: String,
-otpExpire: Date
+  otpExpire: Date
+
 }, { timestamps: true });
 
-// Keep isVerified in sync with legacy verified when not explicitly set
+/* ✅ Geo index */
+VolunteerSchema.index({ location: '2dsphere' });
+
+// Keep isVerified in sync with legacy verified
 VolunteerSchema.pre('save', function(next) {
   if (this.isVerified === undefined) {
     if (typeof this.verified === 'boolean') {

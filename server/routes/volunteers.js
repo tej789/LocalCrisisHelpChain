@@ -38,8 +38,9 @@ router.get('/', verifyToken, requireAnyRole(['ngo', 'admin']), async (req, res) 
     };
 
     const volunteers = await Volunteer
-      .find(filters, projection)
-      .lean();
+  .find(filters, projection)
+  .sort({ name: 1 })
+  .lean();
 
     res.json(volunteers || []);
   } catch (err) {
@@ -47,35 +48,71 @@ router.get('/', verifyToken, requireAnyRole(['ngo', 'admin']), async (req, res) 
   }
 });
 
-
-module.exports = router;
- 
-// PATCH /api/volunteers/me/availability
-// Allows only authenticated, VERIFIED volunteers to update their own isAvailable flag
-router.patch('/me/availability', verifyToken, requireRole('volunteer'), async (req, res) => {
+// PATCH /api/volunteers/me/location
+// Save volunteer live location
+router.patch('/me/location', verifyToken, requireRole('volunteer'), async (req, res) => {
   try {
-    console.log("Availability API called");
+   const userId = req.user.id;
 
-    const userId = req.user.id;
-    const { isAvailable } = req.body || {};
-    if (typeof isAvailable !== 'boolean') {
-      return res.status(400).json({ error: 'isAvailable must be a boolean' });
+    const { longitude, latitude } = req.body || {};
+
+    if (
+      typeof longitude !== 'number' ||
+      typeof latitude !== 'number'
+    ) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
     }
 
-    // Load volunteer doc
     const vol = await Volunteer.findById(userId);
     if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
 
-    // Verified check (backward compatible)
-    const verified = vol.isVerified === true || (vol.isVerified === undefined && vol.verified === true);
-    if (!verified) return res.status(403).json({ error: 'Only verified volunteers can change availability' });
+    vol.location = {
+      type: 'Point',
+      coordinates: [longitude, latitude]
+    };
 
-    vol.isAvailable = isAvailable;
     await vol.save();
 
-    // Respond with minimal safe fields
-    return res.json({ _id: vol._id, name: vol.name, email: vol.email, isAvailable: vol.isAvailable, isVerified: vol.isVerified });
+    res.json({
+      message: 'Location updated',
+      location: vol.location
+    });
+
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to update availability' });
+    res.status(500).json({ error: 'Failed to update location' });
   }
 });
+// PATCH /api/volunteers/me/location
+router.patch('/me/location', verifyToken, requireRole('volunteer'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { longitude, latitude } = req.body || {};
+
+    if (
+      typeof longitude !== 'number' ||
+      typeof latitude !== 'number'
+    ) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+
+    const vol = await Volunteer.findById(userId);
+    if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
+
+    vol.location = {
+      type: 'Point',
+      coordinates: [longitude, latitude]
+    };
+
+    await vol.save();
+
+    res.json({
+      message: 'Location updated',
+      location: vol.location
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update location' });
+  }
+});
+
+module.exports = router;

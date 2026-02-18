@@ -69,10 +69,12 @@ export default function AssignVolunteerDialog({ open, requestId, onClose, onAssi
                 onChange={(e) => setVolunteerId(e.target.value)}
               >
                 {volunteers.map(v => (
-                  <MenuItem key={v._id} value={v._id}>
-                    {v.name} — {v.email}
-                  </MenuItem>
-                ))}
+  <MenuItem key={v._id} value={v._id}>
+    {v.name}
+    {v.distance ? ` — ${v.distance.toFixed(1)} km` : ''}
+  </MenuItem>
+))}
+
               </Select>
             </FormControl>
           </Box>
