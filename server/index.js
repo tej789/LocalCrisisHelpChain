@@ -26,7 +26,7 @@ app.use(cors({
   origin: "*",
   credentials: true
 }));
-
+app.use("/api/ngo", require("./routes/ngo"));
 app.use(express.json());
 
 /* Make socket available in routes */

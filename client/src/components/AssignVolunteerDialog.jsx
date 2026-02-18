@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Button, Typography, FormControl, InputLabel, Select, MenuItem, CircularProgress, Alert } from '@mui/material';
 import api from '../api/axios';
 
-export default function AssignVolunteerDialog({ open, requestId, onClose, onAssigned }) {
+export default function AssignVolunteerDialog({ open, requestId, requestLocation, onClose, onAssigned })
+ {
   const [loading, setLoading] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,7 +14,15 @@ export default function AssignVolunteerDialog({ open, requestId, onClose, onAssi
     if (!open) return;
     setListLoading(true);
     setError('');
-    api.get('/api/volunteers?verified=true&available=true')
+  let url = '/api/volunteers?verified=true&available=true';
+
+if (requestLocation?.coordinates?.length === 2) {
+  const [lng, lat] = requestLocation.coordinates;
+  url += `&lng=${lng}&lat=${lat}`;
+}
+
+api.get(url)
+
       .then(res => {
         const arr = Array.isArray(res.data) ? res.data : [];
         setVolunteers(arr);
@@ -23,7 +32,7 @@ export default function AssignVolunteerDialog({ open, requestId, onClose, onAssi
         setVolunteers([]);
       })
       .finally(() => setListLoading(false));
-  }, [open]);
+  },[open, requestLocation]);
 
   const handleAssign = async () => {
     if (!volunteerId) return;
@@ -69,10 +78,12 @@ export default function AssignVolunteerDialog({ open, requestId, onClose, onAssi
                 onChange={(e) => setVolunteerId(e.target.value)}
               >
                 {volunteers.map(v => (
-  <MenuItem key={v._id} value={v._id}>
-    {v.name}
-    {v.distance ? ` — ${v.distance.toFixed(1)} km` : ''}
-  </MenuItem>
+<MenuItem key={v._id} value={v._id}>
+  {v.name}
+  {v.distance !== undefined
+    ? ` — ${v.distance.toFixed(1)} km`
+    : ''}
+</MenuItem>
 ))}
 
               </Select>

@@ -32,6 +32,7 @@ function NGODashboard() {
   const [requests, setRequests] = useState([]);
   const [volunteerNames, setVolunteerNames] = useState({});
   const [loading, setLoading] = useState(true);
+const [selectedRequest, setSelectedRequest] = useState(null);
 
   const [typeFilter, setTypeFilter] = useState('');
   const [urgencyFilter, setUrgencyFilter] = useState('');
@@ -123,10 +124,12 @@ const urgencyPriority = {
 
 
   // ================= ASSIGN HANDLERS =================
-  const handleOpenAssignDialog = (requestId) => {
-    setAssigningRequestId(requestId);
-    setAssignDialogOpen(true);
-  };
+  const handleOpenAssignDialog = (request) => {
+  setAssigningRequestId(request._id);
+  setSelectedRequest(request);
+  setAssignDialogOpen(true);
+};
+
 
   const handleCloseAssignDialog = () => {
     setAssignDialogOpen(false);
@@ -449,7 +452,7 @@ const urgencyPriority = {
     boxShadow: 2,
     "&:hover": { boxShadow: 4 }
   }}
-   onClick={() => handleOpenAssignDialog(req._id)}
+   onClick={() => handleOpenAssignDialog(req)}
                       >
                         Assign Volunteer
                       </Button>
@@ -529,7 +532,8 @@ const urgencyPriority = {
     boxShadow: 2,
     "&:hover": { boxShadow: 4 }
   }}
-                      onClick={() => handleOpenAssignDialog(req._id)}
+                      onClick={() => handleOpenAssignDialog(req)}
+
                     >
                       Assign Volunteer
                     </Button>
@@ -544,12 +548,14 @@ const urgencyPriority = {
       </TableContainer>
 
       {/* ASSIGN DIALOG */}
-      <AssignVolunteerDialog
-        open={assignDialogOpen}
-        requestId={assigningRequestId}
-        onClose={handleCloseAssignDialog}
-        onAssigned={handleAssignedSuccess}
-      />
+ <AssignVolunteerDialog
+  open={assignDialogOpen}
+  requestId={assigningRequestId}
+  requestLocation={selectedRequest?.location}
+  onClose={handleCloseAssignDialog}
+  onAssigned={handleAssignedSuccess}
+/>
+
 
       {/* SNACKBAR */}
       <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={handleSnackbarClose}>

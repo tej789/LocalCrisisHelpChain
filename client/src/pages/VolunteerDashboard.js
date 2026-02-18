@@ -14,6 +14,8 @@ import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+
 
 
 
@@ -54,6 +56,7 @@ const urgencyPriority = {
 function VolunteerDashboard() {
   const [locLoading, setLocLoading] = useState(false);
 const [locMsg, setLocMsg] = useState('');
+const navigate = useNavigate();
 // Use device location and save to backend
 const handleUseLocation = () => {
   if (!navigator.geolocation) {
@@ -317,16 +320,12 @@ const sortedRequests = useMemo(() => {
   </Typography>
 
   <Button
-    variant="outlined"
-    color="error"
-    size="small"
-    onClick={auth.logout}
-    sx={{
-      alignSelf: { xs: "flex-end", sm: "auto" }
-    }}
-  >
-    Logout
-  </Button>
+  variant="outlined"
+  onClick={() => navigate("/volunteer/profile")}
+>
+  Profile
+</Button>
+
 </Box>
 
 

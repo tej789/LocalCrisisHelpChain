@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import VerifyOtp from "./pages/VerifyOtp";
+import VolunteerProfile from "./pages/VolunteerProfile";
 
 import SubmitRequest from './pages/SubmitRequest';
 import RequestsList from './pages/RequestsList';
@@ -21,6 +22,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
+<Route path="/volunteer/profile" element={<VolunteerProfile />} />
 
 
 
