@@ -111,7 +111,7 @@ router.put('/:id/assign', verifyToken, requireRole('ngo'), async (req, res) => {
     }
 
     // Load volunteer and validate verification (backward compatible)
-    const vol = await Volunteer.findById(volunteerId).lean();
+const vol = await Volunteer.findById(volunteerId);
     if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
     const isVerified = vol.isVerified === true || (vol.isVerified === undefined && vol.verified === true);
     if (!isVerified) return res.status(400).json({ error: 'Volunteer not verified' });
