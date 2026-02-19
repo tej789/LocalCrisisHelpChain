@@ -10,7 +10,6 @@ router.get(
   requireRole('ngo'),
   ngoController.getProfile
 );
-
 router.put(
   '/update-profile',
   verifyToken,
