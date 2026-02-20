@@ -134,35 +134,25 @@ exports.updateAvailability = async (req, res) => {
   }
 };
 /* ============================
-   Update Name & Email
+   Update Name Only
 ============================ */
 exports.updateBasicProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, email } = req.body;
+    const { name } = req.body;
 
-    if (!name || !email) {
-      return res.status(400).json({ error: "Name and Email required" });
-    }
-
-    const existing = await Volunteer.findOne({ email });
-
-    if (existing && existing._id.toString() !== userId) {
-      return res.status(400).json({ error: "Email already in use" });
+    if (!name) {
+      return res.status(400).json({ error: "Name is required" });
     }
 
     const vol = await Volunteer.findById(userId);
     if (!vol) return res.status(404).json({ error: "Volunteer not found" });
 
     vol.name = name;
-    vol.email = email;
-
     await vol.save();
 
     res.json({
-      message: "Profile updated",
-      name: vol.name,
-      email: vol.email
+      name: vol.name
     });
 
   } catch (err) {

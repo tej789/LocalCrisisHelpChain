@@ -25,7 +25,7 @@ router.patch(
   volunteerController.updateAvailability
 );
 router.patch(
-  "/me/basic",
+  '/me/basic',
   verifyToken,
   requireRole('volunteer'),
   volunteerController.updateBasicProfile

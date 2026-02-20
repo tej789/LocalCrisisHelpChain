@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { TextField } from "@mui/material";
 import {
   Box,
   Typography,
@@ -17,7 +18,7 @@ function VolunteerProfile() {
     auth.user?.isAvailable || false
   );
   const [name, setName] = useState(auth.user?.name || "");
-const [email, setEmail] = useState(auth.user?.email || "");
+const email = auth.user?.email || "";
 
   const [loading, setLoading] = useState(false);
 
@@ -103,17 +104,15 @@ const handleSaveProfile = async () => {
   setLoading(true);
   try {
     const { data } = await api.patch("/api/volunteers/me/basic", {
-      name,
-      email
+      name
     });
 
-    // Update auth context
     auth.login({
       token: auth.token,
-      user: { ...auth.user, name: data.name, email: data.email }
+      user: { ...auth.user, name: data.name }
     });
 
-    showMessage("Profile updated successfully");
+    showMessage("Name updated successfully");
   } catch (err) {
     showMessage(
       err.response?.data?.error || "Update failed",
@@ -122,91 +121,142 @@ const handleSaveProfile = async () => {
   }
   setLoading(false);
 };
-  return (
-    <Box p={4} display="flex" justifyContent="center">
-     <Paper sx={{ p: 4, width: 400, borderRadius: 3 }}>
-
-  <Typography variant="h5" mb={2} fontWeight={600}>
-    Volunteer Profile
-  </Typography>
-
-  {/* Name */}
-  <Typography>Name</Typography>
-  <input
-    value={name}
-    onChange={(e) => setName(e.target.value)}
-    style={{ width: "100%", padding: 8, marginBottom: 12 }}
-  />
-
-  {/* Email */}
-  <Typography>Email</Typography>
-  <input
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-    style={{ width: "100%", padding: 8, marginBottom: 16 }}
-  />
-
-  <Button
-    fullWidth
-    variant="contained"
-    sx={{ mb: 3 }}
-    onClick={handleSaveProfile}
-    disabled={loading}
+ return (
+  <Box
+    sx={{
+      minHeight: "100vh",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#f4f6f8"
+    }}
   >
-    Save Changes
-  </Button>
-
-  <Typography mb={2}>
-    Status: <b>{availability ? "Available" : "Offline"}</b>
-  </Typography>
-
-  <Button
-    fullWidth
-    variant="contained"
-    sx={{ mb: 2 }}
-    onClick={handleToggleAvailability}
-    disabled={loading}
-  >
-    {availability ? "Go Offline" : "Go Available"}
-  </Button>
-
-  <Button
-    fullWidth
-    variant="outlined"
-    sx={{ mb: 2 }}
-    onClick={handleUseLocation}
-    disabled={loading}
-  >
-    Use My Location
-  </Button>
-
-  <Button
-    fullWidth
-    color="error"
-    variant="contained"
-    onClick={auth.logout}
-  >
-    Logout
-  </Button>
-</Paper>
-
-      {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    <Paper
+      elevation={3}
+      sx={{
+        width: 360,
+        p: 4,
+        borderRadius: 3
+      }}
+    >
+      {/* Header */}
+      <Typography
+        variant="h5"
+        fontWeight={700}
+        mb={0.5}
+        textAlign="center"
       >
-        <Alert
-          severity={snackbar.severity}
-          onClose={handleSnackbarClose}
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
-  );
+        Volunteer Profile
+      </Typography>
+
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        mb={3}
+        textAlign="center"
+      >
+        Manage your account
+      </Typography>
+
+      {/* Name */}
+      <TextField
+        label="Name"
+        fullWidth
+        size="small"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        sx={{ mb: 2 }}
+      />
+
+      {/* Email */}
+      <TextField
+  label="Email"
+  fullWidth
+  size="small"
+  value={email}
+  disabled
+  sx={{ mb: 3 }}
+/>
+
+      {/* Save Button */}
+      <Button
+        fullWidth
+        variant="contained"
+        size="medium"
+        sx={{ mb: 3, fontWeight: 600 }}
+        onClick={handleSaveProfile}
+        disabled={loading}
+      >
+        Save Changes
+      </Button>
+
+      {/* Status */}
+      <Box textAlign="center" mb={2}>
+        <Typography variant="body2">
+          Status:{" "}
+          <span
+            style={{
+              color: availability ? "#2e7d32" : "#d32f2f",
+              fontWeight: 600
+            }}
+          >
+            {availability ? "Available" : "Offline"}
+          </span>
+        </Typography>
+      </Box>
+
+      {/* Availability Toggle */}
+      <Button
+        fullWidth
+        variant="contained"
+        size="medium"
+        sx={{ mb: 2 }}
+        onClick={handleToggleAvailability}
+        disabled={loading}
+      >
+        {availability ? "Go Offline" : "Go Available"}
+      </Button>
+
+      {/* Location */}
+      <Button
+        fullWidth
+        variant="outlined"
+        size="medium"
+        sx={{ mb: 2 }}
+        onClick={handleUseLocation}
+        disabled={loading}
+      >
+        Use My Location
+      </Button>
+
+      {/* Logout */}
+      <Button
+        fullWidth
+        variant="contained"
+        color="error"
+        size="medium"
+        onClick={auth.logout}
+      >
+        Logout
+      </Button>
+    </Paper>
+
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={handleSnackbarClose}
+      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    >
+      <Alert
+        severity={snackbar.severity}
+        onClose={handleSnackbarClose}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+  </Box>
+);
 }
 
 export default VolunteerProfile;
