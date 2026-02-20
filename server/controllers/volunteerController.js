@@ -133,3 +133,39 @@ exports.updateAvailability = async (req, res) => {
     res.status(500).json({ error: 'Failed to update availability' });
   }
 };
+/* ============================
+   Update Name & Email
+============================ */
+exports.updateBasicProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name and Email required" });
+    }
+
+    const existing = await Volunteer.findOne({ email });
+
+    if (existing && existing._id.toString() !== userId) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    const vol = await Volunteer.findById(userId);
+    if (!vol) return res.status(404).json({ error: "Volunteer not found" });
+
+    vol.name = name;
+    vol.email = email;
+
+    await vol.save();
+
+    res.json({
+      message: "Profile updated",
+      name: vol.name,
+      email: vol.email
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+};
