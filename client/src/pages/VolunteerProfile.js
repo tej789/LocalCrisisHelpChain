@@ -241,20 +241,21 @@ const handleSaveProfile = async () => {
       </Button>
     </Paper>
 
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={3000}
-      onClose={handleSnackbarClose}
-      anchorOrigin={{ vertical: "top", horizontal: "center" }}
-    >
-      <Alert
-        severity={snackbar.severity}
-        onClose={handleSnackbarClose}
-        sx={{ width: "100%" }}
-      >
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
+ <Snackbar
+  open={snackbar.open}
+  autoHideDuration={3000}
+  onClose={handleSnackbarClose}
+  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+>
+  <Alert
+    severity={snackbar.severity}
+    onClose={handleSnackbarClose}
+    variant="filled"
+    sx={{ width: "100%" }}
+  >
+    {snackbar.message}
+  </Alert>
+</Snackbar>
   </Box>
 );
 }

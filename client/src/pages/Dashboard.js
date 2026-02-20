@@ -190,96 +190,89 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
 <Dialog
   open={profileOpen}
   onClose={() => setProfileOpen(false)}
-  maxWidth="sm"
+  maxWidth="xs"
   fullWidth
-  scroll="paper"
+  PaperProps={{
+    sx: {
+      borderRadius: 3,
+      p: 4
+    }
+  }}
 >
-  {/* Title */}
-  <DialogTitle sx={{ fontWeight: 600 }}>
-    User Profile
-  </DialogTitle>
+  <Box textAlign="center" mb={2}>
+    <Typography variant="h5" fontWeight={700}>
+      User Profile
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      Manage your account
+    </Typography>
+  </Box>
 
-  {/* Content */}
-  <DialogContent dividers>
-    <TextField
-      fullWidth
-      label="Name"
-      value={profile.name}
-      onChange={handleProfileChange("name")}
-      margin="normal"
-    />
+  <TextField
+    fullWidth
+    size="small"
+    label="Name"
+    value={profile.name}
+    onChange={handleProfileChange("name")}
+    sx={{ mb: 2 }}
+  />
 
-    <TextField
-      fullWidth
-      label="Email"
-      value={profile.email}
-      InputProps={{ readOnly: true }}
-      margin="normal"
-    />
+  <TextField
+    fullWidth
+    size="small"
+    label="Email"
+    value={profile.email}
+    InputProps={{ readOnly: true }}
+    sx={{ mb: 2 }}
+  />
 
-    <TextField
-      fullWidth
-      label="Phone"
-      value={profile.phone}
-      onChange={handleProfileChange("phone")}
-      margin="normal"
-    />
+  <TextField
+    fullWidth
+    size="small"
+    label="Phone"
+    value={profile.phone}
+    onChange={handleProfileChange("phone")}
+    sx={{ mb: 2 }}
+  />
 
-    <TextField
-      fullWidth
-      label="Role"
-      value={profile.role}
-      InputProps={{ readOnly: true }}
-      margin="normal"
-    />
-  </DialogContent>
+  <TextField
+    fullWidth
+    size="small"
+    label="Role"
+    value={profile.role}
+    InputProps={{ readOnly: true }}
+    sx={{ mb: 3 }}
+  />
 
-  {/* Actions */}
-  <DialogActions
-    sx={{
-      px: 3,
-      py: 2,
-      borderTop: "1px solid #eee",
-      flexDirection: { xs: "column", sm: "row" },
-      alignItems: { xs: "stretch", sm: "center" },
-      gap: 1,
+  <Button
+    fullWidth
+    variant="contained"
+    sx={{ mb: 2, fontWeight: 600 }}
+    onClick={handleSaveChanges}
+  >
+    Save Changes
+  </Button>
+
+  <Button
+    fullWidth
+    variant="outlined"
+    sx={{ mb: 2 }}
+    onClick={() => setProfileOpen(false)}
+  >
+    Close
+  </Button>
+
+  <Button
+    fullWidth
+    variant="contained"
+    color="error"
+    onClick={() => {
+      setProfileOpen(false);
+      setLogoutOpen(true);
     }}
   >
-    {/* Logout */}
-    <Button
-      color="error"
-      onClick={() => setLogoutOpen(true)}
-      sx={{
-        alignSelf: { sm: "flex-start" },
-        order: { xs: 3, sm: 1 },
-      }}
-    >
-      Logout
-    </Button>
-
-    {/* Spacer for desktop */}
-    <Box sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }} />
-
-    {/* Save */}
-    <Button
-      variant="contained"
-      onClick={handleSaveChanges}
-      sx={{
-        minWidth: 180,
-        order: { xs: 1, sm: 2 },
-      }}
-    >
-      Save Changes
-    </Button>
-
-    {/* Close */}
-    <Button
-      onClick={() => setProfileOpen(false)}
-      sx={{ order: { xs: 2, sm: 3 } }}
-    >
-      Close
-    </Button>
-  </DialogActions>
+    Logout
+  </Button>
 </Dialog>
 
 
