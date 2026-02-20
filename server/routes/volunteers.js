@@ -24,5 +24,11 @@ router.patch(
   requireRole('volunteer'),
   volunteerController.updateAvailability
 );
+router.patch(
+  "/me/basic",
+  verifyToken,
+  requireRole('volunteer'),
+  volunteerController.updateBasicProfile
+);
 
 module.exports = router;

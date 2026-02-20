@@ -28,7 +28,7 @@ app.use(cors({
 }));
 app.use("/api/ngo", require("./routes/ngo"));
 app.use(express.json());
-
+app.use("/api/volunteers", require("./routes/volunteers"));
 /* Make socket available in routes */
 app.set("io", io);
 
