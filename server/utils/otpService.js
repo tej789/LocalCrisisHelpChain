@@ -33,3 +33,50 @@ exports.sendOtpEmail = async (email, otp) => {
     console.error("Brevo error:", error);
   }
 };
+
+
+
+// Assign Mail 
+
+exports.sendAssignmentEmail = async (user, volunteer) => {
+  try {
+    const sendSmtpEmail = {
+      sender: {
+        email: process.env.BREVO_SENDER_EMAIL,
+        name: process.env.BREVO_SENDER_NAME,
+      },
+      to: [
+        {
+          email: user.email,
+          name: user.name || "User",
+        },
+      ],
+      subject: "Volunteer Assigned to Your Crisis Request",
+      htmlContent: `
+        <p>Hello ${user.name || "User"},</p>
+
+        <p>We’re pleased to inform you that a volunteer has been assigned to assist with your request.</p>
+
+        <p><strong>Volunteer Details:</strong><br/>
+        Name: ${volunteer.name}<br/>
+        Email: ${volunteer.email}</p>
+
+        <p>You may reply to this email to coordinate further assistance.</p>
+
+        <p>We are committed to supporting you.</p>
+
+        <p>– Local Crisis HelpChain</p>
+      `,
+      replyTo: {
+        email: volunteer.email,
+        name: volunteer.name,
+      },
+    };
+
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+    console.log("Assignment email sent successfully");
+  } catch (error) {
+    console.error("Assignment email error:", error);
+  }
+};

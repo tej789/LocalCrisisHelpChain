@@ -1,6 +1,7 @@
 const HelpRequest = require('../models/HelpRequest');
 const Volunteer = require('../models/Volunteer');
-
+const User = require('../models/User');
+const { sendAssignmentEmail } = require("../utils/otpService");
 /* =========================
    CREATE REQUEST
 ========================= */
@@ -84,6 +85,12 @@ exports.assignVolunteer = async (req, res) => {
     // volunteer becomes unavailable
     vol.isAvailable = false;
     await vol.save();
+    // send assignment email
+    const user = await User.findById(updated.createdBy);
+
+if (user) {
+  await sendAssignmentEmail(user, vol);
+}
 
     const io = req.app.get('io');
     if (io) io.emit('requestAssigned', updated);
