@@ -80,3 +80,50 @@ exports.sendAssignmentEmail = async (user, volunteer) => {
     console.error("Assignment email error:", error);
   }
 };
+
+// Volunteer Assigned request Mail
+exports.sendVolunteerAssignmentEmail = async (volunteer, request, user) => {
+  try {
+    const sendSmtpEmail = {
+      sender: {
+        email: process.env.BREVO_SENDER_EMAIL,
+        name: process.env.BREVO_SENDER_NAME,
+      },
+      to: [
+        {
+          email: volunteer.email,
+          name: volunteer.name || "Volunteer",
+        },
+      ],
+      subject: "New Crisis Request Assigned to You",
+      htmlContent: `
+        <p>Hello ${volunteer.name || "Volunteer"},</p>
+
+        <p>You have been assigned a new crisis request.</p>
+
+        <p><strong>User Details:</strong><br/>
+        Name: ${user.name || "User"}<br/>
+        Email: ${user.email}</p>
+
+        <p><strong>Request Details:</strong><br/>
+        Type: ${request.type}<br/>
+        Urgency: ${request.urgency}<br/>
+        Description: ${request.description}</p>
+
+        <p>Please contact the user and log in to your dashboard to take further action.</p>
+
+        <p>– Local Crisis HelpChain</p>
+      `,
+      replyTo: {
+        email: user.email,
+        name: user.name,
+      },
+    };
+
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+
+    console.log("Volunteer assignment email sent successfully");
+  } catch (error) {
+    console.error("Volunteer assignment email error:", error);
+  }
+};

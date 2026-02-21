@@ -1,7 +1,10 @@
 const HelpRequest = require('../models/HelpRequest');
 const Volunteer = require('../models/Volunteer');
 const User = require('../models/User');
-const { sendAssignmentEmail } = require("../utils/otpService");
+const { 
+  sendAssignmentEmail,
+  sendVolunteerAssignmentEmail
+} = require("../utils/otpService");
 /* =========================
    CREATE REQUEST
 ========================= */
@@ -91,7 +94,7 @@ exports.assignVolunteer = async (req, res) => {
 if (user) {
   await sendAssignmentEmail(user, vol);
 }
-
+await sendVolunteerAssignmentEmail(vol, updated);
     const io = req.app.get('io');
     if (io) io.emit('requestAssigned', updated);
 
@@ -120,10 +123,19 @@ exports.resolveRequest = async (req, res) => {
     if (!updated)
       return res.status(404).json({ error: 'Request not found' });
 
+   
+    if (updated.assignedTo) {
+      await Volunteer.findByIdAndUpdate(
+        updated.assignedTo,
+        { isAvailable: true }
+      );
+    }
+
     const io = req.app.get('io');
     if (io) io.emit('requestResolved', updated);
 
     res.json(updated);
+
   } catch (err) {
     console.error("Resolve error:", err);
     res.status(400).json({ error: 'Resolve failed' });
