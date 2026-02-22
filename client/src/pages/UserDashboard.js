@@ -68,7 +68,7 @@ function UserDashboard() {
     setProfile({
       name: u.name || '',
       email: u.email || '',
-      phone: u.phone || '',
+      contact: u.contact || "", 
       role: (u.role || '').toString(),
       city: u.city || u.area || '',
     });
@@ -87,7 +87,7 @@ function UserDashboard() {
       "/api/users/update-profile",
       {
         name: profile.name,
-        phone: profile.phone,
+contact: profile.contact,
         city: profile.city, // optional if backend supports
       },
       {
@@ -227,13 +227,13 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
   />
 
   <TextField
-    fullWidth
-    size="small"
-    label="Phone"
-    value={profile.phone}
-    onChange={handleProfileChange("phone")}
-    sx={{ mb: 2 }}
-  />
+  fullWidth
+  size="small"
+  label="Phone"
+  value={profile.contact}
+  onChange={handleProfileChange("contact")}
+  sx={{ mb: 2 }}
+/>
 
   <TextField
     fullWidth

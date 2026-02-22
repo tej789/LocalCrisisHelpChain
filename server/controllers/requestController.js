@@ -30,18 +30,68 @@ exports.createRequest = async (req, res) => {
 /* =========================
    GET ALL REQUESTS
 ========================= */
+/* =========================
+   GET ALL REQUESTS
+========================= */
 exports.getRequests = async (req, res) => {
   try {
-    const requests = await HelpRequest
-      .find()
-      .populate('assignedTo', 'name');
+
+    let requests;
+
+    // 👤 USER (only their own requests, hide contact)
+    if (req.user.role === "user") {
+      requests = await HelpRequest.find({
+        createdBy: req.user.id
+      }).select("-contact");
+    }
+
+    // 🙋 VOLUNTEER (filter-based)
+    else if (req.user.role === "volunteer") {
+
+      const { filter } = req.query;
+
+      // 🔵 Open requests (can claim)
+      if (filter === "open") {
+        requests = await HelpRequest.find({
+          status: "open"
+        });
+      }
+
+      // 🟢 Assigned to this volunteer
+      else if (filter === "assigned") {
+        requests = await HelpRequest.find({
+          assignedTo: req.user.id
+        });
+      }
+
+      // 🟣 Resolved by this volunteer
+      else if (filter === "resolved") {
+        requests = await HelpRequest.find({
+          handledBy: req.user.id,
+          status: "resolved"
+        });
+      }
+
+      // 🔹 Default view = assigned
+      else {
+        requests = await HelpRequest.find({
+          assignedTo: req.user.id
+        });
+      }
+    }
+
+    // 👑 ADMIN (see everything)
+    else if (req.user.role === "admin") {
+      requests = await HelpRequest.find()
+        .populate("assignedTo", "name email");
+    }
 
     res.json(requests);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 /* =========================
    ASSIGN VOLUNTEER

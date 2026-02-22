@@ -130,6 +130,7 @@ exports.login = async (req, res) => {
         name: account.name,
         email: account.email,
         role,
+         contact: account.contact, 
         verified: account.verified,
         isVerified: account.isVerified,
         isAvailable: account.isAvailable

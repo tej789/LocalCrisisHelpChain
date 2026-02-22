@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
-
+import { useAuth } from "../context/AuthContext";
 const RequestsList = () => {
   const [requests, setRequests] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -8,7 +8,7 @@ const RequestsList = () => {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-
+const { user } = useAuth();
   useEffect(() => {
     const fetchRequests = async () => {
       try {
@@ -92,8 +92,7 @@ const RequestsList = () => {
             <thead>
               <tr style={headerRow}>
                 <th style={th}>Name</th>
-                <th style={th}>Contact</th>
-                <th style={th}>Type</th>
+{user?.role !== "user" && <th style={th}>Contact</th>}                <th style={th}>Type</th>
                 <th style={th}>Urgency</th>
                 <th style={th}>Description</th>
                 <th style={th}>Status</th>
@@ -110,8 +109,9 @@ const RequestsList = () => {
                   }}
                 >
                   <td style={td}>{req.name}</td>
-                  <td style={td}>{req.contact}</td>
-                  <td style={td}>{req.type}</td>
+{user?.role !== "user" && (
+  <td style={td}>{req.contact}</td>
+)}                  <td style={td}>{req.type}</td>
                   <td style={td}>{req.urgency}</td>
                   <td style={td}>{req.description}</td>
                   <td style={td}>

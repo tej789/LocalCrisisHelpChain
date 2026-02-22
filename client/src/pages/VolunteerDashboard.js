@@ -15,7 +15,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
-
+import PhoneIcon from '@mui/icons-material/Phone';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 
 
 
@@ -216,8 +217,28 @@ const sortedRequests = useMemo(() => {
     }
   
     return false;
-  });
-  
+  }
+
+
+);
+  // Separate active and resolved
+const activeAssignedRequests = myAssignedRequests.filter(
+  r => r.status === 'assigned'
+);
+
+const resolvedRequests = myAssignedRequests.filter(
+  r => r.status === 'resolved'
+);
+
+// Final displayed list
+const displayedRequests =
+  view === 'open'
+    ? openRequests
+    :  view === 'assigned'
+    ? activeAssignedRequests
+    : view === 'resolved'
+    ? resolvedRequests
+    : openRequests; // fallback
 
   // Legacy claim dialog removed; volunteers claim directly
 
@@ -284,7 +305,13 @@ const sortedRequests = useMemo(() => {
   const firstWithCoords = filteredRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
   const defaultPosition = [20.5937, 78.9629]; // Center of India as a fallback
   const mapCenter = firstWithCoords ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]] : defaultPosition;
-
+const whatsappMessage = selectedRequest
+  ? encodeURIComponent(
+      `Hello ${selectedRequest.name}, 
+I am the assigned volunteer from Local Crisis HelpChain regarding your ${selectedRequest.type} request. 
+I will reach you shortly.`
+    )
+  : '';
   return (
     <Box
   sx={{
@@ -352,7 +379,7 @@ const sortedRequests = useMemo(() => {
     </Typography>
 
     {/* View filters */}
-   <Box
+  <Box
   sx={{
     mt: 2,
     display: 'flex',
@@ -362,32 +389,27 @@ const sortedRequests = useMemo(() => {
     width: '100%'
   }}
 >
+  <Button
+    variant={view === 'open' ? 'contained' : 'outlined'}
+    onClick={() => setView('open')}
+  >
+    Open Requests
+  </Button>
 
-      <Button
-      sx={{ flex: { xs: '1 1 100%', sm: 'unset' } }}
-        variant={view === 'all' ? 'contained' : 'outlined'}
-        onClick={() => setView('all')}
-      >
-        View All Requests
-      </Button>
+  <Button
+    variant={ view === 'assigned'? 'contained' : 'outlined'}
+    onClick={() => setView('assigned')}
+  >
+    My Active
+  </Button>
 
-      <Button
-      sx={{ flex: { xs: '1 1 100%', sm: 'unset' } }}
-        variant={view === 'open' ? 'contained' : 'outlined'}
-        onClick={() => setView('open')}
-      >
-        See Open Requests
-      </Button>
-
-      <Button
-      sx={{ flex: { xs: '1 1 100%', sm: 'unset' } }}
-        variant={view === 'assigned' ? 'contained' : 'outlined'}
-        onClick={() => setView('assigned')}
-      >
-        My Assigned
-      </Button>
-    </Box>
-
+  <Button
+    variant={view === 'resolved' ? 'contained' : 'outlined'}
+    onClick={() => setView('resolved')}
+  >
+    My Resolved
+  </Button>
+</Box>
     
 </Box>
 
@@ -434,17 +456,19 @@ const sortedRequests = useMemo(() => {
           </FormControl>
         </Paper>
         <Grid container spacing={3}>
-          {((view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : sortedRequests).length === 0) && (
-           <Grid item xs={12}>
+{displayedRequests.length === 0 && (           <Grid item xs={12}>
 
               <Paper elevation={1} sx={{ p: 5, textAlign: 'center', background: '#f5f7fa' }}>
                 <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">No {view === 'open' ? 'open' : view === 'assigned' ? 'assigned' : 'requests'} found.</Typography>
+                <Typography variant="h6" color="text.secondary">No {view === 'open' 
+      ? 'open requests' 
+      :view === 'assigned'
+      ? 'active requests' 
+      : 'resolved requests'} found.</Typography>
               </Paper>
             </Grid>
           )}
-          {(view === 'open' ? openRequests : view === 'assigned' ? myAssignedRequests : sortedRequests).map((req) => (
-            <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
+{displayedRequests.map((req) => (            <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
               <Card
                 variant="outlined"
                 sx={{
@@ -612,7 +636,47 @@ const sortedRequests = useMemo(() => {
               <Typography variant="subtitle1" gutterBottom><strong>Urgency:</strong> {selectedRequest.urgency}</Typography>
               <Typography variant="subtitle1" gutterBottom><strong>Description:</strong> {selectedRequest.description}</Typography>
               <Typography variant="subtitle1" gutterBottom><strong>Name:</strong> {selectedRequest.name}</Typography>
-              <Typography variant="subtitle1" gutterBottom><strong>Contact:</strong> {selectedRequest.contact}</Typography>
+              {/* <Typography variant="subtitle1" gutterBottom><strong>Contact:</strong> {selectedRequest.contact}</Typography> */}
+              {selectedRequest.status === 'assigned'&&
+ selectedRequest?.contact &&
+ auth.user?.id &&
+ (
+   selectedRequest.assignedTo === auth.user.id ||
+   selectedRequest.assignedTo?._id === auth.user.id
+ ) && (
+   <Box sx={{ mt: 2 }}>
+     <Typography variant="subtitle1" gutterBottom>
+       <strong>Contact:</strong> {selectedRequest.contact}
+     </Typography>
+
+     <Stack direction="row" spacing={2} mt={1}>
+  {/* Call */}
+  <Button
+    variant="contained"
+    color="primary"
+    size="small"
+    component="a"
+    href={`tel:${selectedRequest.contact}`}
+    startIcon={<PhoneIcon />}
+  >
+    Call
+  </Button>
+
+  {/* WhatsApp */}
+<Button
+  variant="contained"
+  color="success"
+  size="small"
+  component="a"
+  target="_blank"
+  rel="noopener noreferrer"
+href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  startIcon={<WhatsAppIcon />}
+>
+  WhatsApp
+</Button>
+</Stack>
+   </Box>
+ )}
               <Typography variant="subtitle1" gutterBottom><strong>Location:</strong> {selectedRequest.location?.address
                 ? selectedRequest.location.address
                 : (selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2
