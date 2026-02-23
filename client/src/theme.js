@@ -1,6 +1,7 @@
 // Centralized MUI theme for crisis-friendly, calm, accessible UI
 import { createTheme } from '@mui/material/styles';
 
+
 const theme = createTheme({
   palette: {
     mode: 'light',
