@@ -30,19 +30,35 @@ exports.createRequest = async (req, res) => {
    GET ALL REQUESTS
 ========================= */
 exports.getRequests = async (req, res) => {
+  console.log("ROLE:", req.user.role);
   try {
 
     let requests = [];
 
     // 👤 USER
- if (req.user.role === "user") {
-  requests = await HelpRequest.find()
-    .select("-contact")
-    .populate("assignedTo", "name");
+if (req.user.role?.toLowerCase() === "user"){
+
+  // 🔹 My Requests (full data, including contact if needed)
+  const myRequests = await HelpRequest.find({
+    createdBy: req.user.id
+  })
+  .populate("assignedTo", "name");
+
+  // 🔹 Community Requests (hide contact + exclude own requests)
+  const communityRequests = await HelpRequest.find({
+    createdBy: { $ne: req.user.id }
+  })
+  .select("-contact")
+  .populate("assignedTo", "name");
+
+  return res.status(200).json({
+    myRequests,
+    communityRequests
+  });
 }
 
     // 🙋 VOLUNTEER
-    else if (req.user.role === "volunteer") {
+else if (req.user.role?.toLowerCase() === "volunteer") {
 
       const { filter } = req.query;
 
@@ -77,7 +93,7 @@ exports.getRequests = async (req, res) => {
     }
 
     // 🏢 NGO (ADD THIS BLOCK)
-    else if (req.user.role === "ngo") {
+   else if (req.user.role?.toLowerCase() === "ngo") {
       requests = await HelpRequest.find()
         .populate("assignedTo", "name email");
     }

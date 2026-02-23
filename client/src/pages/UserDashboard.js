@@ -31,13 +31,16 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 function UserDashboard() {
+  
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+const [myRequests, setMyRequests] = useState([]);
+const [communityRequests, setCommunityRequests] = useState([]);  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const auth = useAuth();
-
+  console.log("AUTH:", auth);
+console.log("TOKEN VALUE:", auth?.token);
+const allRequests = [...myRequests, ...communityRequests];
   // Minimal presentational profile state (no backend calls)
   const [profile, setProfile] = useState({ name: '', email: '', phone: '', role: '', city: '' });
   const [snackbar, setSnackbar] = useState({
@@ -46,22 +49,48 @@ function UserDashboard() {
     severity: 'success',
   });
   
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        const { data } = await api.get('/api/requests');
-        setRequests(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Error fetching requests:', error);
-        setRequests([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchRequests();
-  }, []);
+ useEffect(() => {
+  if (!auth?.token) return;   // wait until token is available
 
+  const fetchRequests = async () => {
+    try {
+      const { data } = await api.get('/api/requests', {
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+        }
+      });
+
+      console.log("API DATA:", data);
+
+      setMyRequests(data.myRequests || []);
+      setCommunityRequests(data.communityRequests || []);
+
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+      setMyRequests([]);
+      setCommunityRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchRequests();
+
+}, [auth?.token]);
+
+// useEffect(() => {
+//   const fetchRequests = async () => {
+//     try {
+//       console.log("Calling API...");
+//       const { data } = await api.get('/api/requests');
+//       console.log("Response:", data);
+//     } catch (err) {
+//       console.error("API error:", err);
+//     }
+//   };
+
+//   fetchRequests();
+// }, []);
   // Initialize profile from auth state
   useEffect(() => {
     const u = auth?.user || {};
@@ -118,29 +147,34 @@ contact: profile.contact,
   }
 };
 
-  
 
-  // Stats
 // Stats
-const totalRequests = Array.isArray(requests) ? requests.length : 0;
-const openRequestsCount = Array.isArray(requests) ? requests.filter(r => r && r.status === 'open').length : 0;
-const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r && r.status === 'resolved').length : 0;
 
+// Total = community only
+const totalRequests = communityRequests.length;
+
+// Personal stats (only my requests)
+const openRequestsCount = myRequests.filter(
+  r => r.status === 'open'
+).length;
+
+const resolvedRequestsCount = myRequests.filter(
+  r => r.status === 'resolved'
+).length;
   // Chart data
-  const typeCounts = requests.reduce((acc, r) => {
-    acc[r.type] = (acc[r.type] || 0) + 1;
-    return acc;
-  }, {});
+ const typeCounts = allRequests.reduce((acc, r) => {
+  acc[r.type] = (acc[r.type] || 0) + 1;
+  return acc;
+}, {});
   const typeData = Object.entries(typeCounts).map(([type, count]) => ({ name: type, value: count }));
-
-  const urgencyCounts = requests.reduce((acc, r) => {
-    acc[r.urgency] = (acc[r.urgency] || 0) + 1;
-    return acc;
-  }, {});
+const urgencyCounts = allRequests.reduce((acc, r) => {
+  acc[r.urgency] = (acc[r.urgency] || 0) + 1;
+  return acc;
+}, {});
   const urgencyData = Object.entries(urgencyCounts).map(([urgency, count]) => ({ urgency, count }));
 
   // Map center
-  const firstWithCoords = requests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
+  const firstWithCoords = allRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
   const defaultPosition = [20.5937, 78.9629]; // Center of India
   const mapCenter = firstWithCoords ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]] : defaultPosition;
 
@@ -341,6 +375,37 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
 
 
         <Divider sx={{ my: 3 }} />
+        <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }}>
+  <Typography variant="h6" gutterBottom>
+    📌 My Requests
+  </Typography>
+
+  {myRequests.length === 0 ? (
+    <Typography color="text.secondary">
+      You haven’t submitted any requests yet.
+    </Typography>
+  ) : (
+    myRequests.map(req => (
+      <Card key={req._id} sx={{ mb: 2 }}>
+        <CardContent>
+          <Stack direction="row" spacing={1} mb={1}>
+            <Chip label={req.type} color="primary" size="small" />
+            <Chip label={req.urgency} size="small" />
+            <Chip label={req.status} size="small" />
+          </Stack>
+
+          <Typography variant="body1">
+            {req.description}
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            Assigned: {req.assignedTo?.name || "Not assigned"}
+          </Typography>
+        </CardContent>
+      </Card>
+    ))
+  )}
+</Paper>
        {/* Stats */}
 <Grid container spacing={3} justifyContent="center" alignItems="stretch" sx={{ mb: 6 }}>
   <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
@@ -355,7 +420,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
         <AssignmentIcon color="primary" />
         <Typography variant="h4" color="primary">{totalRequests}</Typography>
       </Stack>
-      <Typography variant="subtitle1">Total Requests</Typography>
+      <Typography variant="subtitle1">Community Requests</Typography>
     </Paper>
   </Grid>
   <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
@@ -436,7 +501,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {requests.filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2).map((req) => (
+            {allRequests.filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2).map((req) => (
               <Marker
                 key={req._id}
                 position={[req.location.coordinates[1], req.location.coordinates[0]]}
@@ -473,12 +538,12 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
 >
       <Stack direction="row" alignItems="center" spacing={1} mb={1}>
         <ListAltIcon color="secondary" />
-        <Typography variant="h6">Recent Requests</Typography>
+        <Typography variant="h6">Community Requests</Typography>
       </Stack>
       <Box sx={{ flex: 1, overflow: 'auto', minHeight: { xs: 240, md: 260 }, pr: 0.5 }}>
         {loading ? <CircularProgress /> : (
           <Box>
-            {requests.slice(0, 8).map((req) => (
+            {communityRequests.slice(0, 8).map((req) => (
               <Card key={req._id} sx={{ mb: 2, boxShadow: 1, borderRadius: 2, transition: 'box-shadow 0.15s', '&:hover': { boxShadow: 3 } }}>
                 <CardContent>
                   <Stack direction="row" alignItems="center" spacing={1} mb={1}>
@@ -495,7 +560,7 @@ const resolvedRequestsCount = Array.isArray(requests) ? requests.filter(r => r &
                 </CardContent>
               </Card>
             ))}
-            {requests.length === 0 && <Typography>No requests yet.</Typography>}
+            {communityRequests.length === 0 && <Typography>No requests yet.</Typography>}
           </Box>
         )}
       </Box>
