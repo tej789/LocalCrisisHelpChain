@@ -442,7 +442,6 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     </Paper>
   </Grid>
 </Grid>
-
        {/* Dashboard Main Row: Charts, Map, Recent Requests */}
 <Grid container spacing={3} alignItems="stretch" sx={{ mb: 6 }}>
   <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
