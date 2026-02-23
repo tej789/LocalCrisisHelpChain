@@ -26,45 +26,36 @@ exports.createRequest = async (req, res) => {
   }
 };
 
-
-/* =========================
-   GET ALL REQUESTS
-========================= */
 /* =========================
    GET ALL REQUESTS
 ========================= */
 exports.getRequests = async (req, res) => {
   try {
 
-    let requests;
+    let requests = [];
 
-    // 👤 USER (only their own requests, hide contact)
-    if (req.user.role === "user") {
-      requests = await HelpRequest.find({
-        createdBy: req.user.id
-      }).select("-contact");
-    }
+    // 👤 USER
+ if (req.user.role === "user") {
+  requests = await HelpRequest.find()
+    .select("-contact")
+    .populate("assignedTo", "name");
+}
 
-    // 🙋 VOLUNTEER (filter-based)
+    // 🙋 VOLUNTEER
     else if (req.user.role === "volunteer") {
 
       const { filter } = req.query;
 
-      // 🔵 Open requests (can claim)
       if (filter === "open") {
-        requests = await HelpRequest.find({
-          status: "open"
-        });
+        requests = await HelpRequest.find({ status: "open" });
       }
 
-      // 🟢 Assigned to this volunteer
       else if (filter === "assigned") {
         requests = await HelpRequest.find({
           assignedTo: req.user.id
         });
       }
 
-      // 🟣 Resolved by this volunteer
       else if (filter === "resolved") {
         requests = await HelpRequest.find({
           handledBy: req.user.id,
@@ -72,7 +63,6 @@ exports.getRequests = async (req, res) => {
         });
       }
 
-      // 🔹 Default view = assigned
       else {
         requests = await HelpRequest.find({
           assignedTo: req.user.id
@@ -80,19 +70,24 @@ exports.getRequests = async (req, res) => {
       }
     }
 
-    // 👑 ADMIN (see everything)
+    // 👑 ADMIN
     else if (req.user.role === "admin") {
       requests = await HelpRequest.find()
         .populate("assignedTo", "name email");
     }
 
-    res.json(requests);
+    // 🏢 NGO (ADD THIS BLOCK)
+    else if (req.user.role === "ngo") {
+      requests = await HelpRequest.find()
+        .populate("assignedTo", "name email");
+    }
+
+    res.status(200).json(requests);
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-
 /* =========================
    ASSIGN VOLUNTEER
 ========================= */

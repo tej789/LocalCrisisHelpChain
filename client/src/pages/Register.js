@@ -8,6 +8,7 @@ import '../styles/auth.css';
 export default function Register() {
   const [form, setForm] = useState({
     name: '',
+    contact: '', 
     email: '',
     password: '',
     role: 'user',
@@ -26,10 +27,10 @@ export default function Register() {
     
   if (loading) return;
   setLoading(true);
-    if (!form.name || !form.email || !form.password) {
-      setError('Name, email and password are required');
-      return;
-    }
+    if (!form.name || !form.email || !form.password || !form.contact) {
+  setError('Name, email, password and contact are required');
+  return;
+}
     setLoading(true);
     setError('');
     try {
@@ -87,7 +88,18 @@ export default function Register() {
                 required
               />
             </div>
-
+<div>
+  <div className="label">Contact Number</div>
+  <input
+    className="input"
+    name="contact"
+    type="text"
+    placeholder="Enter contact number"
+    value={form.contact}
+    onChange={handleChange}
+    required
+  />
+</div>
             <div>
               <div className="label">Email</div>
               <input

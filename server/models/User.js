@@ -7,8 +7,8 @@ const UserSchema = new mongoose.Schema({
   contact: {
   type: String,
   required: true,
-  unique: true,
-  match: /^[0-9]{10}$/
+  // unique: true,
+  // match: /^[0-9]{10}$/
 },
 
   role: {

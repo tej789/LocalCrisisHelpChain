@@ -42,29 +42,41 @@ const [selectedRequest, setSelectedRequest] = useState(null);
   const [assigningRequestId, setAssigningRequestId] = useState(null);
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+// ================= FETCH REQUESTS =================
+useEffect(() => {
+  console.log("NGO Dashboard Mounted");
 
-  // ================= FETCH REQUESTS =================
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get('/api/requests');
-        const list = Array.isArray(data) ? data : [];
-        const nameMap = {};
-        list.forEach(r => {
-          if (r?.assignedTo?.name) {
-            nameMap[r.assignedTo._id] = r.assignedTo.name;
-          }
-        });
-        setVolunteerNames(nameMap);
-        setRequests(list);
-      } catch {
-        setRequests([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const fetchRequests = async () => {
+    try {
+      console.log("Calling API...");
 
+      const response = await api.get('/api/requests');
+
+      console.log("API SUCCESS:", response);
+
+      const list = Array.isArray(response.data) ? response.data : [];
+
+      const nameMap = {};
+      list.forEach(r => {
+        if (r?.assignedTo?.name) {
+          nameMap[r.assignedTo._id] = r.assignedTo.name;
+        }
+      });
+
+      setVolunteerNames(nameMap);
+      setRequests(list);
+
+    } catch (error) {
+      console.log("API ERROR FULL:", error);
+      console.log("Error Response:", error.response);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchRequests();
+}, []);
   // ================= SOCKET UPDATES =================
   useEffect(() => {
     socket.on('requestAssigned', (updated) => {

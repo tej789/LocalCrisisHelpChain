@@ -12,6 +12,8 @@ apiInstance.setApiKey(
 );
 
 exports.sendOtpEmail = async (email, otp) => {
+  console.log("Sending OTP to:", email);
+console.log("Using sender:", process.env.BREVO_SENDER_EMAIL);
   try {
     const sendSmtpEmail = {
       sender: {
