@@ -24,7 +24,7 @@ import {
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import HandshakeIcon from '@mui/icons-material/Handshake';
-
+import NotificationBell from '../components/NotificationBell';
 
 
 
@@ -204,22 +204,26 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     User Dashboard
   </Typography>
 
-  <Box
-    sx={{
-      width: { xs: '100%', sm: 'auto' },
-      display: 'flex',
-      justifyContent: { xs: 'center', sm: 'flex-end' }
-    }}
+<Box
+  sx={{
+    width: { xs: '100%', sm: 'auto' },
+    display: 'flex',
+    justifyContent: { xs: 'center', sm: 'flex-end' },
+    alignItems: 'center',
+    gap: 1
+  }}
+>
+  <NotificationBell />
+
+  <Button
+    variant="outlined"
+    size="small"
+    sx={{ borderRadius: 2, fontWeight: 600 }}
+    onClick={() => setProfileOpen(true)}
   >
-    <Button
-      variant="outlined"
-      size="small"
-      sx={{ borderRadius: 2, fontWeight: 600 }}
-      onClick={() => setProfileOpen(true)}
-    >
-      Profile
-    </Button>
-  </Box>
+    Profile
+  </Button>
+</Box>
 </Stack>
 <Dialog
   open={profileOpen}
@@ -465,7 +469,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
       </Box>
     </Paper>
   </Grid>
-  
+
 
   <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
     <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', borderRadius: 3, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 8 }, flex: 1 }}>

@@ -1,6 +1,7 @@
 const HelpRequest = require('../models/HelpRequest');
 const Volunteer = require('../models/Volunteer');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const { 
   sendAssignmentEmail,
   sendVolunteerAssignmentEmail
@@ -156,6 +157,18 @@ if (user) {
   await sendAssignmentEmail(user, vol);
 }
 await sendVolunteerAssignmentEmail(vol, updated);
+
+// 🔔 Create notification for the user
+console.log("Before notification create");
+
+await Notification.create({
+  userId: updated.createdBy,
+  requestId: updated._id,
+  type: "assigned",
+  title: "Request Assigned",
+  message: `Volunteer ${vol.name} has been assigned to your request.`,
+});
+console.log("After notification create");
     const io = req.app.get('io');
     if (io) io.emit('requestAssigned', updated);
 

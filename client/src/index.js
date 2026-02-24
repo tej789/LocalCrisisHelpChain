@@ -2,20 +2,25 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// ADDED:
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
+
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from './theme';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
 root.render(
   <React.StrictMode>
-    {/* Provide global crisis-friendly theme and auth context */}
     <ThemeProvider theme={theme}>
       <CssBaseline />
+
       <AuthProvider>
-        <App />
+        <NotificationProvider>
+          <App />
+        </NotificationProvider>
       </AuthProvider>
+
     </ThemeProvider>
   </React.StrictMode>
 );

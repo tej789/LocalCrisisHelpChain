@@ -68,3 +68,44 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+const Notification = require("../models/Notification");
+
+/* =========================
+   GET USER NOTIFICATIONS
+========================= */
+exports.getMyNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({
+      userId: req.user.id
+    })
+    .sort({ createdAt: -1 });
+
+    res.status(200).json(notifications);
+
+  } catch (err) {
+    console.error("Fetch notification error:", err);
+    res.status(500).json({ error: "Failed to fetch notifications" });
+  }
+};
+// mark as read
+exports.markNotificationRead = async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        userId: req.user.id
+      },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification)
+      return res.status(404).json({ error: "Notification not found" });
+
+    res.json(notification);
+
+  } catch (err) {
+    console.error("Mark read error:", err);
+    res.status(500).json({ error: "Failed to update notification" });
+  }
+};

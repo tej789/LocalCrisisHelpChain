@@ -1,15 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth');
 
+const { verifyToken } = require('../middleware/auth');
 const userController = require('../controllers/userController');
 
+/* Profile Routes */
 router.get('/me', verifyToken, userController.getProfile);
+router.put('/update-profile', verifyToken, userController.updateProfile);
+
+/* Notification Route */
+router.get('/notifications', verifyToken, userController.getMyNotifications);
 
 router.put(
-  '/update-profile',
+  "/notifications/:id/read",
   verifyToken,
-  userController.updateProfile
+  userController.markNotificationRead
 );
-
 module.exports = router;
