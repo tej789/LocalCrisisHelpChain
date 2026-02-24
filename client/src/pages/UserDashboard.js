@@ -147,19 +147,28 @@ contact: profile.contact,
   }
 };
 
+//stats
+// ================= MY REQUESTS =================
+const myTotal = myRequests.length;
 
-// Stats
-
-// Total = community only
-const totalRequests = communityRequests.length;
-
-// Personal stats (only my requests)
-const openRequestsCount = myRequests.filter(
-  r => r.status === 'open'
+const myOpen = myRequests.filter(
+  r => r.status === "open"
 ).length;
 
-const resolvedRequestsCount = myRequests.filter(
-  r => r.status === 'resolved'
+const myResolved = myRequests.filter(
+  r => r.status === "resolved"
+).length;
+
+
+// ================= COMMUNITY REQUESTS =================
+const communityTotal = communityRequests.length;
+
+const communityOpen = communityRequests.filter(
+  r => r.status === "open"
+).length;
+
+const communityAssigned = communityRequests.filter(
+  r => r.status === "assigned"
 ).length;
   // Chart data
  const typeCounts = allRequests.reduce((acc, r) => {
@@ -390,8 +399,19 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     </Typography>
   ) : (
     myRequests.map(req => (
-      <Card key={req._id} sx={{ mb: 2 }}>
-        <CardContent>
+<Card
+  key={req._id}
+  sx={{
+    mb: 2,
+    borderRadius: 3,
+    boxShadow: 1,
+    transition: "all 0.2s",
+    "&:hover": {
+      boxShadow: 4,
+      transform: "translateY(-2px)"
+    }
+  }}
+>        <CardContent>
           <Stack direction="row" spacing={1} mb={1}>
             <Chip label={req.type} color="primary" size="small" />
             <Chip label={req.urgency} size="small" />
@@ -400,48 +420,82 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 
 <Typography variant="h6" fontWeight={600}>            {req.description}
           </Typography>
+<Typography
+  variant="body2"
+  sx={{ mt: 1, fontWeight: 500 }}
+  color={
+  req.status === "assigned"
+    ? "success.main"
+    : req.status === "resolved"
+    ? "primary.main"
+    : "text.secondary"
+}
+>
+  {req.status === "open" && "Not assigned yet"}
 
-          <Typography variant="caption" color="text.secondary">
-            Assigned: {req.assignedTo?.name || "Not assigned"}
-          </Typography>
+  {req.status === "assigned" &&
+    `✔ Assigned to ${req.assignedTo?.name}`}
+
+  {req.status === "resolved" &&
+    `✅ Resolved by ${req.assignedTo?.name || "Volunteer"}`}
+</Typography>
         </CardContent>
       </Card>
     ))
   )}
 </Paper>
-       {/* Stats */}
-<Grid container spacing={3} justifyContent="center" alignItems="stretch" sx={{ mb: 6 }}>
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
-<Paper elevation={3} sx={{
-      p: { xs: 2, md: 3 },   // FIXED
-      textAlign: 'center',
-      borderRadius: 3,
-      transition: 'box-shadow 0.2s',
-      '&:hover': { boxShadow: 8 },
-      flex: 1
-    }}>      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" mb={1}>
-        <AssignmentIcon color="primary" />
-        <Typography variant="h4" color="primary">{totalRequests}</Typography>
-      </Stack>
-      <Typography variant="subtitle1">Community Requests</Typography>
+     {/* ================= MY REQUESTS SUMMARY ================= */}
+<Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+  🔹 My Requests Summary
+</Typography>
+
+<Grid container spacing={3} sx={{ mb: 4 }}>
+  <Grid item xs={12} sm={4}>
+    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+      <Typography variant="h4">{myTotal}</Typography>
+      <Typography>My Total</Typography>
     </Paper>
   </Grid>
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
-    <Paper elevation={3} sx={{ p: 3, textAlign: 'center', borderRadius: 3, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 8 }, flex: 1 }}>
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" mb={1}>
-        <PendingActionsIcon color="warning" />
-        <Typography variant="h4" color="warning.main">{openRequestsCount}</Typography>
-      </Stack>
-      <Typography variant="subtitle1">Open Requests</Typography>
+
+  <Grid item xs={12} sm={4}>
+    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+      <Typography variant="h4" color="warning.main">{myOpen}</Typography>
+      <Typography>My Open</Typography>
     </Paper>
   </Grid>
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
-    <Paper elevation={3} sx={{ p: 3, textAlign: 'center', borderRadius: 3, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 8 }, flex: 1 }}>
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" mb={1}>
-        <DoneAllIcon color="success" />
-        <Typography variant="h4" color="success.main">{resolvedRequestsCount}</Typography>
-      </Stack>
-      <Typography variant="subtitle1">Resolved Requests</Typography>
+
+  <Grid item xs={12} sm={4}>
+    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+      <Typography variant="h4" color="success.main">{myResolved}</Typography>
+      <Typography>My Resolved</Typography>
+    </Paper>
+  </Grid>
+</Grid>
+
+{/* ================= COMMUNITY OVERVIEW ================= */}
+<Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+  🔹 Community Overview
+</Typography>
+
+<Grid container spacing={3} sx={{ mb: 6 }}>
+  <Grid item xs={12} sm={4}>
+    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+      <Typography variant="h4">{communityTotal}</Typography>
+      <Typography>Community Total</Typography>
+    </Paper>
+  </Grid>
+
+  <Grid item xs={12} sm={4}>
+    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+      <Typography variant="h4" color="warning.main">{communityOpen}</Typography>
+      <Typography>Community Open</Typography>
+    </Paper>
+  </Grid>
+
+  <Grid item xs={12} sm={4}>
+    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
+      <Typography variant="h4" color="info.main">{communityAssigned}</Typography>
+      <Typography>Community Assigned</Typography>
     </Paper>
   </Grid>
 </Grid>

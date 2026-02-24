@@ -232,13 +232,11 @@ const resolvedRequests = myAssignedRequests.filter(
 
 // Final displayed list
 const displayedRequests =
-  view === 'open'
-    ? openRequests
-    :  view === 'assigned'
+  view === 'assigned'
     ? activeAssignedRequests
     : view === 'resolved'
     ? resolvedRequests
-    : openRequests; // fallback
+    : activeAssignedRequests;
 
   // Legacy claim dialog removed; volunteers claim directly
 
@@ -389,38 +387,48 @@ I will reach you shortly.`
     width: '100%'
   }}
 >
-  <Button
-    variant={view === 'open' ? 'contained' : 'outlined'}
-    onClick={() => setView('open')}
-  >
-    Open Requests
-  </Button>
+ 
 
-  <Button
-    variant={ view === 'assigned'? 'contained' : 'outlined'}
-    onClick={() => setView('assigned')}
-  >
-    My Active
-  </Button>
+ <Button
+  variant={view === 'assigned' ? 'contained' : 'outlined'}
+  onClick={() => setView('assigned')}
+>
+  My Active
+</Button>
 
-  <Button
-    variant={view === 'resolved' ? 'contained' : 'outlined'}
-    onClick={() => setView('resolved')}
-  >
-    My Resolved
-  </Button>
+<Button
+  variant={view === 'resolved' ? 'contained' : 'outlined'}
+  onClick={() => setView('resolved')}
+>
+  My Resolved
+</Button>
 </Box>
     
 </Box>
 
        <Divider sx={{ my: 2 }} />
+<Stack
+  direction="row"
+  spacing={2}
+  justifyContent="center"
+  mb={2}
+  flexWrap="wrap"
+>
+  <Chip
+  label={`Active: ${activeAssignedRequests.length}`}
+  color="primary"
+  sx={{ fontWeight: 600, px: 1 }}
+/>
 
-<Stack direction="row" spacing={2} justifyContent="center" mb={2} flexWrap="wrap">
-  <Chip label={`Open: ${openRequests.length}`} color="warning" />
-  <Chip label={`Assigned: ${myAssignedRequests.length}`} color="primary" />
-  <Chip label={`Total: ${filteredRequests.length}`} />
+  <Chip
+    label={`Resolved: ${resolvedRequests.length}`}
+    color="success"
+  />
+
+  <Chip
+    label={`Total: ${myAssignedRequests.length}`}
+  />
 </Stack>
-
 <Box sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
 
 <Paper
@@ -460,10 +468,8 @@ I will reach you shortly.`
 
               <Paper elevation={1} sx={{ p: 5, textAlign: 'center', background: '#f5f7fa' }}>
                 <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">No {view === 'open' 
-      ? 'open requests' 
-      :view === 'assigned'
-      ? 'active requests' 
+                <Typography variant="h6" color="text.secondary">No {view === 'assigned'
+      ? 'active requests'
       : 'resolved requests'} found.</Typography>
               </Paper>
             </Grid>
