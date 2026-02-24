@@ -398,8 +398,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             <Chip label={req.status} size="small" />
           </Stack>
 
-          <Typography variant="body1">
-            {req.description}
+<Typography variant="h6" fontWeight={600}>            {req.description}
           </Typography>
 
           <Typography variant="caption" color="text.secondary">
