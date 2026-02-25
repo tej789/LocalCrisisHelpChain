@@ -24,6 +24,9 @@ const HelpRequestSchema = new mongoose.Schema({
   handledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' }
 }, { timestamps: { createdAt: false, updatedAt: 'updatedAt' } });
 
-HelpRequestSchema.index({ location: '2dsphere' });
-
+HelpRequestSchema.index({ location: '2dsphere' }); // already exists
+HelpRequestSchema.index({ status: 1 });
+HelpRequestSchema.index({ urgency: 1 });
+HelpRequestSchema.index({ type: 1 });
+HelpRequestSchema.index({ createdAt: -1 });
 module.exports = mongoose.model('HelpRequest', HelpRequestSchema); 

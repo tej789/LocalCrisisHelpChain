@@ -26,82 +26,143 @@ exports.createRequest = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-
 /* =========================
-   GET ALL REQUESTS
+   GET ALL REQUESTS (WITH PAGINATION + FILTERING)
 ========================= */
 exports.getRequests = async (req, res) => {
-  console.log("ROLE:", req.user.role);
   try {
+    // ✅ Extract query params
+    let {
+      page = 1,
+      limit = 10,
+      status,
+      urgency,
+      type,
+      search,
+      sort = "-createdAt",
+      filter // for volunteer logic
+    } = req.query;
 
-    let requests = [];
+    page = parseInt(page);
+    limit = parseInt(limit);
 
-    // 👤 USER
-if (req.user.role?.toLowerCase() === "user"){
+    // 🔐 Prevent abuse
+    if (limit > 50) limit = 50;
 
-  // 🔹 My Requests (full data, including contact if needed)
-  const myRequests = await HelpRequest.find({
-    createdBy: req.user.id
-  })
-  .populate("assignedTo", "name");
+    const skip = (page - 1) * limit;
 
-  // 🔹 Community Requests (hide contact + exclude own requests)
-  const communityRequests = await HelpRequest.find({
-    createdBy: { $ne: req.user.id }
-  })
-  .select("-contact")
-  .populate("assignedTo", "name");
+    // ✅ Base query object
+    let query = {};
 
-  return res.status(200).json({
-    myRequests,
-    communityRequests
-  });
-}
+    if (status) query.status = status;
+    if (urgency) query.urgency = urgency;
+    if (type) query.type = type;
 
-    // 🙋 VOLUNTEER
-else if (req.user.role?.toLowerCase() === "volunteer") {
+    // 🔍 Search
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { name: { $regex: search, $options: "i" } }
+      ];
+    }
 
-      const { filter } = req.query;
+    let requests;
+    let total;
+
+    /* ======================
+       👤 USER
+    ====================== */
+    if (req.user.role?.toLowerCase() === "user") {
+
+      const myQuery = { ...query, createdBy: req.user.id };
+      const communityQuery = {
+        ...query,
+        createdBy: { $ne: req.user.id }
+      };
+
+      const myTotal = await HelpRequest.countDocuments(myQuery);
+      const communityTotal = await HelpRequest.countDocuments(communityQuery);
+
+      const myRequests = await HelpRequest.find(myQuery)
+        .populate("assignedTo", "name")
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+
+      const communityRequests = await HelpRequest.find(communityQuery)
+        .select("-contact")
+        .populate("assignedTo", "name")
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+
+      return res.status(200).json({
+        success: true,
+        myRequests,
+        communityRequests,
+        pagination: {
+          page,
+          limit,
+          myTotal,
+          communityTotal,
+          myPages: Math.ceil(myTotal / limit),
+          communityPages: Math.ceil(communityTotal / limit)
+        }
+      });
+    }
+
+    /* ======================
+       🙋 VOLUNTEER
+    ====================== */
+    else if (req.user.role?.toLowerCase() === "volunteer") {
 
       if (filter === "open") {
-        requests = await HelpRequest.find({ status: "open" });
-      }
-
+        query.status = "open";
+      } 
       else if (filter === "assigned") {
-        requests = await HelpRequest.find({
-          assignedTo: req.user.id
-        });
-      }
-
+        query.assignedTo = req.user.id;
+      } 
       else if (filter === "resolved") {
-        requests = await HelpRequest.find({
-          handledBy: req.user.id,
-          status: "resolved"
-        });
-      }
-
+        query.handledBy = req.user.id;
+        query.status = "resolved";
+      } 
       else {
-        requests = await HelpRequest.find({
-          assignedTo: req.user.id
-        });
+        query.assignedTo = req.user.id;
       }
     }
 
-    // 👑 ADMIN
-    else if (req.user.role === "admin") {
-      requests = await HelpRequest.find()
-        .populate("assignedTo", "name email");
+    /* ======================
+       👑 ADMIN / 🏢 NGO
+    ====================== */
+    else if (
+      req.user.role?.toLowerCase() === "admin" ||
+      req.user.role?.toLowerCase() === "ngo"
+    ) {
+      // full access with filters
     }
 
-    // 🏢 NGO (ADD THIS BLOCK)
-   else if (req.user.role?.toLowerCase() === "ngo") {
-      requests = await HelpRequest.find()
-        .populate("assignedTo", "name email");
-    }
+    // ✅ Count documents
+    total = await HelpRequest.countDocuments(query);
 
-    res.status(200).json(requests);
+    // ✅ Fetch paginated data
+    requests = await HelpRequest.find(query)
+      .populate("assignedTo", "name email")
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      success: true,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      results: requests.length,
+      data: requests
+    });
 
   } catch (err) {
+    console.error("Get requests error:", err);
     res.status(500).json({ error: err.message });
   }
 };
