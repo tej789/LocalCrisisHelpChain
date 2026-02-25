@@ -161,6 +161,7 @@ await sendVolunteerAssignmentEmail(vol, updated);
 // 🔔 Create notification for the user
 console.log("Before notification create");
 
+
 await Notification.create({
   userId: updated.createdBy,
   requestId: updated._id,
