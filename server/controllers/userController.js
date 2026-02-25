@@ -87,6 +87,7 @@ exports.getMyNotifications = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };
+
 // mark as read
 exports.markNotificationRead = async (req, res) => {
   try {
