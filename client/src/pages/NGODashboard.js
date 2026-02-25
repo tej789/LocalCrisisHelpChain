@@ -42,41 +42,34 @@ const [selectedRequest, setSelectedRequest] = useState(null);
   const [assigningRequestId, setAssigningRequestId] = useState(null);
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-// ================= FETCH REQUESTS =================
-useEffect(() => {
-  console.log("NGO Dashboard Mounted");
 
+  const [stats, setStats] = useState(null);
+useEffect(() => {
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/api/requests/stats');
+      setStats(res.data.data);
+    } catch (err) {
+      console.log("Stats error:", err);
+    }
+  };
+
+  fetchStats();
+}, []);
+
+useEffect(() => {
   const fetchRequests = async () => {
     try {
-      console.log("Calling API...");
-
-      const response = await api.get('/api/requests');
-
-      console.log("API SUCCESS:", response);
-
-      const list = Array.isArray(response.data) ? response.data : [];
-
-      const nameMap = {};
-      list.forEach(r => {
-        if (r?.assignedTo?.name) {
-          nameMap[r.assignedTo._id] = r.assignedTo.name;
-        }
-      });
-
-      setVolunteerNames(nameMap);
-      setRequests(list);
-
-    } catch (error) {
-      console.log("API ERROR FULL:", error);
-      console.log("Error Response:", error.response);
-      setRequests([]);
-    } finally {
-      setLoading(false);
+      const res = await api.get('/api/requests?limit=10&sort=-createdAt');
+      setRequests(res.data.data || []);
+    } catch (err) {
+      console.log("Requests error:", err);
     }
   };
 
   fetchRequests();
 }, []);
+
   // ================= SOCKET UPDATES =================
   useEffect(() => {
     socket.on('requestAssigned', (updated) => {
@@ -173,11 +166,11 @@ const urgencyPriority = {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  // ================= STATS =================
-  const totalRequests = requests.length;
-  const openRequests = requests.filter(r => r.status === 'open').length;
-  const assignedRequests = requests.filter(r => r.status === 'assigned').length;
-  const resolvedRequests = requests.filter(r => r.status === 'resolved').length;
+  // // ================= STATS =================
+  // const totalRequests = requests.length;
+  // const openRequests = requests.filter(r => r.status === 'open').length;
+  // const assignedRequests = requests.filter(r => r.status === 'assigned').length;
+  // const resolvedRequests = requests.filter(r => r.status === 'resolved').length;
 
   // ================= MAP =================
   const firstWithCoords = requests.find(r => r.location?.coordinates?.length === 2);
@@ -253,11 +246,12 @@ const urgencyPriority = {
   sx={{ mb: 4 }}
   justifyContent="center"
 >
-  {[['Total', totalRequests],
-    ['Open', openRequests],
-    ['Assigned', assignedRequests],
-    ['Resolved', resolvedRequests]
-  ].map(([label, value]) => (
+  {[
+  ['Total', stats?.total || 0],
+  ['Open', stats?.status?.open || 0],
+  ['Assigned', stats?.status?.assigned || 0],
+  ['Resolved', stats?.status?.resolved || 0]
+].map(([label, value]) => (
     <Grid
       item
       xs={6} sm={3}

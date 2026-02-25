@@ -277,3 +277,61 @@ exports.resolveRequest = async (req, res) => {
     res.status(400).json({ error: 'Resolve failed' });
   }
 };
+
+/* =========================
+   REQUEST ANALYTICS (NGO)
+========================= */
+exports.getRequestStats = async (req, res) => {
+  try {
+    const stats = await HelpRequest.aggregate([
+      {
+        $facet: {
+          statusStats: [
+            {
+              $group: {
+                _id: "$status",
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          urgencyStats: [
+            {
+              $group: {
+                _id: "$urgency",
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          totalRequests: [
+            {
+              $count: "total"
+            }
+          ]
+        }
+      }
+    ]);
+
+    const formatted = {
+      total: stats[0].totalRequests[0]?.total || 0,
+      status: {},
+      urgency: {}
+    };
+
+    stats[0].statusStats.forEach(item => {
+      formatted.status[item._id] = item.count;
+    });
+
+    stats[0].urgencyStats.forEach(item => {
+      formatted.urgency[item._id] = item.count;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formatted
+    });
+
+  } catch (err) {
+    console.error("Analytics error:", err);
+    res.status(500).json({ error: "Failed to fetch analytics" });
+  }
+};

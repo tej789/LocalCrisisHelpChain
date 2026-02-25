@@ -112,18 +112,18 @@ const handleUseLocation = () => {
   // Backward-compatible verified check derived directly from auth.user
   const computedVerified = (auth?.user?.isVerified === true) || (auth?.user?.isVerified === undefined && auth?.user?.verified === true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get('/api/requests');
-        setRequests(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(err.response?.data?.error || err.message || 'Failed to fetch requests');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+useEffect(() => {
+  (async () => {
+    try {
+      const response = await api.get('/api/requests');
+      setRequests(response.data.data || []);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, []);
 
   // Initialize availability and verification from auth user
   useEffect(() => {
@@ -250,8 +250,13 @@ const displayedRequests =
       setRequests(prev => prev.map(r => r._id === requestId ? { ...r, status: 'assigned', assignedTo: auth.user?.id } : r));
       // Ensure server state is synced (in case other fields changed) and switch to 'assigned' view
       try {
-        const { data } = await api.get('/api/requests');
-        setRequests(Array.isArray(data) ? data : []);
+      const response = await api.get('/api/requests');
+
+if (Array.isArray(response.data.data)) {
+  setRequests(response.data.data);
+} else {
+  setRequests([]);
+}
       } catch {}
       setView('assigned');
     } catch (err) {
@@ -269,8 +274,13 @@ const displayedRequests =
       setRequests(prev => prev.map(r => r._id === requestId ? { ...r, status: 'resolved' } : r));
       // Refetch to ensure full sync
       try {
-        const { data } = await api.get('/api/requests');
-        setRequests(Array.isArray(data) ? data : []);
+       const response = await api.get('/api/requests');
+
+if (Array.isArray(response.data.data)) {
+  setRequests(response.data.data);
+} else {
+  setRequests([]);
+}
       } catch {}
     } catch (err) {
       setSnackbar({ open: true, message: 'Failed to resolve request.', severity: 'error' });

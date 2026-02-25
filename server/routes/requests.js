@@ -3,7 +3,12 @@ const router = express.Router();
 
 const requestController = require('../controllers/requestController');
 const { verifyToken, requireRole } = require('../middleware/auth');
-
+router.get(
+  '/stats',
+  verifyToken,
+  requireRole('ngo'),
+  requestController.getRequestStats
+);
 router.post(
   '/',
   verifyToken,

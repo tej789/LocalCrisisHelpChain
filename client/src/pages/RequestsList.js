@@ -9,20 +9,40 @@ const RequestsList = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 const { user } = useAuth();
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        const res = await api.get("/api/requests");
-        setRequests(res.data);
-        setFiltered(res.data);
-      } catch {
-        setError("Failed to fetch requests");
-      } finally {
-        setLoading(false);
+useEffect(() => {
+  const fetchRequests = async () => {
+    try {
+      const res = await api.get("/api/requests?limit=100");
+
+      let list = [];
+
+      // 👤 USER response structure
+      if (res.data.myRequests || res.data.communityRequests) {
+        list = [
+          ...(res.data.myRequests || []),
+          ...(res.data.communityRequests || [])
+        ];
       }
-    };
-    fetchRequests();
-  }, []);
+      // 👑 NGO / ADMIN response structure
+      else if (res.data.data) {
+        list = res.data.data;
+      }
+
+      console.log("Final list:", list);
+
+      setRequests(list);
+      setFiltered(list);
+
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError("Failed to fetch requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchRequests();
+}, []);
 
   useEffect(() => {
     let data = [...requests];
@@ -101,7 +121,7 @@ const { user } = useAuth();
             </thead>
 
             <tbody>
-              {filtered.map((req, index) => (
+              {(Array.isArray(filtered) ? filtered : []).map((req, index) => (
                 <tr
                   key={req._id}
                   style={{

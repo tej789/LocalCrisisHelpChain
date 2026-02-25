@@ -35,6 +35,7 @@ function UserDashboard() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 const [myRequests, setMyRequests] = useState([]);
+const [pagination, setPagination] = useState(null);
 const [communityRequests, setCommunityRequests] = useState([]);  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const auth = useAuth();
@@ -49,33 +50,30 @@ const allRequests = [...myRequests, ...communityRequests];
     severity: 'success',
   });
   
- useEffect(() => {
-  if (!auth?.token) return;   // wait until token is available
+useEffect(() => {
+  if (!auth?.token) return;
 
   const fetchRequests = async () => {
     try {
-      const { data } = await api.get('/api/requests', {
-        headers: {
-          Authorization: `Bearer ${auth.token}`
-        }
-      });
+      const { data } = await api.get('/api/requests');
 
       console.log("API DATA:", data);
 
       setMyRequests(data.myRequests || []);
       setCommunityRequests(data.communityRequests || []);
+      setPagination(data.pagination || null);   // ✅ ADD THIS
 
     } catch (error) {
       console.error('Error fetching requests:', error);
       setMyRequests([]);
       setCommunityRequests([]);
+      setPagination(null);
     } finally {
       setLoading(false);
     }
   };
 
   fetchRequests();
-
 }, [auth?.token]);
 
 // useEffect(() => {
@@ -149,8 +147,7 @@ contact: profile.contact,
 
 //stats
 // ================= MY REQUESTS =================
-const myTotal = myRequests.length;
-
+const myTotal = pagination?.myTotal || 0;
 const myOpen = myRequests.filter(
   r => r.status === "open"
 ).length;
@@ -161,8 +158,7 @@ const myResolved = myRequests.filter(
 
 
 // ================= COMMUNITY REQUESTS =================
-const communityTotal = communityRequests.length;
-
+const communityTotal = pagination?.communityTotal || 0;
 const communityOpen = communityRequests.filter(
   r => r.status === "open"
 ).length;
