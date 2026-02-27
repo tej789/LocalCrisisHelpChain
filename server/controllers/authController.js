@@ -17,8 +17,7 @@ exports.register = asyncHandler(async (req, res) => {
 
   const normalizedRole = role || "user";
 
-  if (!["user", "ngo", "volunteer"].includes(normalizedRole))
-    throw new AppError("Invalid role", 400);
+if (!["user", "ngo", "volunteer", "admin"].includes(normalizedRole))    throw new AppError("Invalid role", 400);
 
   const [u, n, v] = await Promise.all([
     User.findOne({ email }),
@@ -54,7 +53,24 @@ exports.register = asyncHandler(async (req, res) => {
       message: "User registered. OTP sent."
     });
   }
+/* ADMIN */
+if (normalizedRole === "admin") {
+  const admin = new User({
+    name,
+    email,
+    password: hashed,
+    contact,
+    role: "admin",
+    verified: true
+  });
 
+  await admin.save();
+
+  return res.status(201).json({
+    success: true,
+    message: "Admin created successfully"
+  });
+}
   /* NGO */
   if (normalizedRole === "ngo") {
     const ngo = new NGO({
@@ -122,10 +138,10 @@ exports.login = asyncHandler(async (req, res) => {
     throw new AppError("Verify email first", 403);
 
   const token = jwt.sign(
-    { userId: account._id, role },
-    process.env.JWT_SECRET || "secretkey",
-    { expiresIn: "7d" }
-  );
+  { userId: account._id, role },
+  process.env.JWT_SECRET || "secretkey",
+  { expiresIn: "7d" }
+);
 
   res.status(200).json({
     success: true,

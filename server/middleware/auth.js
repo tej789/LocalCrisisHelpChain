@@ -7,14 +7,22 @@ function _getTokenFromHeader(req) {
 }
 
 function verifyToken(req, res, next) {
-  const token = _getTokenFromHeader(req);
-  if (!token) return res.status(401).json({ error: 'No token provided' });
+  const header = req.headers.authorization;
+
+  if (!header || !header.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  const token = header.split(" ")[1];
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
+
     req.user = { id: decoded.userId, role: decoded.role };
-    return next();
+
+    next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 

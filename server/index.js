@@ -9,6 +9,8 @@ const errorHandler = require("./middleware/errorHandler");
 const AppError = require("./utils/AppError");
 const app = express();
 const server = http.createServer(app);
+const adminRoutes = require("./routes/admin");
+
 
 /* ==============================
    Socket.io Setup
@@ -48,7 +50,7 @@ app.use("/api/users", require("./routes/users"));
 app.use("/api/requests", require("./routes/requests"));
 app.use("/api/ngo", require("./routes/ngo"));
 app.use("/api/volunteers", require("./routes/volunteers"));
-app.use("/api/admin", require("./routes/admin"));
+app.use("/api/admin", adminRoutes);
 
 /* ==============================
    Error Handling Middleware

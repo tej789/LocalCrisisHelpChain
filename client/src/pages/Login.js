@@ -12,10 +12,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const auth = useAuth();
-  if(auth.user){
-    return <Navigate to={`/dashboard/${auth.user.role}`} replace />
- }
+const token = localStorage.getItem("token");
 
+if (auth.user && token) {
+  if (auth.user.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
+  return <Navigate to={`/dashboard/${auth.user.role}`} replace />;
+}
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
@@ -26,8 +30,11 @@ export default function Login() {
       const { token, user } = res.data;
       auth.login({ token, user });
 
-      navigate(`/dashboard/${user.role}`);
-
+if (user.role === "admin") {
+  navigate("/admin");
+} else {
+  navigate(`/dashboard/${user.role}`);
+}
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     }

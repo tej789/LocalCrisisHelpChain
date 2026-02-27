@@ -78,33 +78,35 @@ exports.getVolunteers = async (req, res) => {
 ============================ */
 exports.updateLocation = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { longitude, latitude } = req.body || {};
 
-    if (typeof longitude !== 'number' || typeof latitude !== 'number') {
-      return res.status(400).json({ error: 'Invalid coordinates' });
+    const userId = req.user._id || req.user.id;
+    let { longitude, latitude } = req.body;
+
+    longitude = Number(longitude);
+    latitude = Number(latitude);
+
+    if (isNaN(longitude) || isNaN(latitude)) {
+      return res.status(400).json({ error: "Invalid coordinates" });
     }
 
-    const vol = await Volunteer.findById(userId);
-    if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
+    const updated = await Volunteer.findByIdAndUpdate(
+      userId,
+      {
+        location: {
+          type: "Point",
+          coordinates: [longitude, latitude]
+        }
+      },
+      { new: true }
+    );
 
-    vol.location = {
-      type: 'Point',
-      coordinates: [longitude, latitude]
-    };
-
-    await vol.save();
-
-    res.json({
-      message: 'Location updated',
-      location: vol.location
-    });
+    res.json(updated);
 
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update location' });
+    console.error("LOCATION ERROR FULL:", err);
+    res.status(500).json({ error: err.message });
   }
 };
-
 
 /* ============================
    Update availability
@@ -114,23 +116,25 @@ exports.updateAvailability = async (req, res) => {
     const userId = req.user.id;
     const { isAvailable } = req.body;
 
-    if (typeof isAvailable !== 'boolean') {
-      return res.status(400).json({ error: 'isAvailable must be boolean' });
+    if (typeof isAvailable !== "boolean") {
+      return res.status(400).json({ error: "isAvailable must be boolean" });
     }
 
-    const vol = await Volunteer.findById(userId);
-    if (!vol) return res.status(404).json({ error: 'Volunteer not found' });
+    const updated = await Volunteer.findByIdAndUpdate(
+      userId,
+      { $set: { isAvailable } },
+      { new: true, runValidators: true }
+    );
 
-    vol.isAvailable = isAvailable;
-    await vol.save();
+    if (!updated) {
+      return res.status(404).json({ error: "Volunteer not found" });
+    }
 
-    res.json({
-      isAvailable: vol.isAvailable,
-      isVerified: vol.isVerified
-    });
+    res.json({ isAvailable: updated.isAvailable });
 
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update availability' });
+    console.error("Availability Error:", err);
+    res.status(500).json({ error: "Failed to update availability" });
   }
 };
 /* ============================
@@ -145,17 +149,20 @@ exports.updateBasicProfile = async (req, res) => {
       return res.status(400).json({ error: "Name is required" });
     }
 
-    const vol = await Volunteer.findById(userId);
-    if (!vol) return res.status(404).json({ error: "Volunteer not found" });
+    const updated = await Volunteer.findByIdAndUpdate(
+      userId,
+      { $set: { name } },
+      { new: true, runValidators: true }
+    );
 
-    vol.name = name;
-    await vol.save();
+    if (!updated) {
+      return res.status(404).json({ error: "Volunteer not found" });
+    }
 
-    res.json({
-      name: vol.name
-    });
+    res.json({ name: updated.name });
 
   } catch (err) {
+    console.error("Profile Error:", err);
     res.status(500).json({ error: "Failed to update profile" });
   }
 };

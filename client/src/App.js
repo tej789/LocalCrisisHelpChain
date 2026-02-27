@@ -12,6 +12,8 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import ForgotPassword from './pages/ForgotPassword';
+import AdminDashboard from "./pages/AdminDashboard";
+
 
 function App() {
   return (
@@ -23,8 +25,14 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
 <Route path="/volunteer/profile" element={<VolunteerProfile />} />
-
-
+<Route
+  path="/admin"
+  element={
+    <RoleProtectedRoute roles={['admin']}>
+      <AdminDashboard />
+    </RoleProtectedRoute>
+  }
+/>
 
         {/* PROTECTED ROUTES */}
 

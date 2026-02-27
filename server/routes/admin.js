@@ -2,23 +2,85 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { verifyToken, requireRole } = require('../middleware/auth');
-
+const NGO = require('../models/NGO');
+const Volunteer = require('../models/Volunteer');
 // GET /api/admin/pending
 router.get('/pending', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const pending = await User.find({ role: { $in: ['ngo', 'volunteer'] }, verified: false }).select('-password');
-    res.json(pending);
+    const ngos = await NGO.find({ verified: false }).select('-password');
+    const volunteers = await Volunteer.find({ verified: false }).select('-password');
+
+    res.json({
+      ngos,
+      volunteers
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/admin/verify/:id
-router.post('/verify/:id', verifyToken, requireRole('admin'), async (req, res) => {
+
+router.put('/approve-ngo/:id', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { verified: true }, { new: true }).select('-password');
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ message: 'User verified', user });
+   const ngo = await NGO.findByIdAndUpdate(
+  req.params.id,
+  { verified: true },
+  { new: true }
+).select('-password');
+
+    if (!ngo) return res.status(404).json({ error: "NGO not found" });
+
+    res.json({ message: "NGO approved successfully", ngo });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+router.put('/approve-volunteer/:id', verifyToken, requireRole('admin'), async (req, res) => {
+  try {
+   const volunteer = await Volunteer.findByIdAndUpdate(
+  req.params.id,
+  { verified: true, isVerified: true },
+  { new: true }
+).select('-password');
+
+    if (!volunteer) return res.status(404).json({ error: "Volunteer not found" });
+
+    res.json({ message: "Volunteer approved successfully", volunteer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+router.delete('/reject-ngo/:id', verifyToken, requireRole('admin'), async (req, res) => {
+  try {
+    const ngo = await NGO.findByIdAndDelete(req.params.id);
+    if (!ngo) return res.status(404).json({ error: "NGO not found" });
+
+    res.json({ message: "NGO rejected and removed" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+router.delete('/reject-volunteer/:id', verifyToken, requireRole('admin'), async (req, res) => {
+  try {
+    const volunteer = await Volunteer.findByIdAndDelete(req.params.id);
+
+    if (!volunteer) return res.status(404).json({ error: "Volunteer not found" });
+
+    res.json({ message: "Volunteer rejected and removed" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// GET ALL NGOs & Volunteers
+router.get('/all-users', verifyToken, requireRole('admin'), async (req, res) => {
+  try {
+    const ngos = await NGO.find().select('-password');
+    const volunteers = await Volunteer.find().select('-password');
+
+    res.json({
+      ngos,
+      volunteers
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
