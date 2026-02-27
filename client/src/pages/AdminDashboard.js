@@ -16,7 +16,7 @@ const [volStatusFilter, setVolStatusFilter] = useState("all");
 const fetchAllUsers = async () => {
   try {
     const res = await axios.get(
-      "http://localhost:5000/api/admin/all-users",
+     `${API_URL}/api/admin/all-users`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -31,7 +31,7 @@ const fetchAllUsers = async () => {
   const fetchPending = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/admin/pending",
+        `${API_URL}/api/admin/pending`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -50,7 +50,7 @@ const fetchAllUsers = async () => {
 
   const approveNGO = async (id) => {
     await axios.put(
-      `http://localhost:5000/api/admin/approve-ngo/${id}`,
+     `${API_URL}/api/admin/approve-ngo/${id}`,
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -60,7 +60,7 @@ const fetchAllUsers = async () => {
 
   const rejectNGO = async (id) => {
     await axios.delete(
-      `http://localhost:5000/api/admin/reject-ngo/${id}`,
+     `${API_URL}/api/admin/reject-ngo/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
       fetchAllUsers(); 
@@ -69,7 +69,7 @@ const fetchAllUsers = async () => {
 
   const approveVolunteer = async (id) => {
     await axios.put(
-      `http://localhost:5000/api/admin/approve-volunteer/${id}`,
+      `${API_URL}/api/admin/approve-volunteer/${id}`,
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -79,7 +79,7 @@ const fetchAllUsers = async () => {
 
   const rejectVolunteer = async (id) => {
     await axios.delete(
-      `http://localhost:5000/api/admin/reject-volunteer/${id}`,
+      `${API_URL}/api/admin/reject-volunteer/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
       fetchAllUsers(); 
