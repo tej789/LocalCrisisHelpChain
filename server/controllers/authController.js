@@ -6,246 +6,249 @@ const NGO = require('../models/NGO');
 const Volunteer = require('../models/Volunteer');
 
 const { generateOTP, sendOtpEmail } = require('../utils/otpService');
-
+const asyncHandler = require("express-async-handler");
+const AppError = require("../utils/AppError");
 /* =========================
    REGISTER
 ========================= */
-exports.register = async (req, res) => {
-  try {
-    const { name, email, password, contact, role } = req.body;
+exports.register = asyncHandler(async (req, res) => {
 
-    const normalizedRole = role || 'user';
-    if (!['user', 'ngo', 'volunteer'].includes(normalizedRole))
-      return res.status(400).json({ error: 'Invalid role' });
+  const { name, email, password, contact, role } = req.body;
 
-    const [u, n, v] = await Promise.all([
-      User.findOne({ email }),
-      NGO.findOne({ email }),
-      Volunteer.findOne({ email })
-    ]);
+  const normalizedRole = role || "user";
 
-    if (u || n || v)
-      return res.status(400).json({ error: 'Email already in use' });
+  if (!["user", "ngo", "volunteer"].includes(normalizedRole))
+    throw new AppError("Invalid role", 400);
 
-    const hashed = await bcrypt.hash(password, 10);
+  const [u, n, v] = await Promise.all([
+    User.findOne({ email }),
+    NGO.findOne({ email }),
+    Volunteer.findOne({ email })
+  ]);
 
-    /* USER */
-    if (normalizedRole === 'user') {
-      const otp = generateOTP();
+  if (u || n || v)
+    throw new AppError("Email already in use", 400);
 
-      const user = new User({
-        name,
-        email,
-        password: hashed,
-        contact,
-        role: 'user',
-        verified: false,
-        otp,
-        otpExpire: Date.now() + 5 * 60 * 1000
-      });
+  const hashed = await bcrypt.hash(password, 10);
 
-      await user.save();
-      await sendOtpEmail(email, otp);
+  /* USER */
+  if (normalizedRole === "user") {
+    const otp = generateOTP();
 
-      return res.status(201).json({
-        message: 'User registered. OTP sent.'
-      });
-    }
-
-    /* NGO */
-    if (normalizedRole === 'ngo') {
-      const ngo = new NGO({
-        name,
-        email,
-        password: hashed,
-        contact,
-        role: 'ngo',
-        verified: false
-      });
-
-      await ngo.save();
-      return res.status(201).json({
-        message: 'NGO pending verification'
-      });
-    }
-
-    /* VOLUNTEER */
-    const vol = new Volunteer({
+    const user = new User({
       name,
       email,
       password: hashed,
       contact,
-      role: 'volunteer',
+      role: "user",
+      verified: false,
+      otp,
+      otpExpire: Date.now() + 5 * 60 * 1000
+    });
+
+    await user.save();
+    await sendOtpEmail(email, otp);
+
+    return res.status(201).json({
+      success: true,
+      message: "User registered. OTP sent."
+    });
+  }
+
+  /* NGO */
+  if (normalizedRole === "ngo") {
+    const ngo = new NGO({
+      name,
+      email,
+      password: hashed,
+      contact,
+      role: "ngo",
       verified: false
     });
 
-    await vol.save();
-    return res.status(201).json({
-      message: 'Volunteer pending verification'
-    });
+    await ngo.save();
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(201).json({
+      success: true,
+      message: "NGO pending verification"
+    });
   }
-};
+
+  /* VOLUNTEER */
+  const vol = new Volunteer({
+    name,
+    email,
+    password: hashed,
+    contact,
+    role: "volunteer",
+    verified: false
+  });
+
+  await vol.save();
+
+  return res.status(201).json({
+    success: true,
+    message: "Volunteer pending verification"
+  });
+
+});
 
 
 /* =========================
    LOGIN
 ========================= */
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+exports.login = asyncHandler(async (req, res) => {
 
-    let account =
-      await User.findOne({ email }) ||
-      await NGO.findOne({ email }) ||
-      await Volunteer.findOne({ email });
+  const { email, password } = req.body;
 
-    if (!account)
-      return res.status(400).json({ error: 'Invalid credentials' });
+  let account =
+    await User.findOne({ email }) ||
+    await NGO.findOne({ email }) ||
+    await Volunteer.findOne({ email });
 
-    const match = await bcrypt.compare(password, account.password);
-    if (!match)
-      return res.status(400).json({ error: 'Invalid credentials' });
+  if (!account)
+    throw new AppError("Invalid credentials", 400);
 
-    const role = account.role;
+  const match = await bcrypt.compare(password, account.password);
 
-    if ((role === 'ngo' || role === 'volunteer') && !account.verified)
-      return res.status(403).json({ error: 'Account pending verification' });
+  if (!match)
+    throw new AppError("Invalid credentials", 400);
 
-    if (role === 'user' && !account.verified)
-      return res.status(403).json({ error: 'Verify email first' });
+  const role = account.role;
 
-    const token = jwt.sign(
-      { userId: account._id, role },
-      process.env.JWT_SECRET || 'secretkey',
-      { expiresIn: '7d' }
-    );
+  if ((role === "ngo" || role === "volunteer") && !account.verified)
+    throw new AppError("Account pending verification", 403);
 
-    res.json({
-      token,
-      user: {
-        id: account._id,
-        name: account.name,
-        email: account.email,
-        role,
-         contact: account.contact, 
-        verified: account.verified,
-        isVerified: account.isVerified,
-        isAvailable: account.isAvailable
-      }
-    });
+  if (role === "user" && !account.verified)
+    throw new AppError("Verify email first", 403);
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  const token = jwt.sign(
+    { userId: account._id, role },
+    process.env.JWT_SECRET || "secretkey",
+    { expiresIn: "7d" }
+  );
+
+  res.status(200).json({
+    success: true,
+    token,
+    user: {
+      id: account._id,
+      name: account.name,
+      email: account.email,
+      role,
+      contact: account.contact,
+      verified: account.verified,
+      isVerified: account.isVerified,
+      isAvailable: account.isAvailable
+    }
+  });
+
+});
 /////////////
-exports.verifyOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
+exports.verifyOtp = asyncHandler(async (req, res) => {
 
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ error: "User not found" });
+  const { email, otp } = req.body;
 
-    if (user.otp != otp)
-      return res.status(400).json({ error: "Invalid OTP" });
+  const user = await User.findOne({ email });
 
-    user.verified = true;
-    user.otp = null;
-    user.otpExpire = null;
+  if (!user)
+    throw new AppError("User not found", 400);
+if (user.otp !== otp)
+  throw new AppError("Invalid OTP", 400);
 
-    await user.save();
+if (user.otpExpire < Date.now())
+  throw new AppError("OTP expired", 400);
 
-    res.json({ message: "OTP verified successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  user.verified = true;
+  user.otp = null;
+  user.otpExpire = null;
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "OTP verified successfully"
+  });
+
+});
 /////////
-exports.resendOtp = async (req, res) => {
-  try {
-    const { email } = req.body;
+exports.resendOtp = asyncHandler(async (req, res) => {
 
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ error: "User not found" });
+  const { email } = req.body;
 
-    const otp = generateOTP();
+  const user = await User.findOne({ email });
 
-    user.otp = otp;
-    user.otpExpire = Date.now() + 5 * 60 * 1000;
+  if (!user)
+    throw new AppError("User not found", 400);
 
-    await user.save();
-    await sendOtpEmail(email, otp);
+  const otp = generateOTP();
 
-    res.json({ message: "OTP resent successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-exports.forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
+  user.otp = otp;
+  user.otpExpire = Date.now() + 5 * 60 * 1000;
 
-    let account =
-      await User.findOne({ email }) ||
-      await NGO.findOne({ email }) ||
-      await Volunteer.findOne({ email });
+  await user.save();
+  await sendOtpEmail(email, otp);
 
-    if (!account)
-      return res.status(400).json({ error: "Email not found" });
+  res.status(200).json({
+    success: true,
+    message: "OTP resent successfully"
+  });
 
-    const otp = generateOTP();
+});
+exports.forgotPassword = asyncHandler(async (req, res) => {
 
-    account.otp = otp;
-    account.otpExpire = Date.now() + 5 * 60 * 1000;
+  const { email } = req.body;
 
-    await account.save();
-    await sendOtpEmail(email, otp, true);
+  let account =
+    await User.findOne({ email }) ||
+    await NGO.findOne({ email }) ||
+    await Volunteer.findOne({ email });
 
-    res.json({ message: "Password reset OTP sent" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-exports.resetPassword = async (req, res) => {
-  try {
-    const { email, otp, newPassword } = req.body;
+  if (!account)
+    throw new AppError("Email not found", 400);
 
-    let account =
-      await User.findOne({ email }) ||
-      await NGO.findOne({ email }) ||
-      await Volunteer.findOne({ email });
+  const otp = generateOTP();
 
-    if (!account || account.otp != otp)
-      return res.status(400).json({ error: "Invalid OTP" });
+  account.otp = otp;
+  account.otpExpire = Date.now() + 5 * 60 * 1000;
 
-    if (account.otpExpire < Date.now())
-      return res.status(400).json({ error: "OTP expired" });
+  await account.save();
+  await sendOtpEmail(email, otp, true);
 
-    const hashed = await bcrypt.hash(newPassword, 10);
+  res.status(200).json({
+    success: true,
+    message: "Password reset OTP sent"
+  });
 
-    account.password = hashed;
-    account.otp = null;
-    account.otpExpire = null;
+});
+exports.resetPassword = asyncHandler(async (req, res) => {
 
-    await account.save();
+  const { email, otp, newPassword } = req.body;
 
-    res.json({ message: "Password reset successful" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+  let account =
+    await User.findOne({ email }) ||
+    await NGO.findOne({ email }) ||
+    await Volunteer.findOne({ email });
 
-module.exports = {
-  register: exports.register,
-  login: exports.login,
-  verifyOtp: exports.verifyOtp,
-  resendOtp: exports.resendOtp,
-  forgotPassword: exports.forgotPassword,
-  resetPassword: exports.resetPassword
-};
+  if (!account || account.otp !== otp)
+    throw new AppError("Invalid OTP", 400);
+
+  if (account.otpExpire < Date.now())
+    throw new AppError("OTP expired", 400);
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+
+  account.password = hashed;
+  account.otp = null;
+  account.otpExpire = null;
+
+  await account.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Password reset successful"
+  });
+
+});
+module.exports = exports;
 
