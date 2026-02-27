@@ -166,6 +166,7 @@ useEffect(() => {
         ))
       )}
 
+
       {/* ================= ALL NGOs ================= */}
 <h2 style={{ marginTop: "60px" }}>All NGOs</h2>
 <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
