@@ -37,6 +37,7 @@ const VolunteerSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+
 /* ✅ Geo index */
 VolunteerSchema.index({ location: '2dsphere' });
 
