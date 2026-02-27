@@ -100,7 +100,6 @@ exports.register = asyncHandler(async (req, res) => {
 exports.login = asyncHandler(async (req, res) => {
 
   const { email, password } = req.body;
-
   let account =
     await User.findOne({ email }) ||
     await NGO.findOne({ email }) ||
