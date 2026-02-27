@@ -3,7 +3,11 @@ const NGOSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   password: String,
-  contact: String,
+  contact: {
+  type: String,
+  required: true,
+  trim: true
+},
   role: { type: String, default: 'ngo' },
   verified: { type: Boolean, default: false },
   otp: String,

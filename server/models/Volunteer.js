@@ -2,9 +2,13 @@ const mongoose = require('mongoose');
 
 const VolunteerSchema = new mongoose.Schema({
   name: String,
+  contact: {
+  type: String,
+  required: true,
+  trim: true
+},
   email: { type: String, unique: true },
   password: String,
-  contact: String,
   role: { type: String, default: 'volunteer' },
 
   verified: { type: Boolean, default: false },
