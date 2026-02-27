@@ -79,6 +79,7 @@ exports.getVolunteers = async (req, res) => {
 exports.updateLocation = async (req, res) => {
   try {
 
+    
     const userId = req.user._id || req.user.id;
     let { longitude, latitude } = req.body;
 
