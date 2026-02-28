@@ -7,7 +7,7 @@ const AppError = require("../utils/AppError");
    GET PENDING NGOS
 ========================= */
 exports.getPendingNGOs = asyncHandler(async (req, res) => {
-  const ngos = await NGO.find({ verified: false }).select("-password");
+  const ngos = await NGO.find({ verified: false, isDeleted: false }).select("-password");
 
   res.status(200).json({
     success: true,
@@ -20,7 +20,10 @@ exports.getPendingNGOs = asyncHandler(async (req, res) => {
    GET PENDING VOLUNTEERS
 ========================= */
 exports.getPendingVolunteers = asyncHandler(async (req, res) => {
-  const volunteers = await Volunteer.find({ verified: false }).select("-password");
+  const volunteers = await Volunteer.find({
+    verified: false,
+    isDeleted: false
+  }).select("-password");
 
   res.status(200).json({
     success: true,
@@ -33,8 +36,10 @@ exports.getPendingVolunteers = asyncHandler(async (req, res) => {
    APPROVE NGO
 ========================= */
 exports.approveNGO = asyncHandler(async (req, res) => {
-  const ngo = await NGO.findById(req.params.id);
-
+const ngo = await NGO.findOne({
+  _id: req.params.id,
+  isDeleted: false
+});
   if (!ngo) throw new AppError("NGO not found", 404);
 
   ngo.verified = true;
@@ -67,15 +72,17 @@ exports.approveVolunteer = asyncHandler(async (req, res) => {
    REJECT NGO
 ========================= */
 exports.rejectNGO = asyncHandler(async (req, res) => {
-  const ngo = await NGO.findById(req.params.id);
+  const ngo = await NGO.findByIdAndUpdate(
+    req.params.id,
+    { isDeleted: true },
+    { new: true }
+  );
 
   if (!ngo) throw new AppError("NGO not found", 404);
 
-  await ngo.deleteOne();
-
   res.status(200).json({
     success: true,
-    message: "NGO rejected and removed"
+    message: "NGO soft deleted successfully"
   });
 });
 
@@ -83,14 +90,16 @@ exports.rejectNGO = asyncHandler(async (req, res) => {
    REJECT VOLUNTEER
 ========================= */
 exports.rejectVolunteer = asyncHandler(async (req, res) => {
-  const volunteer = await Volunteer.findById(req.params.id);
+  const volunteer = await Volunteer.findByIdAndUpdate(
+    req.params.id,
+    { isDeleted: true },
+    { new: true }
+  );
 
   if (!volunteer) throw new AppError("Volunteer not found", 404);
 
-  await volunteer.deleteOne();
-
   res.status(200).json({
     success: true,
-    message: "Volunteer rejected and removed"
+    message: "Volunteer soft deleted successfully"
   });
 });

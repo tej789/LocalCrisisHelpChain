@@ -18,7 +18,7 @@ const VolunteerSchema = new mongoose.Schema({
 
   // Availability flag
   isAvailable: { type: Boolean, default: false },
-
+isDeleted: { type: Boolean, default: false },
   // ✅ Location for distance calculation
   location: {
     type: {

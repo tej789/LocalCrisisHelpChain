@@ -1,69 +1,73 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import AdminLayout from "../components/admin/AdminLayout"; // ✅ correct path
 
 const AdminDashboard = () => {
-    const [allNgos, setAllNgos] = useState([]);
-const [allVolunteers, setAllVolunteers] = useState([]);
+  const [allNgos, setAllNgos] = useState([]);
+  const [allVolunteers, setAllVolunteers] = useState([]);
   const [ngos, setNgos] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [volSearch, setVolSearch] = useState("");
+  const [volStatusFilter, setVolStatusFilter] = useState("all");
+
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-const [search, setSearch] = useState("");
-const [statusFilter, setStatusFilter] = useState("all");
-const [volSearch, setVolSearch] = useState("");
-const [volStatusFilter, setVolStatusFilter] = useState("all");
-const fetchAllUsers = async () => {
-  try {
-    const res = await axios.get(
-     `${process.env.REACT_APP_API_URL}/api/admin/all-users`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
 
-    setAllNgos(res.data.ngos);
-    setAllVolunteers(res.data.volunteers);
-  } catch (err) {
-    console.error(err);
-  }
-};
+  /* ================= FETCH FUNCTIONS ================= */
+
+  const fetchAllUsers = async () => {
+    try {
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/admin/all-users`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setAllNgos(res.data.ngos);
+      setAllVolunteers(res.data.volunteers);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchPending = async () => {
     try {
       const res = await axios.get(
         `${process.env.REACT_APP_API_URL}/api/admin/pending`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setNgos(res.data.ngos);
       setVolunteers(res.data.volunteers);
-    }catch (err) {
-  console.error(err);
-
-  if (err.response?.status === 401 || err.response?.status === 403) {
-    localStorage.clear();
-    navigate("/login", { replace: true });
-  }
-}
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.clear();
+        navigate("/login", { replace: true });
+      }
+    }
   };
+
+  /* ================= ACTIONS ================= */
 
   const approveNGO = async (id) => {
     await axios.put(
-     `${process.env.REACT_APP_API_URL}/api/admin/approve-ngo/${id}`,
+      `${process.env.REACT_APP_API_URL}/api/admin/approve-ngo/${id}`,
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
-      fetchAllUsers(); 
+    fetchAllUsers();
     fetchPending();
   };
 
   const rejectNGO = async (id) => {
     await axios.delete(
-     `${process.env.REACT_APP_API_URL}/api/admin/reject-ngo/${id}`,
+      `${process.env.REACT_APP_API_URL}/api/admin/reject-ngo/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-      fetchAllUsers(); 
+    fetchAllUsers();
     fetchPending();
   };
 
@@ -73,7 +77,7 @@ const fetchAllUsers = async () => {
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
-      fetchAllUsers(); 
+    fetchAllUsers();
     fetchPending();
   };
 
@@ -82,49 +86,79 @@ const fetchAllUsers = async () => {
       `${process.env.REACT_APP_API_URL}/api/admin/reject-volunteer/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-      fetchAllUsers(); 
+    fetchAllUsers();
     fetchPending();
   };
 
   const handleLogout = () => {
-  localStorage.clear();
-  navigate("/login", { replace: true });
-};
-useEffect(() => {
-  if (!token) {
+    localStorage.clear();
     navigate("/login", { replace: true });
-    return;
-  }
- fetchAllUsers();  
-  fetchPending();
-}, [token]);
+  };
 
+  /* ================= EFFECT ================= */
+
+  useEffect(() => {
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+    fetchAllUsers();
+    fetchPending();
+  }, [token]);
+
+  /* ================= FILTER LOGIC ================= */
+
+  const filteredNgos = allNgos.filter((ngo) => {
+    const name = ngo.name?.toLowerCase() || "";
+    const email = ngo.email?.toLowerCase() || "";
+
+    const matchesSearch =
+      name.includes(search.toLowerCase()) ||
+      email.includes(search.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "approved" && ngo.verified) ||
+      (statusFilter === "pending" && !ngo.verified);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredVolunteers = allVolunteers.filter((vol) => {
+    const name = vol.name?.toLowerCase() || "";
+    const email = vol.email?.toLowerCase() || "";
+
+    const matchesSearch =
+      name.includes(volSearch.toLowerCase()) ||
+      email.includes(volSearch.toLowerCase());
+
+    const matchesStatus =
+      volStatusFilter === "all" ||
+      (volStatusFilter === "approved" && vol.verified) ||
+      (volStatusFilter === "pending" && !vol.verified);
+
+    return matchesSearch && matchesStatus;
+  });
+
+
+
+  /* ================= UI ================= */
 
   return (
-    <div style={{ padding: "40px", backgroundColor: "#f4f6f9", minHeight: "100vh" }}>
-      
-      {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "30px" }}>
-        <h1>Admin Dashboard</h1>
-        <button style={logoutBtn} onClick={handleLogout}>
-          Logout
-        </button>
-      </div>
-
-      {/* STATS CARDS */}
-      <div style={{ display: "flex", gap: "20px", marginBottom: "40px" }}>
+    <AdminLayout handleLogout={handleLogout}>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: "20px", marginBottom: "30px" }}>
         <div style={statsCard}>
-          <h3>Pending NGOs</h3>
+          <h4>Pending NGOs</h4>
           <p style={statsNumber}>{ngos.length}</p>
         </div>
-
         <div style={statsCard}>
-          <h3>Pending Volunteers</h3>
+          <h4>Pending Volunteers</h4>
           <p style={statsNumber}>{volunteers.length}</p>
         </div>
       </div>
 
-      {/* NGO SECTION */}
+         {/* NGO SECTION */}
       <h2>Pending NGOs</h2>
       {ngos.length === 0 ? (
         <p>No pending NGOs</p>
@@ -145,7 +179,7 @@ useEffect(() => {
         ))
       )}
 
-      {/* VOLUNTEER SECTION */}
+{/* VOLUNTEER SECTION */}
       <h2 style={{ marginTop: "40px" }}>Pending Volunteers</h2>
       {volunteers.length === 0 ? (
         <p>No pending Volunteers</p>
@@ -166,18 +200,19 @@ useEffect(() => {
         ))
       )}
 
-
-      {/* ================= ALL NGOs ================= */}
+ {/* ================= ALL NGOs ================= */}
 <h2 style={{ marginTop: "60px" }}>All NGOs</h2>
-<div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
+
+<div style={filterContainer}>
   <input
+    style={inputStyle}
     type="text"
-    placeholder="Search..."
+    placeholder="Search NGOs..."
     value={search}
     onChange={(e) => setSearch(e.target.value)}
   />
-
   <select
+    style={inputStyle}
     value={statusFilter}
     onChange={(e) => setStatusFilter(e.target.value)}
   >
@@ -190,50 +225,47 @@ useEffect(() => {
 <table style={tableStyle}>
   <thead>
     <tr>
-      <th>Name</th>
-      <th>Email</th>
-      <th>Status</th>
+      <th style={thStyle}>Name</th>
+      <th style={thStyle}>Email</th>
+      <th style={{ ...thStyle, textAlign: "center" }}>Status</th>
     </tr>
   </thead>
-
   <tbody>
-   {allNgos
-  .filter((ngo) => {
-    const matchesSearch =
-      ngo.name.toLowerCase().includes(search.toLowerCase()) ||
-      ngo.email.toLowerCase().includes(search.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "approved" && ngo.verified) ||
-      (statusFilter === "pending" && !ngo.verified);
-
-    return matchesSearch && matchesStatus;
-  })
-  .map((ngo) => (
-    <tr key={ngo._id}>
-      <td>{ngo.name}</td>
-      <td>{ngo.email}</td>
-      <td>
-        <span style={badgeStyle(ngo.verified)}>
-          {ngo.verified ? "Approved" : "Pending"}
-        </span>
-      </td>
-    </tr>
-  ))}
+    {filteredNgos.length === 0 ? (
+      <tr>
+        <td colSpan="3" style={emptyStyle}>
+          No NGOs found
+        </td>
+      </tr>
+    ) : (
+      filteredNgos.map((ngo) => (
+        <tr key={ngo._id} style={rowStyle}>
+          <td style={tdStyle}>{ngo.name}</td>
+          <td style={tdStyle}>{ngo.email}</td>
+          <td style={{ ...tdStyle, textAlign: "center" }}>
+            <span style={badgeStyle(ngo.verified)}>
+              {ngo.verified ? "Approved" : "Pending"}
+            </span>
+          </td>
+        </tr>
+      ))
+    )}
   </tbody>
 </table>
+
 {/* ================= ALL VOLUNTEERS ================= */}
-<h2 style={{ marginTop: "40px" }}>All Volunteers</h2>
-<div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
+<h2 style={{ marginTop: "60px" }}>All Volunteers</h2>
+
+<div style={filterContainer}>
   <input
+    style={inputStyle}
     type="text"
     placeholder="Search Volunteers..."
     value={volSearch}
     onChange={(e) => setVolSearch(e.target.value)}
   />
-
   <select
+    style={inputStyle}
     value={volStatusFilter}
     onChange={(e) => setVolStatusFilter(e.target.value)}
   >
@@ -243,110 +275,133 @@ useEffect(() => {
   </select>
 </div>
 
-
 <table style={tableStyle}>
   <thead>
     <tr>
-      <th>Name</th>
-      <th>Email</th>
-      <th>Status</th>
+      <th style={thStyle}>Name</th>
+      <th style={thStyle}>Email</th>
+      <th style={{ ...thStyle, textAlign: "center" }}>Status</th>
     </tr>
   </thead>
   <tbody>
-    {allVolunteers.map((vol) => (
-      <tr key={vol._id}>
-        <td>{vol.name}</td>
-        <td>{vol.email}</td>
-        <td>
-          <span
-            style={{
-              padding: "6px 10px",
-              borderRadius: "6px",
-              backgroundColor: vol.verified ? "#d4edda" : "#fff3cd",
-              color: vol.verified ? "#155724" : "#856404",
-              fontWeight: "bold"
-            }}
-          >
-            {vol.verified ? "Approved" : "Pending"}
-          </span>
+    {filteredVolunteers.length === 0 ? (
+      <tr>
+        <td colSpan="3" style={emptyStyle}>
+          No Volunteers found
         </td>
       </tr>
-    ))}
+    ) : (
+      filteredVolunteers.map((vol) => (
+        <tr key={vol._id} style={rowStyle}>
+          <td style={tdStyle}>{vol.name}</td>
+          <td style={tdStyle}>{vol.email}</td>
+          <td style={{ ...tdStyle, textAlign: "center" }}>
+            <span style={badgeStyle(vol.verified)}>
+              {vol.verified ? "Approved" : "Pending"}
+            </span>
+          </td>
+        </tr>
+      ))
+    )}
   </tbody>
 </table>
-    </div>
+    </AdminLayout>
   );
 };
-
 
 /* ===== Styles ===== */
 
 const cardStyle = {
-  backgroundColor: "#ffffff",
-  padding: "20px",
-  marginBottom: "20px",
-  borderRadius: "10px",
-  boxShadow: "0 4px 8px rgba(0,0,0,0.05)"
+  backgroundColor: "#fff",
+  padding: "15px",
+  marginBottom: "15px",
+  borderRadius: "8px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
 };
 
 const approveBtn = {
-  backgroundColor: "#4CAF50",
-  color: "white",
-  padding: "8px 14px",
+  backgroundColor: "#16a34a",
+  color: "#fff",
+  padding: "6px 12px",
   border: "none",
   borderRadius: "6px",
-  marginRight: "10px",
-  cursor: "pointer"
+  marginRight: "10px"
 };
 
 const rejectBtn = {
-  backgroundColor: "#f44336",
-  color: "white",
-  padding: "8px 14px",
+  backgroundColor: "#dc2626",
+  color: "#fff",
+  padding: "6px 12px",
   border: "none",
-  borderRadius: "6px",
-  cursor: "pointer"
-};
-
-const logoutBtn = {
-  backgroundColor: "#333",
-  color: "white",
-  padding: "8px 14px",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer"
+  borderRadius: "6px"
 };
 
 const statsCard = {
   flex: 1,
   padding: "20px",
+  background: "#fff",
   borderRadius: "12px",
-  backgroundColor: "#ffffff",
   textAlign: "center",
   boxShadow: "0 4px 8px rgba(0,0,0,0.05)"
 };
 
 const statsNumber = {
-  fontSize: "28px",
-  fontWeight: "bold",
-  marginTop: "10px"
+  fontSize: "26px",
+  fontWeight: "bold"
 };
+
+const filterContainer = {
+  display: "flex",
+  gap: "15px",
+  marginBottom: "20px",
+  alignItems: "center",
+};
+
+const inputStyle = {
+  padding: "8px 12px",
+  borderRadius: "6px",
+  border: "1px solid #d1d5db",
+};
+
 const tableStyle = {
   width: "100%",
-  borderCollapse: "collapse",
-  marginTop: "20px",
+  borderCollapse: "separate",
+  borderSpacing: "0 14px",
+};
+
+const thStyle = {
+  textAlign: "left",
+  padding: "12px 20px",
+  fontSize: "14px",
+  fontWeight: "600",
+  color: "#374151",
+};
+
+const rowStyle = {
   backgroundColor: "#ffffff",
-  borderRadius: "10px",
-  overflow: "hidden",
-  boxShadow: "0 4px 8px rgba(0,0,0,0.05)"
+  boxShadow: "0 4px 10px rgba(0,0,0,0.04)",
+  borderRadius: "12px",
+};
+
+const tdStyle = {
+  padding: "16px 20px",
+  fontSize: "14px",
+  color: "#111827",
+};
+
+const emptyStyle = {
+  textAlign: "center",
+  padding: "30px",
+  color: "#6b7280",
 };
 
 const badgeStyle = (verified) => ({
-  padding: "6px 12px",
-  borderRadius: "20px",
-  backgroundColor: verified ? "#d4edda" : "#fff3cd",
-  color: verified ? "#155724" : "#856404",
-  fontWeight: "bold",
-  fontSize: "14px"
+  display: "inline-block",
+  padding: "6px 16px",
+  borderRadius: "999px",
+  backgroundColor: verified ? "#dcfce7" : "#fef3c7",
+  color: verified ? "#166534" : "#92400e",
+  fontWeight: "600",
+  fontSize: "13px",
 });
 export default AdminDashboard;

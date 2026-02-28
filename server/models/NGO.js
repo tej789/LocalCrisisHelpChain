@@ -10,6 +10,7 @@ const NGOSchema = new mongoose.Schema({
 },
   role: { type: String, default: 'ngo' },
   verified: { type: Boolean, default: false },
+  isDeleted: { type: Boolean, default: false },
   otp: String,
   otpExpire: Date
 }, { timestamps: true });

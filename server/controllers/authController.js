@@ -12,11 +12,9 @@ const AppError = require("../utils/AppError");
    REGISTER
 ========================= */
 exports.register = asyncHandler(async (req, res) => {
-
   const { name, email, password, contact, role } = req.body;
 
-  const normalizedRole = role || "user";
-
+const normalizedRole = (role || "user").toLowerCase();
 if (!["user", "ngo", "volunteer", "admin"].includes(normalizedRole))    throw new AppError("Invalid role", 400);
 
   const [u, n, v] = await Promise.all([
