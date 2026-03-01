@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const sidebarStyle = {
-  width: '240px',
+  width: window.innerWidth <= 768 ? '70px' : '240px',
   background: 'linear-gradient(180deg, #2563eb 0%, #1e40af 100%)',
   color: '#ffffff',
   padding: '25px 20px',
