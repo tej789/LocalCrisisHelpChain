@@ -147,8 +147,14 @@ const AdminDashboard = () => {
   return (
     <AdminLayout handleLogout={handleLogout}>
       {/* Stats */}
-      <div style={{ display: "flex", gap: "20px", marginBottom: "30px" }}>
-        <div style={statsCard}>
+<div
+  style={{
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "20px",
+    marginBottom: "30px",
+  }}
+>        <div style={statsCard}>
           <h4>Pending NGOs</h4>
           <p style={statsNumber}>{ngos.length}</p>
         </div>
@@ -222,8 +228,8 @@ const AdminDashboard = () => {
   </select>
 </div>
 
-<table style={tableStyle}>
-  <thead>
+<div style={{ width: "100%", overflowX: "auto" }}>
+  <table style={tableStyle}>  <thead>
     <tr>
       <th style={thStyle}>Name</th>
       <th style={thStyle}>Email</th>
@@ -252,7 +258,7 @@ const AdminDashboard = () => {
     )}
   </tbody>
 </table>
-
+</div>
 {/* ================= ALL VOLUNTEERS ================= */}
 <h2 style={{ marginTop: "60px" }}>All Volunteers</h2>
 
@@ -275,8 +281,8 @@ const AdminDashboard = () => {
   </select>
 </div>
 
-<table style={tableStyle}>
-  <thead>
+<div style={{ width: "100%", overflowX: "auto" }}>
+  <table style={tableStyle}>  <thead>
     <tr>
       <th style={thStyle}>Name</th>
       <th style={thStyle}>Email</th>
@@ -305,6 +311,7 @@ const AdminDashboard = () => {
     )}
   </tbody>
 </table>
+</div>
     </AdminLayout>
   );
 };
@@ -325,7 +332,8 @@ const approveBtn = {
   padding: "6px 12px",
   border: "none",
   borderRadius: "6px",
-  marginRight: "10px"
+  marginRight: "10px",
+  cursor: "pointer", // Added for better UX
 };
 
 const rejectBtn = {
@@ -333,25 +341,28 @@ const rejectBtn = {
   color: "#fff",
   padding: "6px 12px",
   border: "none",
-  borderRadius: "6px"
+  borderRadius: "6px",
+  cursor: "pointer", // Added for better UX
 };
 
 const statsCard = {
-  flex: 1,
+  flex: "1 1 200px", // Allow cards to grow but have a base width
   padding: "20px",
   background: "#fff",
   borderRadius: "12px",
   textAlign: "center",
-  boxShadow: "0 4px 8px rgba(0,0,0,0.05)"
+  boxShadow: "0 4px 8px rgba(0,0,0,0.05)",
 };
 
 const statsNumber = {
   fontSize: "26px",
-  fontWeight: "bold"
+  fontWeight: "bold",
+  margin: "8px 0 0 0", // Adjusted margin
 };
 
 const filterContainer = {
   display: "flex",
+  flexWrap: "wrap",  // This will automatically stack items on smaller screens
   gap: "15px",
   marginBottom: "20px",
   alignItems: "center",
@@ -361,10 +372,12 @@ const inputStyle = {
   padding: "8px 12px",
   borderRadius: "6px",
   border: "1px solid #d1d5db",
+  flex: "1 1 180px", // Allow inputs to grow and shrink
 };
 
 const tableStyle = {
   width: "100%",
+  minWidth: "600px", // CRITICAL: Forces table to scroll instead of squishing
   borderCollapse: "separate",
   borderSpacing: "0 14px",
 };
@@ -375,12 +388,12 @@ const thStyle = {
   fontSize: "14px",
   fontWeight: "600",
   color: "#374151",
+  whiteSpace: "nowrap", // Prevent headers from wrapping
 };
 
 const rowStyle = {
   backgroundColor: "#ffffff",
   boxShadow: "0 4px 10px rgba(0,0,0,0.04)",
-  borderRadius: "12px",
 };
 
 

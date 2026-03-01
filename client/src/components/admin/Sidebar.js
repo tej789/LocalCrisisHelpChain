@@ -1,79 +1,40 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
+
+const Sidebar = ({ isMobile, sidebarOpen }) => {
 
 const sidebarStyle = {
-  width: window.innerWidth <= 768 ? '70px' : '240px',
-  background: 'linear-gradient(180deg, #2563eb 0%, #1e40af 100%)',
-  color: '#ffffff',
-  padding: '25px 20px',
-  display: 'flex',
-  flexDirection: 'column',
+  width: "240px",
+  background: "linear-gradient(180deg, #2563eb 0%, #1e40af 100%)",
+  color: "#ffffff",
+  padding: "25px 20px",
+  position: "fixed",   // ALWAYS fixed
+  left: isMobile ? (sidebarOpen ? "0" : "-260px") : "0",
+  top: 0,
+  height: "100vh",
+  transition: "0.3s ease",
+  zIndex: 1000,
 };
-
-const logoStyle = {
-  fontSize: '22px',
-  fontWeight: 'bold',
-  marginBottom: '40px',
-  color: '#ffffff',
-};
-const navLinkStyle = {
-  color: '#e0e7ff',
-  textDecoration: 'none',
-  padding: '12px 15px',
-  borderRadius: '8px',
-  marginBottom: '10px',
-  fontWeight: '500',
-  transition: 'all 0.2s ease',
-};
-
-const activeLinkStyle = {
-  ...navLinkStyle,
-  backgroundColor: '#ffffff',
-  color: '#1e40af',
-};
-const Sidebar = () => {
-  const location = useLocation();
-
-  // Future-proof active match
-  const isActive = (path) => location.pathname.startsWith(path);
 
   return (
     <aside style={sidebarStyle}>
-      <div style={logoStyle}>LCHC Admin</div>
+      <div style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "40px" }}>
+        LCHC Admin
+      </div>
 
-      <nav>
-       <Link
-  to="/admin"
-  style={isActive('/admin') ? activeLinkStyle : navLinkStyle}
->
-  Dashboard
-</Link>
-
-        {/* Future expansion example */}
-        {/* 
-        <Link
-          to="/admin/ngos"
-          style={
-            isActive("/admin/ngos")
-              ? activeLinkStyle
-              : navLinkStyle
-          }
-        >
-          NGOs
-        </Link>
-
-        <Link
-          to="/admin/volunteers"
-          style={
-            isActive("/admin/volunteers")
-              ? activeLinkStyle
-              : navLinkStyle
-          }
-        >
-          Volunteers
-        </Link>
-        */}
-      </nav>
+      <Link
+        to="/admin"
+        style={{
+          color: "#fff",
+          textDecoration: "none",
+          padding: "10px 15px",
+          display: "block",
+          borderRadius: "6px",
+          backgroundColor: "rgba(255,255,255,0.15)"
+        }}
+      >
+        Dashboard
+      </Link>
     </aside>
   );
 };

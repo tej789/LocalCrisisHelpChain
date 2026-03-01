@@ -9,7 +9,7 @@ export function dashboardPathFor(role) {
     case 'volunteer':
       return '/dashboard/volunteer';
     case 'admin':
-      return '/admin-dashboard';
+      return '/admin';
     case 'user':
     case 'community':
       return '/dashboard/community';

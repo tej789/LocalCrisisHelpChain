@@ -1,30 +1,44 @@
-import React from 'react';
+import React from "react";
 
-const navbarStyle = {
-  height: '70px',
-  backgroundColor: '#ffffff',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'flex-end', // Aligns items to the right
-  padding: '0 40px',
-  borderBottom: '1px solid #e0e0e0',
-};
+const TopNavbar = ({ handleLogout, toggleSidebar, isMobile }) => {
 
-const logoutBtn = {
-  backgroundColor: "#dc2626",   // modern red
-  color: "white",
-  padding: "8px 16px",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: "500",
-  transition: "all 0.2s ease"
-};
+  const navbarStyle = {
+    height: "70px",
+    backgroundColor: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    padding: "0 20px",
+    borderBottom: "1px solid #e0e0e0",
+  };
 
-const TopNavbar = ({ handleLogout }) => {
+  const logoutBtn = {
+    marginLeft: "auto",
+    backgroundColor: "#dc2626",
+    color: "white",
+    padding: "8px 16px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  };
+
   return (
     <header style={navbarStyle}>
-      {/* You could add a search bar or user profile icon here */}
+
+      {isMobile && (
+        <button
+          onClick={toggleSidebar}
+          style={{
+            fontSize: "22px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            marginRight: "15px"
+          }}
+        >
+          ☰
+        </button>
+      )}
+
       <button style={logoutBtn} onClick={handleLogout}>
         Logout
       </button>
