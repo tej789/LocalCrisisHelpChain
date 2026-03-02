@@ -46,6 +46,13 @@ useEffect(() => {
     window.location.href = '/login';
   }
 
+  function updateUser(updatedUserData) {
+    setUser(prevUser => {
+      const newUser = { ...prevUser, ...updatedUserData };
+      return newUser;
+    });
+  }
+
   
   return (
     <AuthContext.Provider value={{
@@ -53,6 +60,7 @@ useEffect(() => {
       user,
       login,
       logout,
+      updateUser,
       loading
     }}>
     

@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField } from '@mui/material';
+import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar } from '@mui/material';
 import Grid from '@mui/material/Grid';
+import MenuIcon from '@mui/icons-material/Menu';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -32,6 +33,7 @@ import NotificationBell from '../components/NotificationBell';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 function UserDashboard() {
   
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 const [myRequests, setMyRequests] = useState([]);
@@ -186,50 +188,69 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   return (
     <Box sx={{ py: { xs: 2, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
       
+      {/* Top Navigation Bar with Hamburger Menu */}
+      <AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={() => setSidebarOpen(true)}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            User Dashboard
+          </Typography>
+          
+          <NotificationBell />
+        </Toolbar>
+      </AppBar>
+
+      {/* Sidebar Drawer */}
+      <Drawer
+        anchor="left"
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      >
+        <Box sx={{ width: 250, p: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Menu
+          </Typography>
+          
+          {/* Profile Button */}
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setProfileOpen(true);
+            }}
+          >
+            Profile
+          </Button>
+
+          {/* Logout Button */}
+          <Button
+            fullWidth
+            variant="contained"
+            color="error"
+            sx={{ borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setLogoutOpen(true);
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
+      </Drawer>
+      
       {/* FIXED: container width */}
       <Container maxWidth="lg">
- {/* Header */}
-<Stack
-  direction={{ xs: 'column', sm: 'row' }}
-  alignItems="center"
-  justifyContent={{ xs: 'center', sm: 'space-between' }}
-  spacing={2}
-  sx={{ mb: 2 }}
->
-  <Box sx={{ display: { xs: 'none', sm: 'block' }, width: 96 }} />
-
-  <Typography
-    variant="h4"
-    fontWeight={700}
-    sx={{
-      textAlign: 'center',
-      flex: { sm: 1 }
-    }}
-  >
-    User Dashboard
-  </Typography>
-
-<Box
-  sx={{
-    width: { xs: '100%', sm: 'auto' },
-    display: 'flex',
-    justifyContent: { xs: 'center', sm: 'flex-end' },
-    alignItems: 'center',
-    gap: 1
-  }}
->
-  <NotificationBell />
-
-  <Button
-    variant="outlined"
-    size="small"
-    sx={{ borderRadius: 2, fontWeight: 600 }}
-    onClick={() => setProfileOpen(true)}
-  >
-    Profile
-  </Button>
-</Box>
-</Stack>
 <Dialog
   open={profileOpen}
   onClose={() => setProfileOpen(false)}
