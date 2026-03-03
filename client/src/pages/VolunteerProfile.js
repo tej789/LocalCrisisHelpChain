@@ -228,17 +228,6 @@ const handleSaveProfile = async () => {
       >
         Use My Location
       </Button>
-
-      {/* Logout */}
-      <Button
-        fullWidth
-        variant="contained"
-        color="error"
-        size="medium"
-        onClick={auth.logout}
-      >
-        Logout
-      </Button>
     </Paper>
 
  <Snackbar

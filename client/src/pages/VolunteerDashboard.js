@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar } from '@mui/material';
 import Grid from '@mui/material/Grid';
+import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import HomeIcon from '@mui/icons-material/Home';
@@ -55,6 +56,7 @@ const urgencyPriority = {
 
 
 function VolunteerDashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
 const [locMsg, setLocMsg] = useState('');
 const navigate = useNavigate();
@@ -330,91 +332,115 @@ I will reach you shortly.`
     flexDirection: 'column'
   }}
 >
-{/* Header */}
-
-<Box
-  sx={{
-    display: "flex",
-    flexDirection: { xs: "column", sm: "row" },
-    alignItems: "center",
-    justifyContent: "space-between",
-    mb: 2,
-    gap: 1,
-    textAlign: "center"
-  }}
->
-
-  <Typography
-    variant="h4"
-    sx={{
-      textAlign: "center",
-      width: "100%"
-    }}
-  >
-    Volunteer Dashboard
-  </Typography>
-
-  <Button
-  variant="outlined"
-  onClick={() => navigate("/volunteer/profile")}
->
-  Profile
-</Button>
-
-</Box>
-
-
-  {/* Intro Section */}
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      mb: 2
-    }}
-  >
-    <VolunteerActivismIcon
-      sx={{ fontSize: 56, color: 'primary.main', mb: 1 }}
-    />
-
-    <Typography
-      variant="h6"
-      color="text.secondary"
-      align="center"
-      gutterBottom
+{/* Top Navigation Bar with Hamburger Menu */}
+<AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>
+  <Toolbar>
+    <IconButton
+      edge="start"
+      color="inherit"
+      aria-label="menu"
+      onClick={() => setSidebarOpen(true)}
+      sx={{ mr: 2 }}
     >
-      Help your community by claiming and resolving real-time requests
+      <MenuIcon />
+    </IconButton>
+    
+    <Typography variant="h6" sx={{ flexGrow: 1 }}>
+      Volunteer Dashboard
+    </Typography>
+  </Toolbar>
+</AppBar>
+
+{/* Sidebar Drawer */}
+<Drawer
+  anchor="left"
+  open={sidebarOpen}
+  onClose={() => setSidebarOpen(false)}
+>
+  <Box sx={{ width: 250, p: 2 }}>
+    <Typography variant="h6" sx={{ mb: 2 }}>
+      Menu
+    </Typography>
+    
+    {/* Profile Button */}
+    <Button
+      fullWidth
+      variant="outlined"
+      sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+      onClick={() => {
+        setSidebarOpen(false);
+        navigate("/volunteer/profile");
+      }}
+    >
+      Profile
+    </Button>
+
+    {/* Logout Button */}
+    <Button
+      fullWidth
+      variant="contained"
+      color="error"
+      sx={{ borderRadius: 2, fontWeight: 600 }}
+      onClick={() => {
+        setSidebarOpen(false);
+        auth.logout();
+      }}
+    >
+      Logout
+    </Button>
+  </Box>
+</Drawer>
+
+  {/* Welcome Box - Same as User Dashboard */}
+  <Paper
+    elevation={2}
+    sx={{
+      mb: 4,
+      p: { xs: 2.5, md: 4 },
+      borderRadius: 4,
+      textAlign: "center",
+      background: "#f5f7fa"
+    }}
+  >
+    {/* Logo / Icon */}
+    <VolunteerActivismIcon sx={{ fontSize: 40, mb: 1, color: 'primary.main' }} />
+
+    {/* Title */}
+    <Typography variant="h5" fontWeight={700} gutterBottom>
+      Welcome to Volunteer Dashboard
+    </Typography>
+
+    {/* Subtitle */}
+    <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      View assigned requests and help resolve crisis situations in your community
     </Typography>
 
     {/* View filters */}
-  <Box
-  sx={{
-    mt: 2,
-    display: 'flex',
-    gap: 1,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%'
-  }}
->
- 
+    <Box
+      sx={{
+        mt: 2,
+        display: 'flex',
+        gap: 1,
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        width: '100%'
+      }}
+    >
+      <Button
+        variant={view === 'assigned' ? 'contained' : 'outlined'}
+        onClick={() => setView('assigned')}
+      >
+        My Active
+      </Button>
 
- <Button
-  variant={view === 'assigned' ? 'contained' : 'outlined'}
-  onClick={() => setView('assigned')}
->
-  My Active
-</Button>
-
-<Button
-  variant={view === 'resolved' ? 'contained' : 'outlined'}
-  onClick={() => setView('resolved')}
->
-  My Resolved
-</Button>
-</Box>
-    
-</Box>
+      <Button
+        variant={view === 'resolved' ? 'contained' : 'outlined'}
+        onClick={() => setView('resolved')}
+      >
+        My Resolved
+      </Button>
+    </Box>
+  </Paper>
 
        <Divider sx={{ my: 2 }} />
 <Stack
