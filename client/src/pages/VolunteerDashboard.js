@@ -111,7 +111,7 @@ const handleUseLocation = () => {
   const [availLoading, setAvailLoading] = useState(false);
   // Backward-compatible verified check derived directly from auth.user
   const computedVerified = (auth?.user?.isVerified === true) || (auth?.user?.isVerified === undefined && auth?.user?.verified === true);
-
+ 
 useEffect(() => {
   (async () => {
     try {
