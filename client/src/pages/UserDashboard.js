@@ -186,7 +186,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   const mapCenter = firstWithCoords ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]] : defaultPosition;
 
   return (
-    <Box sx={{ py: { xs: 2, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
+    <Box sx={{ p: { xs: 1, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
       
       {/* Top Navigation Bar with Hamburger Menu */}
       <AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>

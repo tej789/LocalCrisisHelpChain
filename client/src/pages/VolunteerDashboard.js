@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar } from '@mui/material';
+import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -391,6 +391,7 @@ I will reach you shortly.`
   </Box>
 </Drawer>
 
+  <Container maxWidth="lg">
   {/* Welcome Box - Same as User Dashboard */}
   <Paper
     elevation={2}
@@ -418,7 +419,6 @@ I will reach you shortly.`
     {/* View filters */}
     <Box
       sx={{
-        mt: 2,
         display: 'flex',
         gap: 1,
         flexWrap: 'wrap',
@@ -428,14 +428,18 @@ I will reach you shortly.`
     >
       <Button
         variant={view === 'assigned' ? 'contained' : 'outlined'}
+        size="large"
         onClick={() => setView('assigned')}
+        sx={{ px: 4, fontWeight: 600 }}
       >
         My Active
       </Button>
 
       <Button
         variant={view === 'resolved' ? 'contained' : 'outlined'}
+        size="large"
         onClick={() => setView('resolved')}
+        sx={{ px: 4, fontWeight: 600 }}
       >
         My Resolved
       </Button>
@@ -749,7 +753,7 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
       </Snackbar>
      {/* Footer */}
 <Footer text="© 2026 Local Crisis HelpChain · Volunteer Dashboard" />
-
+    </Container>
     </Box>
   );
 }
