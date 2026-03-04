@@ -70,6 +70,7 @@ useEffect(() => {
   fetchRequests();
 }, []);
 
+
   // ================= SOCKET UPDATES =================
   useEffect(() => {
     socket.on('requestAssigned', (updated) => {
