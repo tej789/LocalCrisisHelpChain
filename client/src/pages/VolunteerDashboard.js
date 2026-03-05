@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container } from '@mui/material';
+import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -57,18 +57,17 @@ const urgencyPriority = {
 
 function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
-const [locMsg, setLocMsg] = useState('');
 const navigate = useNavigate();
 // Use device location and save to backend
 const handleUseLocation = () => {
   if (!navigator.geolocation) {
-    setLocMsg('Geolocation not supported');
+    setSnackbar({ open: true, message: 'Geolocation not supported', severity: 'error' });
     return;
   }
 
   setLocLoading(true);
-  setLocMsg('');
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
@@ -80,16 +79,16 @@ const handleUseLocation = () => {
           longitude
         });
 
-        setLocMsg('Location updated successfully');
+        setSnackbar({ open: true, message: 'Location updated successfully', severity: 'success' });
       } catch {
-        setLocMsg('Failed to update location');
+        setSnackbar({ open: true, message: 'Failed to update location', severity: 'error' });
       } finally {
         setLocLoading(false);
       }
     },
     () => {
       setLocLoading(false);
-      setLocMsg('Permission denied');
+      setSnackbar({ open: true, message: 'Permission denied', severity: 'error' });
     }
   );
 };
@@ -111,6 +110,10 @@ const handleUseLocation = () => {
   const [myAvailability, setMyAvailability] = useState(false);
   const [myVerified, setMyVerified] = useState(false);
   const [availLoading, setAvailLoading] = useState(false);
+  // Profile state
+  const [profileName, setProfileName] = useState(auth.user?.name || "");
+  const profileEmail = auth.user?.email || "";
+  const [profileLoading, setProfileLoading] = useState(false);
   // Backward-compatible verified check derived directly from auth.user
   const computedVerified = (auth?.user?.isVerified === true) || (auth?.user?.isVerified === undefined && auth?.user?.verified === true);
  
@@ -181,6 +184,25 @@ useEffect(() => {
     } finally {
       setAvailLoading(false);
     }
+  };
+
+  const handleSaveProfile = async () => {
+    setProfileLoading(true);
+    try {
+      const { data } = await api.patch("/api/volunteers/me/basic", {
+        name: profileName
+      });
+
+      auth.login({
+        token: auth.token,
+        user: { ...auth.user, name: data.name }
+      });
+
+      setSnackbar({ open: true, message: "Name updated successfully", severity: 'success' });
+    } catch (err) {
+      setSnackbar({ open: true, message: err.response?.data?.error || "Update failed", severity: 'error' });
+    }
+    setProfileLoading(false);
   };
 
   const filteredRequests = useMemo(() => {
@@ -369,7 +391,7 @@ I will reach you shortly.`
       sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
       onClick={() => {
         setSidebarOpen(false);
-        navigate("/volunteer/profile");
+        setProfileOpen(true);
       }}
     >
       Profile
@@ -741,6 +763,103 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
           <Button onClick={handleCloseDetailsDialog}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Profile Dialog */}
+      <Dialog
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 4
+          }
+        }}
+      >
+        <Box textAlign="center" mb={2}>
+          <Typography variant="h5" fontWeight={700}>
+            Volunteer Profile
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage your account
+          </Typography>
+        </Box>
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Name"
+          value={profileName}
+          onChange={(e) => setProfileName(e.target.value)}
+          sx={{ mb: 2 }}
+        />
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Email"
+          value={profileEmail}
+          disabled
+          sx={{ mb: 3 }}
+        />
+
+        <Button
+          fullWidth
+          variant="contained"
+          sx={{ mb: 3, fontWeight: 600 }}
+          onClick={handleSaveProfile}
+          disabled={profileLoading}
+        >
+          Save Changes
+        </Button>
+
+        <Box textAlign="center" mb={2}>
+          <Typography variant="body2">
+            Status:{" "}
+            <span
+              style={{
+                color: myAvailability ? "#2e7d32" : "#d32f2f",
+                fontWeight: 600
+              }}
+            >
+              {myAvailability ? "Available" : "Offline"}
+            </span>
+          </Typography>
+        </Box>
+
+        <Button
+          fullWidth
+          variant="contained"
+          size="medium"
+          sx={{ mb: 2 }}
+          onClick={handleToggleAvailability}
+          disabled={availLoading}
+        >
+          {myAvailability ? "Go Offline" : "Go Available"}
+        </Button>
+
+        <Button
+          fullWidth
+          variant="outlined"
+          size="medium"
+          sx={{ mb: 2 }}
+          onClick={handleUseLocation}
+          disabled={locLoading}
+        >
+          Use My Location
+        </Button>
+
+        <Button
+          fullWidth
+          variant="outlined"
+          sx={{ mb: 0 }}
+          onClick={() => setProfileOpen(false)}
+        >
+          Close
+        </Button>
+      </Dialog>
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}

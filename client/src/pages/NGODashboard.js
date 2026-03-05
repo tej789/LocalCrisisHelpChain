@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, Divider, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Button, Chip, Snackbar, Alert
+  Button, Chip, Snackbar, Alert, Drawer, IconButton, AppBar, Toolbar, Dialog, TextField, Container
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
+import MenuIcon from '@mui/icons-material/Menu';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
@@ -27,6 +28,8 @@ const socket = io(process.env.REACT_APP_API_URL);
 
 
 function NGODashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
   const auth = useAuth();
   const [requests, setRequests] = useState([]);
@@ -44,6 +47,14 @@ const [selectedRequest, setSelectedRequest] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const [stats, setStats] = useState(null);
+
+  // NGO Profile State
+  const [profile, setProfile] = useState({
+    name: '',
+    email: '',
+    contact: '',
+    role: 'ngo'
+  });
 useEffect(() => {
   const fetchStats = async () => {
     try {
@@ -97,6 +108,69 @@ useEffect(() => {
       socket.off('newRequest');
     };
   }, []);
+
+  // Load NGO Profile
+  useEffect(() => {
+    const u = auth?.user || {};
+    setProfile({
+      name: u.name || '',
+      email: u.email || '',
+      contact: u.contact || '',
+      role: 'ngo'
+    });
+  }, [auth?.user]);
+
+  const handleProfileChange = (field) => (e) => {
+    setProfile((p) => ({ ...p, [field]: e.target.value }));
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      await api.put(
+        "/api/ngo/update-profile",
+        {
+          name: profile.name,
+          contact: profile.contact
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${auth?.token}`,
+          },
+        }
+      );
+
+      // Reload updated profile from backend
+      const res = await api.get("/api/ngo/me", {
+        headers: {
+          Authorization: `Bearer ${auth?.token}`,
+        },
+      });
+
+      setProfile({
+        name: res.data.name || '',
+        email: res.data.email || '',
+        contact: res.data.contact || '',
+        role: 'ngo'
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Profile updated successfully",
+        severity: "success",
+      });
+
+      setProfileOpen(false);
+
+    } catch (error) {
+      console.error("Profile update failed", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to update profile",
+        severity: "error",
+      });
+    }
+  };
+
 const urgencyPriority = {
   high: 3,
   medium: 2,
@@ -181,64 +255,99 @@ const urgencyPriority = {
     : defaultPosition;
 
   return (
-    <Box sx={{ p: 4, pb: 8, minHeight: '100vh', backgroundColor: 'background.default' }}>
-<Box
-  sx={{
-    display: "flex",
-    flexDirection: { xs: "column", sm: "row" },
-    alignItems: "center",
-    justifyContent: "space-between",
-    mb: 2,
-    gap: 1,
-    textAlign: "center"
-  }}
->
-  <Typography
-    variant="h4"
-    sx={{ width: "100%", fontWeight: 700 }}
-  >
-    NGO Dashboard
-  </Typography>
+    <Box sx={{ p: { xs: 1, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
+      
+      {/* Top Navigation Bar with Hamburger Menu */}
+      <AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={() => setSidebarOpen(true)}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            NGO Dashboard
+          </Typography>
+        </Toolbar>
+      </AppBar>
 
-  <Button
-    variant="outlined"
-    color="error"
-    size="small"
-    onClick={auth.logout}
-    sx={{ alignSelf: { xs: "flex-end", sm: "auto" } }}
-  >
-    Logout
-  </Button>
-</Box>
+      {/* Sidebar Drawer */}
+      <Drawer
+        anchor="left"
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      >
+        <Box sx={{ width: 250, p: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Menu
+          </Typography>
+          
+          {/* Profile Button */}
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setProfileOpen(true);
+            }}
+          >
+            Profile
+          </Button>
 
-      <Divider sx={{ my: 2 }} />   
+          {/* Logout Button */}
+          <Button
+            fullWidth
+            variant="contained"
+            color="error"
+            sx={{ borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              auth.logout();
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
+      </Drawer>
+
+      {/* FIXED: container width */}
+      <Container maxWidth="lg">
+
       {/* HERO SECTION */}
-<Box
-  sx={{
-    textAlign: "center",
-    mb: 4
-  }}
->
-  <GroupsIcon
-    sx={{
-      fontSize: 50,
-      color: "primary.main",
-      mb: 1
-    }}
-  />
+      <Paper
+        elevation={2}
+        sx={{
+          mb: 4,
+          p: { xs: 2.5, md: 4 },
+          borderRadius: 4,
+          textAlign: "center",
+          background: "#f5f7fa"
+        }}
+      >
+        {/* Logo / Icon */}
+        <GroupsIcon sx={{ fontSize: 40, mb: 1, color: 'primary.main' }} />
 
-  <Typography variant="h6" color="text.secondary">
-    Coordinate, assign and resolve crisis support requests efficiently.
-  </Typography>
+        {/* Title */}
+        <Typography variant="h5" fontWeight={700} gutterBottom>
+          Welcome to NGO Dashboard
+        </Typography>
 
-  <Typography
-    variant="body2"
-    color="text.secondary"
-    sx={{ mt: 1 }}
-  >
-    Monitor requests, assign volunteers, and help communities faster.
-  </Typography>
-</Box>
+        {/* Subtitle */}
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Coordinate, assign and resolve crisis support requests efficiently.
+        </Typography>
+
+        {/* Description */}
+        <Typography variant="body2" color="text.secondary">
+          Monitor requests, assign volunteers, and help communities faster.
+        </Typography>
+      </Paper>
 
 {/* STATS */}
 <Grid
@@ -565,8 +674,20 @@ const urgencyPriority = {
 
 
       {/* SNACKBAR */}
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={handleSnackbarClose}>
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
       </Snackbar>
 
       {/* MAP */}
@@ -592,6 +713,85 @@ const urgencyPriority = {
         </Box>
       </Paper>
       
+      {/* NGO Profile Dialog */}
+      <Dialog
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 4
+          }
+        }}
+      >
+        <Box textAlign="center" mb={2}>
+          <Typography variant="h5" fontWeight={700}>
+            NGO Profile
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage your account
+          </Typography>
+        </Box>
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Name"
+          value={profile.name}
+          onChange={handleProfileChange("name")}
+          sx={{ mb: 2 }}
+        />
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Email"
+          value={profile.email}
+          InputProps={{ readOnly: true }}
+          sx={{ mb: 2 }}
+        />
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Phone"
+          value={profile.contact}
+          onChange={handleProfileChange("contact")}
+          sx={{ mb: 2 }}
+        />
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Role"
+          value={profile.role}
+          InputProps={{ readOnly: true }}
+          sx={{ mb: 3 }}
+        />
+
+        <Button
+          fullWidth
+          variant="contained"
+          sx={{ mb: 2, fontWeight: 600 }}
+          onClick={handleSaveChanges}
+        >
+          Save Changes
+        </Button>
+
+        <Button
+          fullWidth
+          variant="outlined"
+          sx={{ mb: 2 }}
+          onClick={() => setProfileOpen(false)}
+        >
+          Close
+        </Button>
+      </Dialog>
+
+      </Container>
+
       <Footer text="© 2026 Local Crisis HelpChain · NGO Dashboard" />
     </Box>
   );

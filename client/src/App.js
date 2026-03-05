@@ -1,15 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import VerifyOtp from "./pages/VerifyOtp";
-import VolunteerProfile from "./pages/VolunteerProfile";
 
 import SubmitRequest from './pages/SubmitRequest';
 import RequestsList from './pages/RequestsList';
 import VolunteerDashboard from './pages/VolunteerDashboard';
 import NGODashboard from './pages/NGODashboard';
 import UserDashboard from './pages/UserDashboard';
-import UserProfile from './pages/UserProfile';
-import UserHelp from './pages/UserHelp';
 import MyRequests from './pages/MyRequests';
 import Register from './pages/Register';
 import Login from './pages/Login';
@@ -27,7 +24,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
-<Route path="/volunteer/profile" element={<VolunteerProfile />} />
 <Route
   path="/admin"
   element={
@@ -70,23 +66,8 @@ function App() {
           }
         />
 
-        <Route
-          path="/user/profile"
-          element={
-            <RoleProtectedRoute roles={['user']}>
-              <UserProfile />
-            </RoleProtectedRoute>
-          }
-        />
+     
 
-        <Route
-          path="/user/help"
-          element={
-            <RoleProtectedRoute roles={['user']}>
-              <UserHelp />
-            </RoleProtectedRoute>
-          }
-        />
 
         <Route
           path="/my-requests"
