@@ -325,18 +325,6 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   >
     Close
   </Button>
-
-  <Button
-    fullWidth
-    variant="contained"
-    color="error"
-    onClick={() => {
-      setProfileOpen(false);
-      setLogoutOpen(true);
-    }}
-  >
-    Logout
-  </Button>
 </Dialog>
 
 
