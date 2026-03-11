@@ -12,7 +12,8 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
@@ -28,6 +29,55 @@ import Footer from '../components/Footer';
 
 const socket = io(process.env.REACT_APP_API_URL);
 
+// Custom Leaflet Icons
+const volunteerIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const requestIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Haversine formula to calculate distance between two coordinates
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Radius of Earth in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  return distance.toFixed(2); // Return distance in km with 2 decimal places
+};
+
+// MapController component to handle dynamic map centering
+const MapController = ({ center, zoom }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (center && center.length === 2) {
+      // Smoothly fly to the new center with animation
+      map.flyTo(center, zoom, {
+        duration: 1.5, // Animation duration in seconds
+        easeLinearity: 0.25
+      });
+    }
+  }, [center, zoom, map]);
+
+  return null;
+};
 
 const typeIcons = {
   food: <RestaurantIcon color="primary" />,
@@ -59,6 +109,7 @@ function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
+  const [volunteerLocation, setVolunteerLocation] = useState(null); // { lat, lng }
 const navigate = useNavigate();
 // Use device location and save to backend
 const handleUseLocation = () => {
@@ -78,6 +129,10 @@ const handleUseLocation = () => {
           latitude,
           longitude
         });
+
+        // Update local state to trigger map re-centering
+        setVolunteerLocation({ lat: latitude, lng: longitude });
+        console.log('Location updated:', { lat: latitude, lng: longitude });
 
         setSnackbar({ open: true, message: 'Location updated successfully', severity: 'success' });
       } catch {
@@ -129,6 +184,66 @@ useEffect(() => {
     }
   })();
 }, []);
+
+  // Get volunteer's location: prioritize GPS, fallback to backend saved location
+  useEffect(() => {
+    let isGPSLocationSet = false;
+
+    // Try to get current GPS location first (preferred)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setVolunteerLocation({ lat: latitude, lng: longitude });
+          isGPSLocationSet = true;
+          console.log('✅ GPS location detected (current):', { lat: latitude, lng: longitude });
+        },
+        (error) => {
+          console.warn('⚠️ GPS permission denied or unavailable:', error.message);
+          // Fallback to backend saved location
+          fetchBackendLocation();
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000, // Reduced timeout to 5s for faster fallback
+          maximumAge: 0
+        }
+      );
+
+      // Also set a timeout to fallback to backend if GPS takes too long
+      setTimeout(() => {
+        if (!isGPSLocationSet) {
+          console.log('⏱️ GPS taking too long, using saved location as fallback...');
+          fetchBackendLocation();
+        }
+      }, 3000); // Wait 3 seconds max for GPS
+    } else {
+      console.warn('Geolocation not supported by this browser');
+      fetchBackendLocation();
+    }
+
+    // Helper function to fetch backend saved location
+    async function fetchBackendLocation() {
+      try {
+        const response = await api.get('/api/volunteers/me');
+        const volunteer = response.data.data || response.data;
+        
+        if (volunteer.location && volunteer.location.coordinates && volunteer.location.coordinates.length === 2) {
+          const [lng, lat] = volunteer.location.coordinates;
+          // Only set backend location if GPS hasn't set it yet
+          setVolunteerLocation(prev => {
+            if (!prev) {
+              console.log('📍 Backend saved location loaded:', { lat, lng });
+              return { lat, lng };
+            }
+            return prev; // Keep GPS location if already set
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch volunteer location:', err.message);
+      }
+    }
+  }, []);
 
   // Initialize availability and verification from auth user
   useEffect(() => {
@@ -333,10 +448,19 @@ if (Array.isArray(response.data.data)) {
   const uniqueTypes = Array.from(new Set(requests.map((req) => req.type))).filter(Boolean);
   const uniqueUrgencies = Array.from(new Set(requests.map((req) => req.urgency))).filter(Boolean);
 
-  // Find the first request with coordinates for map center, or use a default
-  const firstWithCoords = filteredRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
-  const defaultPosition = [20.5937, 78.9629]; // Center of India as a fallback
-  const mapCenter = firstWithCoords ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]] : defaultPosition;
+  // Map center: prioritize volunteer location, then first request, then default (Vadodara)
+  const defaultPosition = [22.3072, 73.1812]; // Vadodara, Gujarat
+  let mapCenter = defaultPosition;
+  
+  if (volunteerLocation) {
+    mapCenter = [volunteerLocation.lat, volunteerLocation.lng];
+  } else {
+    const firstWithCoords = filteredRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
+    if (firstWithCoords) {
+      mapCenter = [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]];
+    }
+  }
+
 const whatsappMessage = selectedRequest
   ? encodeURIComponent(
       `Hello ${selectedRequest.name}, 
@@ -673,25 +797,86 @@ I will reach you shortly.`
       </Box>
       {/* Map at the bottom */}
       <Paper elevation={1} sx={{ p: 2, mt: 4, width: '100%', borderRadius: 2, boxShadow: 1 }}>
-        <Typography variant="h6" gutterBottom>Live Request Map</Typography>
+        <Typography variant="h6" gutterBottom>
+          Live Request Map {volunteerLocation && <Chip label="Your Location Detected" color="primary" size="small" sx={{ ml: 1 }} />}
+        </Typography>
         <Box sx={{ height: { xs: 240, md: 450 }, width: '100%' }}>
-          <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
+          <MapContainer center={mapCenter} zoom={volunteerLocation ? 12 : 6} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {filteredRequests.filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2).map((req) => (
+            
+            {/* Dynamic map controller - smoothly centers map when volunteer location changes */}
+            <MapController center={mapCenter} zoom={volunteerLocation ? 12 : 6} />
+            
+            {/* Volunteer Location Marker (Blue) */}
+            {volunteerLocation && (
               <Marker
-                key={req._id || req.id}
-                position={[req.location.coordinates[1], req.location.coordinates[0]]}
+                position={[volunteerLocation.lat, volunteerLocation.lng]}
+                icon={volunteerIcon}
               >
                 <Popup>
-                  <Typography variant="subtitle1"><strong>{req.type}</strong> ({req.urgency})</Typography>
-                  <Typography variant="body2">{req.description}</Typography>
-                  <Typography variant="caption">{req.location?.address || JSON.stringify(req.location)}</Typography>
+                  <Typography variant="subtitle1" fontWeight={600} color="primary">
+                    📍 Your Location
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Lat: {volunteerLocation.lat.toFixed(4)}, Lng: {volunteerLocation.lng.toFixed(4)}
+                  </Typography>
                 </Popup>
               </Marker>
-            ))}
+            )}
+
+            {/* Crisis Request Markers (Red) */}
+            {filteredRequests
+              .filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2)
+              .map((req) => {
+                const reqLat = req.location.coordinates[1];
+                const reqLng = req.location.coordinates[0];
+                
+                // Prevent crashes if lat or lng is invalid
+                if (!reqLat || !reqLng || isNaN(reqLat) || isNaN(reqLng)) {
+                  return null;
+                }
+
+                // Calculate distance if volunteer location is available
+                let distance = null;
+                if (volunteerLocation) {
+                  distance = calculateDistance(
+                    volunteerLocation.lat,
+                    volunteerLocation.lng,
+                    reqLat,
+                    reqLng
+                  );
+                }
+
+                return (
+              <Marker
+                key={req._id || req.id}
+                position={[reqLat, reqLng]}
+                icon={requestIcon}
+              >
+                <Popup>
+                  <Box sx={{ minWidth: 200 }}>
+                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                      {req.type || 'Request'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      <strong>Urgency:</strong> {req.urgency || 'N/A'}
+                    </Typography>
+                    {distance && (
+                      <Typography variant="body2" color="primary" fontWeight={600} gutterBottom>
+                        📏 Distance: {distance} km
+                      </Typography>
+                    )}
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      {req.description || 'No description'}
+                    </Typography>
+                  </Box>
+                </Popup>
+              </Marker>
+                );
+              })}
           </MapContainer>
         </Box>
       </Paper>
