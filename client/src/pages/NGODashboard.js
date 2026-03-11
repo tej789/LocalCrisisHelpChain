@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Paper, Divider, FormControl, InputLabel, Select, MenuItem,
+  Box, Typography, Paper, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Button, Chip, Snackbar, Alert, Drawer, IconButton, AppBar, Toolbar, Dialog, TextField, Container
 } from '@mui/material';
@@ -11,13 +11,9 @@ import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
 
 import GroupsIcon from '@mui/icons-material/Groups';
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
-import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 
-import { useNavigate } from 'react-router-dom';
+// useNavigate removed (not used)
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
@@ -30,11 +26,9 @@ const socket = io(process.env.REACT_APP_API_URL);
 function NGODashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const navigate = useNavigate();
   const auth = useAuth();
   const [requests, setRequests] = useState([]);
-  const [volunteerNames, setVolunteerNames] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [, setVolunteerNames] = useState({});
 const [selectedRequest, setSelectedRequest] = useState(null);
 
   const [typeFilter, setTypeFilter] = useState('');
@@ -186,8 +180,6 @@ const urgencyPriority = {
     return t && u && s;
   })
   .sort((a, b) => {
-  const urgencyPriority = { high: 3, medium: 2, low: 1 };
-
   const ua = urgencyPriority[a.urgency?.toLowerCase()] || 0;
   const ub = urgencyPriority[b.urgency?.toLowerCase()] || 0;
 
