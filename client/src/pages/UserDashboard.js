@@ -329,8 +329,6 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   </Button>
 </Dialog>
 
-
-
 <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
   <DialogTitle>Confirm Logout</DialogTitle>
 
