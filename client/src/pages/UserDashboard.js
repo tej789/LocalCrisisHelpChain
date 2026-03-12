@@ -26,6 +26,7 @@ import {
 import LogoutIcon from "@mui/icons-material/Logout";
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import NotificationBell from '../components/NotificationBell';
+import VolunteerLocationMap from '../components/VolunteerLocationMap';
 
 
 
@@ -36,6 +37,7 @@ function UserDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState(null); // Track volunteer feature
 const [myRequests, setMyRequests] = useState([]);
 const [pagination, setPagination] = useState(null);
 const [communityRequests, setCommunityRequests] = useState([]);  const [loading, setLoading] = useState(true);
@@ -444,11 +446,33 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   {req.status === "resolved" &&
     `✅ Resolved by ${req.assignedTo?.name || "Volunteer"}`}
 </Typography>
+
+          {/* Track Volunteer Button - Only show when status is assigned */}
+          {req.status === "assigned" && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              sx={{ mt: 2, borderRadius: 2 }}
+              onClick={() => setSelectedRequestId(req._id)}
+            >
+              📍 Track Volunteer
+            </Button>
+          )}
         </CardContent>
       </Card>
     ))
   )}
 </Paper>
+
+     {/* Track Volunteer Map - Show when a request is selected */}
+     {selectedRequestId && (
+       <VolunteerLocationMap 
+         requestId={selectedRequestId} 
+         onClose={() => setSelectedRequestId(null)}
+       />
+     )}
+
      {/* ================= MY REQUESTS SUMMARY ================= */}
 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
   🔹 My Requests Summary

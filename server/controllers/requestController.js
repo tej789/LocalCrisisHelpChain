@@ -335,3 +335,50 @@ exports.getRequestStats = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch analytics" });
   }
 };
+
+/* =========================
+   GET VOLUNTEER LOCATION FOR TRACKING
+========================= */
+exports.getVolunteerLocation = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+
+    // Find the request
+    const request = await HelpRequest.findById(requestId)
+      .populate('assignedTo', 'name location');
+
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (!request.assignedTo) {
+      return res.status(400).json({ error: 'No volunteer assigned to this request' });
+    }
+
+    const volunteer = request.assignedTo;
+
+    // Extract volunteer location
+    let latitude = null;
+    let longitude = null;
+
+    if (volunteer.location && volunteer.location.coordinates && volunteer.location.coordinates.length === 2) {
+      [longitude, latitude] = volunteer.location.coordinates;
+    }
+
+    res.status(200).json({
+      success: true,
+      volunteerName: volunteer.name,
+      latitude,
+      longitude,
+      requestLocation: {
+        latitude: request.location.coordinates[1],
+        longitude: request.location.coordinates[0],
+        address: request.location.address
+      }
+    });
+
+  } catch (err) {
+    console.error('Get volunteer location error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};

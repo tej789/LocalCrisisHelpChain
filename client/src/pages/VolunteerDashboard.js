@@ -12,16 +12,16 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
 import PhoneIcon from '@mui/icons-material/Phone';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-
-
-
+import DirectionsIcon from '@mui/icons-material/Directions';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import NavigationIcon from '@mui/icons-material/Navigation';
 // removed useNavigate; volunteers don't file requests from this dashboard
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -39,6 +39,7 @@ const volunteerIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+// Static request icons (same size for normal and selected)
 const requestIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -63,18 +64,21 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 // MapController component to handle dynamic map centering
-const MapController = ({ center, zoom }) => {
+const MapController = ({ center, zoom, shouldFitBounds, bounds }) => {
   const map = useMap();
 
   useEffect(() => {
-    if (center && center.length === 2) {
+    if (shouldFitBounds && bounds) {
+      // Auto-zoom to show both volunteer and request with route
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else if (center && center.length === 2) {
       // Smoothly fly to the new center with animation
       map.flyTo(center, zoom, {
         duration: 1.5, // Animation duration in seconds
         easeLinearity: 0.25
       });
     }
-  }, [center, zoom, map]);
+  }, [center, zoom, map, shouldFitBounds, bounds]);
 
   return null;
 };
@@ -111,6 +115,62 @@ function VolunteerDashboard() {
   const [locLoading, setLocLoading] = useState(false);
   const [volunteerLocation, setVolunteerLocation] = useState(null); // { lat, lng }
 const navigate = useNavigate();
+
+  // Add CSS for selected marker animation and mobile popup styling
+  useEffect(() => {
+    const markerStyle = document.createElement('style');
+    markerStyle.id = 'volunteer-marker-style';
+    markerStyle.textContent = `
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.8;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .selected-marker {
+        animation: pulse 2s infinite;
+        filter: brightness(1.2) saturate(1.3);
+      }
+      
+      /* Mobile popup styling */
+      @media (max-width: 768px) {
+        .leaflet-popup-content-wrapper {
+          max-width: 220px !important;
+        }
+        .leaflet-popup-content {
+          max-width: 200px !important;
+          font-size: 13px !important;
+          margin: 10px 12px !important;
+        }
+        .leaflet-popup-tip-container {
+          width: 20px !important;
+          height: 10px !important;
+        }
+      }
+    `;
+    
+    // Only add if not already added
+    if (!document.getElementById('volunteer-marker-style')) {
+      document.head.appendChild(markerStyle);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      const existingStyle = document.getElementById('volunteer-marker-style');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, []);
+
 // Use device location and save to backend
 const handleUseLocation = () => {
   if (!navigator.geolocation) {
@@ -148,6 +208,50 @@ const handleUseLocation = () => {
   );
 };
 
+  // Fetch route from OSRM
+  const fetchRoute = async (requestLat, requestLng, requestId) => {
+    if (!volunteerLocation) return;
+    
+    try {
+      setRouteLoading(true);
+      const url = `https://router.project-osrm.org/route/v1/driving/${volunteerLocation.lng},${volunteerLocation.lat};${requestLng},${requestLat}?overview=full&geometries=geojson`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        
+        // Convert GeoJSON coordinates [lng, lat] to Leaflet format [lat, lng]
+        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        setRouteCoordinates(coordinates);
+
+        // Set distance in km
+        const distanceKm = (route.distance / 1000).toFixed(2);
+        setRouteDistance(distanceKm);
+
+        // Set ETA in minutes
+        const etaMinutes = Math.round(route.duration / 60);
+        setRouteEta(etaMinutes);
+
+        // Calculate bounds for auto-zoom
+        const bounds = L.latLngBounds([
+          [volunteerLocation.lat, volunteerLocation.lng],
+          [requestLat, requestLng]
+        ]);
+        setMapBounds(bounds);
+        setShouldFitBounds(true);
+
+        // Reset after zoom completes
+        setTimeout(() => setShouldFitBounds(false), 500);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch route:', err);
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
   const auth = useAuth();
   console.log('AUTH USER FROM CONTEXT:', auth?.user);
 
@@ -171,6 +275,16 @@ const handleUseLocation = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   // Backward-compatible verified check derived directly from auth.user
   const computedVerified = (auth?.user?.isVerified === true) || (auth?.user?.isVerified === undefined && auth?.user?.verified === true);
+  
+  // State for routing visualization
+  const [selectedMapRequest, setSelectedMapRequest] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null); // For marker highlighting
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [routeDistance, setRouteDistance] = useState(null);
+  const [routeEta, setRouteEta] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [mapBounds, setMapBounds] = useState(null); // For auto-zoom
+  const [shouldFitBounds, setShouldFitBounds] = useState(false);
  
 useEffect(() => {
   (async () => {
@@ -321,12 +435,28 @@ useEffect(() => {
   };
 
   const filteredRequests = useMemo(() => {
-  return requests.filter((req) => {
-    const typeMatch = typeFilter ? req.type === typeFilter : true;
-    const urgencyMatch = urgencyFilter ? req.urgency === urgencyFilter : true;
-    return typeMatch && urgencyMatch;
-  });
-}, [requests, typeFilter, urgencyFilter]);
+    return requests.filter((req) => {
+      const typeMatch = typeFilter ? req.type === typeFilter : true;
+      const urgencyMatch = urgencyFilter ? req.urgency === urgencyFilter : true;
+      
+      // Filter by distance (50km radius) if volunteer location is available
+      // Increased from 20km to 50km to show more requests
+      let distanceMatch = true;
+      if (volunteerLocation && req.location && req.location.coordinates && req.location.coordinates.length === 2) {
+        const reqLat = req.location.coordinates[1];
+        const reqLng = req.location.coordinates[0];
+        const distance = parseFloat(calculateDistance(
+          volunteerLocation.lat,
+          volunteerLocation.lng,
+          reqLat,
+          reqLng
+        ));
+        distanceMatch = distance <= 50; // Show requests within 50 km
+      }
+      
+      return typeMatch && urgencyMatch && distanceMatch;
+    });
+  }, [requests, typeFilter, urgencyFilter, volunteerLocation]);
 
 const sortedRequests = useMemo(() => {
   return [...filteredRequests].sort((a, b) => {
@@ -376,6 +506,16 @@ const displayedRequests =
     : view === 'resolved'
     ? resolvedRequests
     : activeAssignedRequests;
+
+// Debug logging for map rendering
+console.log('Map Debug:', {
+  view,
+  totalRequests: requests.length,
+  myAssignedRequests: myAssignedRequests.length,
+  activeAssignedRequests: activeAssignedRequests.length,
+  displayedRequests: displayedRequests.length,
+  displayedRequestsWithLocation: displayedRequests.filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2).length
+});
 
   // Legacy claim dialog removed; volunteers claim directly
 
@@ -438,7 +578,8 @@ if (Array.isArray(response.data.data)) {
 
   const handleCloseDetailsDialog = () => {
     setDetailsDialogOpen(false);
-    setSelectedRequest(null);
+    // Don't clear selectedRequest - keep it for reference
+    // This allows the map marker and route to remain visible
   };
 
   if (loading) return <p>Loading requests...</p>;
@@ -796,19 +937,127 @@ I will reach you shortly.`
         </Grid>
       </Box>
       {/* Map at the bottom */}
-      <Paper elevation={1} sx={{ p: 2, mt: 4, width: '100%', borderRadius: 2, boxShadow: 1 }}>
-        <Typography variant="h6" gutterBottom>
-          Live Request Map {volunteerLocation && <Chip label="Your Location Detected" color="primary" size="small" sx={{ ml: 1 }} />}
-        </Typography>
-        <Box sx={{ height: { xs: 240, md: 450 }, width: '100%' }}>
-          <MapContainer center={mapCenter} zoom={volunteerLocation ? 12 : 6} style={{ height: '100%', width: '100%' }}>
+      <Paper 
+        elevation={1} 
+        sx={{ 
+          p: { xs: 1.5, sm: 2 }, 
+          mt: 4, 
+          width: '100%', 
+          borderRadius: { xs: 1.5, sm: 2 }, 
+          boxShadow: 1 
+        }}
+      >
+        {/* Map Header - Stack on mobile */}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' }, 
+            justifyContent: { xs: 'flex-start', sm: 'space-between' }, 
+            gap: { xs: 1, sm: 0 },
+            mb: 2 
+          }}
+        >
+          <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+            Live Request Map {volunteerLocation && (
+              <Chip 
+                label="Your Location Detected" 
+                color="primary" 
+                size="small" 
+                sx={{ ml: 1, display: { xs: 'none', sm: 'inline-flex' } }} 
+              />
+            )}
+          </Typography>
+          <Chip 
+            label={`My Assigned Requests: ${displayedRequests.filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2).length}`}
+            color="secondary"
+            variant="outlined"
+            size="medium"
+            sx={{ 
+              fontWeight: 600,
+              width: { xs: '100%', sm: 'auto' },
+              justifyContent: { xs: 'center', sm: 'flex-start' }
+            }}
+          />
+        </Box>
+        
+        {/* Distance and ETA badges - Stack vertically on mobile */}
+        {routeDistance && routeEta && (
+          <Stack 
+            direction={{ xs: 'column', sm: 'row' }} 
+            spacing={1} 
+            sx={{ mb: 2 }}
+          >
+            <Chip
+              icon={<DirectionsIcon />}
+              label={`Distance: ${routeDistance} km`}
+              color="primary"
+              variant="outlined"
+              size="small"
+              sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'flex-start', sm: 'center' } }}
+            />
+            <Chip
+              icon={<AccessTimeIcon />}
+              label={`ETA: ${routeEta} min`}
+              color="success"
+              variant="outlined"
+              size="small"
+              sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'flex-start', sm: 'center' } }}
+            />
+          </Stack>
+        )}
+        
+        {/* Navigate in Google Maps button - Full width on mobile */}
+        {selectedMapRequest && volunteerLocation && (
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={<NavigationIcon />}
+            href={`https://www.google.com/maps/dir/?api=1&destination=${selectedMapRequest.location.coordinates[1]},${selectedMapRequest.location.coordinates[0]}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ 
+              mb: 2, 
+              textTransform: 'none', 
+              fontWeight: 600,
+              width: { xs: '100%', sm: 'auto' },
+              justifyContent: 'center'
+            }}
+          >
+            Navigate in Google Maps
+          </Button>
+        )}
+        
+        <Box sx={{ 
+          height: { xs: 300, sm: 350, md: 450 }, 
+          width: '100%',
+          borderRadius: { xs: 1.5, sm: 2 },
+          overflow: 'hidden'
+        }}>
+          <MapContainer center={mapCenter} zoom={volunteerLocation ? 12 : 6} style={{ height: '100%', width: '100%', borderRadius: 'inherit' }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
-            {/* Dynamic map controller - smoothly centers map when volunteer location changes */}
-            <MapController center={mapCenter} zoom={volunteerLocation ? 12 : 6} />
+            {/* Dynamic map controller - smoothly centers map when volunteer location changes or auto-zooms to route */}
+            <MapController 
+              center={mapCenter} 
+              zoom={volunteerLocation ? 12 : 6} 
+              shouldFitBounds={shouldFitBounds}
+              bounds={mapBounds}
+            />
+            
+            {/* Route Polyline */}
+            {routeCoordinates.length > 0 && (
+              <Polyline
+                positions={routeCoordinates}
+                color="#2196f3"
+                weight={4}
+                opacity={0.7}
+              />
+            )}
             
             {/* Volunteer Location Marker (Blue) */}
             {volunteerLocation && (
@@ -827,55 +1076,94 @@ I will reach you shortly.`
               </Marker>
             )}
 
-            {/* Crisis Request Markers (Red) */}
-            {filteredRequests
-              .filter(r => r.location && r.location.coordinates && r.location.coordinates.length === 2)
+            {/* Crisis Request Markers (Red) - Show only assigned requests for this volunteer */}
+            {displayedRequests
+              .filter(r => {
+                // Enhanced filtering with logging
+                if (!r.location) {
+                  console.warn('Request missing location:', r._id);
+                  return false;
+                }
+                if (!r.location.coordinates) {
+                  console.warn('Request missing coordinates:', r._id);
+                  return false;
+                }
+                if (r.location.coordinates.length !== 2) {
+                  console.warn('Request invalid coordinates length:', r._id, r.location.coordinates);
+                  return false;
+                }
+                return true;
+              })
               .map((req) => {
-                const reqLat = req.location.coordinates[1];
-                const reqLng = req.location.coordinates[0];
-                
-                // Prevent crashes if lat or lng is invalid
-                if (!reqLat || !reqLng || isNaN(reqLat) || isNaN(reqLng)) {
-                  return null;
-                }
+                try {
+                  const reqLat = req.location.coordinates[1];
+                  const reqLng = req.location.coordinates[0];
+                  
+                  // Prevent crashes if lat or lng is invalid
+                  if (!reqLat || !reqLng || isNaN(reqLat) || isNaN(reqLng)) {
+                    console.warn('Invalid lat/lng for request:', req._id, { lat: reqLat, lng: reqLng });
+                    return null;
+                  }
 
-                // Calculate distance if volunteer location is available
-                let distance = null;
-                if (volunteerLocation) {
-                  distance = calculateDistance(
-                    volunteerLocation.lat,
-                    volunteerLocation.lng,
-                    reqLat,
-                    reqLng
-                  );
-                }
+                  // Calculate distance if volunteer location is available
+                  let distance = null;
+                  if (volunteerLocation) {
+                    distance = calculateDistance(
+                      volunteerLocation.lat,
+                      volunteerLocation.lng,
+                      reqLat,
+                      reqLng
+                    );
+                  }
 
-                return (
+                  console.log('Rendering marker for request:', req._id, { lat: reqLat, lng: reqLng, distance });
+
+                  return (
               <Marker
                 key={req._id || req.id}
                 position={[reqLat, reqLng]}
-                icon={requestIcon}
+                icon={requestIcon} // Use single static icon - always visible
+                eventHandlers={{
+                  click: () => {
+                    // Only update map state for route visualization
+                    // Don't open Details Dialog - let the popup show instead
+                    setSelectedMapRequest(req);
+                    if (volunteerLocation) {
+                      fetchRoute(reqLat, reqLng, req._id);
+                    }
+                  }
+                }}
               >
                 <Popup>
-                  <Box sx={{ minWidth: 200 }}>
-                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                      {req.type || 'Request'}
+                  <Box sx={{ minWidth: 150, maxWidth: 200 }}>
+                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                      🚨 {req.type || 'Request'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      <strong>Urgency:</strong> {req.urgency || 'N/A'}
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      ⚠ {req.urgency || 'N/A'}
                     </Typography>
                     {distance && (
-                      <Typography variant="body2" color="primary" fontWeight={600} gutterBottom>
-                        📏 Distance: {distance} km
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        📏 ~{distance} km (straight-line)
                       </Typography>
                     )}
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      {req.description || 'No description'}
+                    {/* Show OSRM distance if this request is selected and route is calculated */}
+                    {selectedMapRequest && selectedMapRequest._id === req._id && routeDistance && (
+                      <Typography variant="caption" color="primary" fontWeight={600} display="block">
+                        �️ {routeDistance} km (driving)
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                      Click marker for route
                     </Typography>
                   </Box>
                 </Popup>
               </Marker>
                 );
+                } catch (error) {
+                  console.error('Error rendering marker for request:', req._id, error);
+                  return null;
+                }
               })}
           </MapContainer>
         </Box>
@@ -945,6 +1233,21 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
           )}
         </DialogContent>
         <DialogActions>
+          {selectedRequest && selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2 && volunteerLocation && (
+            <Button 
+              variant="outlined" 
+              color="primary"
+              startIcon={<DirectionsIcon />}
+              onClick={() => {
+                const reqLat = selectedRequest.location.coordinates[1];
+                const reqLng = selectedRequest.location.coordinates[0];
+                setSelectedMapRequest(selectedRequest);
+                fetchRoute(reqLat, reqLng, selectedRequest._id);
+              }}
+            >
+              Show Route
+            </Button>
+          )}
           <Button onClick={handleCloseDetailsDialog}>Close</Button>
         </DialogActions>
       </Dialog>
