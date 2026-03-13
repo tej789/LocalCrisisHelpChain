@@ -1014,7 +1014,7 @@ I will reach you shortly.`
             color="primary"
             size="small"
             startIcon={<NavigationIcon />}
-            href={`https://www.google.com/maps/dir/?api=1&destination=${selectedMapRequest.location.coordinates[1]},${selectedMapRequest.location.coordinates[0]}`}
+            href={`https://www.google.com/maps/dir/?api=1&origin=${volunteerLocation.lat},${volunteerLocation.lng}&destination=${selectedMapRequest.location.coordinates[1]},${selectedMapRequest.location.coordinates[0]}&travelmode=driving`}
             target="_blank"
             rel="noopener noreferrer"
             sx={{ 
