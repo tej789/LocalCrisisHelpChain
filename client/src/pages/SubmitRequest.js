@@ -303,7 +303,7 @@ const hasLatLng =
                   </Button>
                 </Box>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   select
                   label="Type of Help"
@@ -320,7 +320,7 @@ const hasLatLng =
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   select
                   label="Urgency"

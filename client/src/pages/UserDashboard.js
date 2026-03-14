@@ -32,6 +32,40 @@ import VolunteerLocationMap from '../components/VolunteerLocationMap';
 
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+// Reusable summary/stat card so layout stays consistent
+const SummaryCard = ({ label, value, color }) => (
+  <Paper
+    sx={{
+      p: 2,
+      textAlign: 'center',
+      borderRadius: 3,
+      minWidth: 120,
+      minHeight: 88,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: 1,
+    }}
+  >
+    <Typography
+      variant="h5"
+      sx={{ fontWeight: 700 }}
+      color={color || 'text.primary'}
+    >
+      {value}
+    </Typography>
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ mt: 0.5 }}
+    >
+      {label}
+    </Typography>
+  </Paper>
+);
+
 function UserDashboard() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -478,26 +512,30 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   🔹 My Requests Summary
 </Typography>
 
-<Grid container spacing={3} sx={{ mb: 4 }}>
-  <Grid item xs={12} sm={4}>
-    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-      <Typography variant="h4">{myTotal}</Typography>
-      <Typography>My Total</Typography>
-    </Paper>
+<Grid
+  container
+  spacing={2}
+  sx={{ mb: 4 }}
+  justifyContent="center"
+>
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard label="My Total" value={myTotal} />
   </Grid>
 
-  <Grid item xs={12} sm={4}>
-    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-      <Typography variant="h4" color="warning.main">{myOpen}</Typography>
-      <Typography>My Open</Typography>
-    </Paper>
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard
+      label="My Open"
+      value={myOpen}
+      color="warning.main"
+    />
   </Grid>
 
-  <Grid item xs={12} sm={4}>
-    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-      <Typography variant="h4" color="success.main">{myResolved}</Typography>
-      <Typography>My Resolved</Typography>
-    </Paper>
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard
+      label="My Resolved"
+      value={myResolved}
+      color="success.main"
+    />
   </Grid>
 </Grid>
 
@@ -506,26 +544,30 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   🔹 Community Overview
 </Typography>
 
-<Grid container spacing={3} sx={{ mb: 6 }}>
-  <Grid item xs={12} sm={4}>
-    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-      <Typography variant="h4">{communityTotal}</Typography>
-      <Typography>Community Total</Typography>
-    </Paper>
+<Grid
+  container
+  spacing={2}
+  sx={{ mb: 6 }}
+  justifyContent="center"
+>
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard label="Community Total" value={communityTotal} />
   </Grid>
 
-  <Grid item xs={12} sm={4}>
-    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-      <Typography variant="h4" color="warning.main">{communityOpen}</Typography>
-      <Typography>Community Open</Typography>
-    </Paper>
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard
+      label="Community Open"
+      value={communityOpen}
+      color="warning.main"
+    />
   </Grid>
 
-  <Grid item xs={12} sm={4}>
-    <Paper sx={{ p: 3, textAlign: "center", borderRadius: 3 }}>
-      <Typography variant="h4" color="info.main">{communityAssigned}</Typography>
-      <Typography>Community Assigned</Typography>
-    </Paper>
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard
+      label="Community Assigned"
+      value={communityAssigned}
+      color="info.main"
+    />
   </Grid>
 </Grid>
        {/* Dashboard Main Row: Charts, Map, Recent Requests */}
