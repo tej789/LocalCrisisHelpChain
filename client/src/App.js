@@ -7,7 +7,6 @@ import RequestsList from './pages/RequestsList';
 import VolunteerDashboard from './pages/VolunteerDashboard';
 import NGODashboard from './pages/NGODashboard';
 import UserDashboard from './pages/UserDashboard';
-import MyRequests from './pages/MyRequests';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
@@ -62,18 +61,6 @@ function App() {
           element={
             <RoleProtectedRoute roles={['user']}>
               <UserDashboard />
-            </RoleProtectedRoute>
-          }
-        />
-
-     
-
-
-        <Route
-          path="/my-requests"
-          element={
-            <RoleProtectedRoute roles={['user']}>
-              <MyRequests />
             </RoleProtectedRoute>
           }
         />

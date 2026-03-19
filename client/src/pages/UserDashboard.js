@@ -72,9 +72,11 @@ function UserDashboard() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null); // Track volunteer feature
-const [myRequests, setMyRequests] = useState([]);
-const [pagination, setPagination] = useState(null);
-const [communityRequests, setCommunityRequests] = useState([]);  const [loading, setLoading] = useState(true);
+  const [myRequests, setMyRequests] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [communityRequests, setCommunityRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showResolvedOnly, setShowResolvedOnly] = useState(false);
   const navigate = useNavigate();
   const auth = useAuth();
   console.log("AUTH:", auth);
@@ -269,6 +271,19 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             Profile
           </Button>
 
+          {/* Resolved Requests shortcut (before Logout) */}
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setShowResolvedOnly(true);
+            }}
+          >
+            Resolved Requests
+          </Button>
+
           {/* Logout Button */}
           <Button
             fullWidth
@@ -390,8 +405,9 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   </DialogActions>
 </Dialog>
 
-
- {/* HERO SECTION */}
+      {/* HERO SECTION – hide when viewing only resolved requests */}
+      {!showResolvedOnly && (
+        <>
 <Paper
   elevation={2}
   sx={{
@@ -429,17 +445,21 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 
 
         <Divider sx={{ my: 3 }} />
+        </>
+      )}
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }}>
   <Typography variant="h6" gutterBottom>
     📌 My Requests
   </Typography>
 
-  {myRequests.length === 0 ? (
+  {myRequests.filter(r => showResolvedOnly ? r.status === "resolved" : r.status !== "resolved").length === 0 ? (
     <Typography color="text.secondary">
       You haven’t submitted any requests yet.
     </Typography>
   ) : (
-    myRequests.map(req => (
+    myRequests
+      .filter(req => (showResolvedOnly ? req.status === "resolved" : req.status !== "resolved"))
+      .map(req => (
 <Card
   key={req._id}
   sx={{
@@ -481,8 +501,8 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     `✅ Resolved by ${req.assignedTo?.name || "Volunteer"}`}
 </Typography>
 
-          {/* Track Volunteer Button - Only show when status is assigned */}
-          {req.status === "assigned" && (
+          {/* Track Volunteer Button - Only show when status is assigned (and not in resolved-only view) */}
+          {!showResolvedOnly && req.status === "assigned" && (
             <Button
               variant="contained"
               color="primary"
@@ -497,8 +517,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
       </Card>
     ))
   )}
-</Paper>
+ </Paper>
 
+      {/* When viewing only resolved requests, hide the rest of the dashboard */}
+      {!showResolvedOnly && (
+        <>
      {/* Track Volunteer Map - Show when a request is selected */}
      {selectedRequestId && (
        <VolunteerLocationMap 
@@ -700,7 +723,9 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
       </Box>
     </Paper>
   </Grid>
-</Grid>
+  </Grid>
+  </>
+  )}
        
         {/* Footer */}
         <Box mt={8} textAlign="center" color="text.secondary" fontSize={16}>

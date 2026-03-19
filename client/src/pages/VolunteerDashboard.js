@@ -438,25 +438,13 @@ useEffect(() => {
     return requests.filter((req) => {
       const typeMatch = typeFilter ? req.type === typeFilter : true;
       const urgencyMatch = urgencyFilter ? req.urgency === urgencyFilter : true;
-      
-      // Filter by distance (50km radius) if volunteer location is available
-      // Increased from 20km to 50km to show more requests
-      let distanceMatch = true;
-      if (volunteerLocation && req.location && req.location.coordinates && req.location.coordinates.length === 2) {
-        const reqLat = req.location.coordinates[1];
-        const reqLng = req.location.coordinates[0];
-        const distance = parseFloat(calculateDistance(
-          volunteerLocation.lat,
-          volunteerLocation.lng,
-          reqLat,
-          reqLng
-        ));
-        distanceMatch = distance <= 50; // Show requests within 50 km
-      }
-      
-      return typeMatch && urgencyMatch && distanceMatch;
+
+      // IMPORTANT: Do NOT filter out assigned/resolved requests by distance.
+      // Volunteers should always see all of their assigned work,
+      // even if they are currently far away.
+      return typeMatch && urgencyMatch;
     });
-  }, [requests, typeFilter, urgencyFilter, volunteerLocation]);
+  }, [requests, typeFilter, urgencyFilter]);
 
 const sortedRequests = useMemo(() => {
   return [...filteredRequests].sort((a, b) => {

@@ -7,7 +7,8 @@ import {
   Public as PublicIcon,
   Person as PersonIcon,
   Help as HelpIcon,
-  Logout as LogoutIcon 
+  Logout as LogoutIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -41,7 +42,6 @@ function UserSidebar({ isMobile, sidebarOpen, toggleSidebar, handleLogout }) {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard/user' },
     { text: 'Submit Request', icon: <AddIcon />, path: '/submit-request' },
-    { text: 'My Requests', icon: <ListIcon />, path: '/my-requests' },
     { text: 'Community Requests', icon: <PublicIcon />, path: '/requests' },
     { text: 'Profile', icon: <PersonIcon />, path: '/user/profile' },
     { text: 'Help', icon: <HelpIcon />, path: '/user/help' },
@@ -98,8 +98,10 @@ function UserSidebar({ isMobile, sidebarOpen, toggleSidebar, handleLogout }) {
         })}
       </List>
 
-      {/* Logout Button at Bottom */}
+      {/* Resolved Requests + Logout at Bottom */}
       <Box sx={{ p: 2, borderTop: '1px solid rgba(255, 255, 255, 0.12)' }}>
+        {/* Resolved Requests entry removed; user now sees resolved items from within the main dashboard menu. */}
+
         <Button
           fullWidth
           variant="contained"

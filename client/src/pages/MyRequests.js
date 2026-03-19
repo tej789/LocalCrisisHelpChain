@@ -28,7 +28,7 @@ import {
   PendingActions as PendingIcon,
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import UserLayout from '../components/user/UserLayout';
@@ -36,6 +36,7 @@ import UserLayout from '../components/user/UserLayout';
 function MyRequests() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -45,6 +46,17 @@ function MyRequests() {
   useEffect(() => {
     fetchMyRequests();
   }, [auth?.token]);
+
+  // Sync filter with optional status query param (e.g. ?status=resolved)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get('status');
+    if (status === 'open' || status === 'assigned' || status === 'resolved') {
+      setFilter(status);
+    } else {
+      setFilter('all');
+    }
+  }, [location.search]);
 
   const fetchMyRequests = async () => {
     try {
@@ -95,7 +107,10 @@ function MyRequests() {
   };
 
   const filteredRequests = myRequests.filter((req) => {
-    if (filter === 'all') return true;
+    if (filter === 'all') {
+      // In the default "My Requests" view, hide resolved requests
+      return req.status !== 'resolved';
+    }
     return req.status === filter;
   });
 
