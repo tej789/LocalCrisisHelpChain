@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -77,6 +77,7 @@ function UserDashboard() {
   const [communityRequests, setCommunityRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showResolvedOnly, setShowResolvedOnly] = useState(false);
+  const myRequestsRef = useRef(null);
   const navigate = useNavigate();
   const auth = useAuth();
   console.log("AUTH:", auth);
@@ -271,6 +272,35 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             Profile
           </Button>
 
+          {/* File Help Request – navigates to existing submit-request form */}
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              navigate('/submit-request');
+            }}
+          >
+            File Help Request
+          </Button>
+
+          {/* My Open Requests – scrolls to My Requests section showing open items */}
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setShowResolvedOnly(false);
+              if (myRequestsRef.current) {
+                myRequestsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+          >
+            My Open Requests
+          </Button>
+
           {/* Resolved Requests shortcut (before Logout) */}
           <Button
             fullWidth
@@ -447,7 +477,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
         <Divider sx={{ my: 3 }} />
         </>
       )}
-        <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }}>
+        <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }} ref={myRequestsRef}>
   <Typography variant="h6" gutterBottom>
     📌 My Requests
   </Typography>

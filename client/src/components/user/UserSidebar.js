@@ -41,9 +41,10 @@ function UserSidebar({ isMobile, sidebarOpen, toggleSidebar, handleLogout }) {
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard/user' },
-    { text: 'Submit Request', icon: <AddIcon />, path: '/submit-request' },
-    { text: 'Community Requests', icon: <PublicIcon />, path: '/requests' },
     { text: 'Profile', icon: <PersonIcon />, path: '/user/profile' },
+    // File Help Request entry just below Profile, going to existing submit-request form
+    { text: 'File Help Request', icon: <AddIcon />, path: '/submit-request' },
+    { text: 'Community Requests', icon: <PublicIcon />, path: '/requests' },
     { text: 'Help', icon: <HelpIcon />, path: '/user/help' },
   ];
 
