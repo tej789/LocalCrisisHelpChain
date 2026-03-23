@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+
 const RequestsList = () => {
   const [requests, setRequests] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -8,8 +9,23 @@ const RequestsList = () => {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-const { user } = useAuth();
-useEffect(() => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // Detect mobile / small screens for responsive layout
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
   const fetchRequests = async () => {
     try {
       const res = await api.get("/api/requests?limit=100");
@@ -104,61 +120,111 @@ useEffect(() => {
         </select>
       </div>
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
       {!loading && !error && (
-        <div style={tableContainer}>
-          <table style={tableStyle}>
-            <thead>
-              <tr style={headerRow}>
-                <th style={th}>Name</th>
-{user?.role !== "user" && <th style={th}>Contact</th>}                <th style={th}>Type</th>
-                <th style={th}>Urgency</th>
-                <th style={th}>Description</th>
-                <th style={th}>Status</th>
-                <th style={th}>Location</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {(Array.isArray(filtered) ? filtered : []).map((req, index) => (
-                <tr
-                  key={req._id}
-                  style={{
-                    background: index % 2 === 0 ? "#fafafa" : "#fff",
-                  }}
-                >
-                  <td style={td}>{req.name}</td>
-{user?.role !== "user" && (
-  <td style={td}>{req.contact}</td>
-)}                  <td style={td}>{req.type}</td>
-                  <td style={td}>{req.urgency}</td>
-                  <td style={td}>{req.description}</td>
-                  <td style={td}>
+        <>
+          {/* Mobile: Card layout for better readability */}
+          {isMobile && (
+            <div style={cardListContainer}>
+              {(Array.isArray(filtered) ? filtered : []).map((req) => (
+                <div key={req._id} style={card}>
+                  <div style={cardHeaderRow}>
+                    <div>
+                      <div style={cardTitle}>{req.name}</div>
+                      <div style={cardSubtitle}>{req.type}</div>
+                    </div>
                     <span
                       style={{
-                        padding: "4px 10px",
-                        borderRadius: 20,
-                        fontSize: 12,
-                        fontWeight: 600,
+                        ...statusPill,
                         ...getStatusStyle(req.status),
                       }}
                     >
                       {req.status}
                     </span>
-                  </td>
-                  <td style={td}>
-                    {req.location?.address ||
-                      (req.location?.coordinates
-                        ? `${req.location.coordinates[1]}, ${req.location.coordinates[0]}`
-                        : "N/A")}
-                  </td>
-                </tr>
+                  </div>
+
+                  {user?.role !== "user" && req.contact && (
+                    <div style={cardRow}>
+                      <span style={cardLabel}>Contact</span>
+                      <span style={cardValue}>{req.contact}</span>
+                    </div>
+                  )}
+
+                  <div style={cardRow}>
+                    <span style={cardLabel}>Urgency</span>
+                    <span style={cardValue}>{req.urgency || "-"}</span>
+                  </div>
+
+                  <div style={cardRow}>
+                    <span style={cardLabel}>Description</span>
+                    <span style={cardValue}>{req.description || "-"}</span>
+                  </div>
+
+                  <div style={cardRow}>
+                    <span style={cardLabel}>Location</span>
+                    <span style={cardValue}>
+                      {req.location?.address ||
+                        (req.location?.coordinates
+                          ? `${req.location.coordinates[1]}, ${req.location.coordinates[0]}`
+                          : "N/A")}
+                    </span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+
+          {/* Desktop / tablet: existing table layout */}
+          {!isMobile && (
+            <div style={tableContainer}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={headerRow}>
+                    <th style={th}>Name</th>
+                    {user?.role !== "user" && <th style={th}>Contact</th>}
+                    <th style={th}>Type</th>
+                    <th style={th}>Urgency</th>
+                    <th style={th}>Description</th>
+                    <th style={th}>Status</th>
+                    <th style={th}>Location</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {(Array.isArray(filtered) ? filtered : []).map((req, index) => (
+                    <tr
+                      key={req._id}
+                      style={{
+                        background: index % 2 === 0 ? "#fafafa" : "#fff",
+                      }}
+                    >
+                      <td style={td}>{req.name}</td>
+                      {user?.role !== "user" && <td style={td}>{req.contact}</td>}
+                      <td style={td}>{req.type}</td>
+                      <td style={td}>{req.urgency}</td>
+                      <td style={td}>{req.description}</td>
+                      <td style={td}>
+                        <span
+                          style={{
+                            ...statusPill,
+                            ...getStatusStyle(req.status),
+                          }}
+                        >
+                          {req.status}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        {req.location?.address ||
+                          (req.location?.coordinates
+                            ? `${req.location.coordinates[1]}, ${req.location.coordinates[0]}`
+                            : "N/A")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -201,6 +267,68 @@ const th = {
 const td = {
   padding: 12,
   borderBottom: "1px solid #eee",
+};
+
+// Mobile card styles
+const cardListContainer = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+};
+
+const card = {
+  background: "#fff",
+  borderRadius: 12,
+  padding: 12,
+  boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+  border: "1px solid #e5e7eb",
+};
+
+const cardHeaderRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 8,
+  gap: 8,
+};
+
+const cardTitle = {
+  fontWeight: 600,
+  fontSize: 16,
+  marginBottom: 2,
+};
+
+const cardSubtitle = {
+  fontSize: 13,
+  color: "#6b7280",
+};
+
+const cardRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16,
+  marginTop: 6,
+  fontSize: 13,
+};
+
+const cardLabel = {
+  fontWeight: 500,
+  color: "#6b7280",
+  minWidth: 70,
+};
+
+const cardValue = {
+  flex: 1,
+  textAlign: "right",
+  color: "#111827",
+};
+
+const statusPill = {
+  padding: "4px 10px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  whiteSpace: "nowrap",
 };
 
 export default RequestsList;
