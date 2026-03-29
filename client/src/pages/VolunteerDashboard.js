@@ -1223,7 +1223,7 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
           )}
         </DialogContent>
         <DialogActions>
-          {selectedRequest && selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2 && volunteerLocation && (
+          {selectedRequest && selectedRequest.status === 'assigned' && selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2 && volunteerLocation && (
             <Button 
               variant="outlined" 
               color="primary"
