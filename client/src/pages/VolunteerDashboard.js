@@ -49,6 +49,16 @@ const requestIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+// Green icon for resolved requests
+const resolvedRequestIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 // Haversine formula to calculate distance between two coordinates
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Radius of Earth in kilometers
@@ -114,6 +124,13 @@ function VolunteerDashboard() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const [volunteerLocation, setVolunteerLocation] = useState(null); // { lat, lng }
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [routeDistance, setRouteDistance] = useState(null);
+  const [routeEta, setRouteEta] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [mapBounds, setMapBounds] = useState(null); // For auto-zoom
+  const [shouldFitBounds, setShouldFitBounds] = useState(false);
+  const [mapCenterOverride, setMapCenterOverride] = useState(null);
 const navigate = useNavigate();
 
   // Add CSS for selected marker animation and mobile popup styling
@@ -279,14 +296,9 @@ const handleUseLocation = () => {
   // State for routing visualization
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
   const [selectedRequestId, setSelectedRequestId] = useState(null); // For marker highlighting
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [routeDistance, setRouteDistance] = useState(null);
-  const [routeEta, setRouteEta] = useState(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [mapBounds, setMapBounds] = useState(null); // For auto-zoom
-  const [shouldFitBounds, setShouldFitBounds] = useState(false);
   const mapSectionRef = useRef(null);
- 
+  const resolvedSectionRef = useRef(null);
+
 useEffect(() => {
   (async () => {
     try {
@@ -578,16 +590,36 @@ if (Array.isArray(response.data.data)) {
   const uniqueTypes = Array.from(new Set(requests.map((req) => req.type))).filter(Boolean);
   const uniqueUrgencies = Array.from(new Set(requests.map((req) => req.urgency))).filter(Boolean);
 
-  // Map center: prioritize volunteer location, then first request, then default (Vadodara)
+  // Map center: use override when set; otherwise use sensible defaults
+  // based on view and available locations.
   const defaultPosition = [22.3072, 73.1812]; // Vadodara, Gujarat
   let mapCenter = defaultPosition;
-  
-  if (volunteerLocation) {
-    mapCenter = [volunteerLocation.lat, volunteerLocation.lng];
+
+  if (mapCenterOverride && mapCenterOverride.length === 2) {
+    mapCenter = mapCenterOverride;
+  } else if (view === 'resolved') {
+    const firstResolvedWithCoords = resolvedRequests.find(
+      r => r.location && r.location.coordinates && r.location.coordinates.length === 2
+    );
+    if (firstResolvedWithCoords) {
+      mapCenter = [
+        firstResolvedWithCoords.location.coordinates[1],
+        firstResolvedWithCoords.location.coordinates[0]
+      ];
+    }
   } else {
-    const firstWithCoords = filteredRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
-    if (firstWithCoords) {
-      mapCenter = [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]];
+    if (volunteerLocation) {
+      mapCenter = [volunteerLocation.lat, volunteerLocation.lng];
+    } else {
+      const firstWithCoords = filteredRequests.find(
+        r => r.location && r.location.coordinates && r.location.coordinates.length === 2
+      );
+      if (firstWithCoords) {
+        mapCenter = [
+          firstWithCoords.location.coordinates[1],
+          firstWithCoords.location.coordinates[0]
+        ];
+      }
     }
   }
 
@@ -949,7 +981,7 @@ I will reach you shortly.`
           }}
         >
           <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-            Live Request Map {volunteerLocation && (
+            Live Request Map {volunteerLocation && view !== 'resolved' && (
               <Chip 
                 label="Your Location Detected" 
                 color="primary" 
@@ -972,7 +1004,7 @@ I will reach you shortly.`
         </Box>
         
         {/* Distance and ETA badges - Stack vertically on mobile */}
-        {routeDistance && routeEta && (
+        {view !== 'resolved' && routeDistance && routeEta && (
           <Stack 
             direction={{ xs: 'column', sm: 'row' }} 
             spacing={1} 
@@ -998,7 +1030,7 @@ I will reach you shortly.`
         )}
         
         {/* Navigate in Google Maps button - Full width on mobile */}
-        {selectedMapRequest && volunteerLocation && (
+        {view !== 'resolved' && selectedMapRequest && volunteerLocation && (
           <Button
             variant="contained"
             color="primary"
@@ -1049,8 +1081,8 @@ I will reach you shortly.`
               />
             )}
             
-            {/* Volunteer Location Marker (Blue) */}
-            {volunteerLocation && (
+            {/* Volunteer Location Marker (Blue) - hide in resolved view */}
+            {view !== 'resolved' && volunteerLocation && (
               <Marker
                 position={[volunteerLocation.lat, volunteerLocation.lng]}
                 icon={volunteerIcon}
@@ -1066,7 +1098,7 @@ I will reach you shortly.`
               </Marker>
             )}
 
-            {/* Crisis Request Markers (Red) - Show only assigned requests for this volunteer */}
+            {/* Crisis Request Markers - assigned (red) and resolved (green) */}
             {displayedRequests
               .filter(r => {
                 // Enhanced filtering with logging
@@ -1108,18 +1140,31 @@ I will reach you shortly.`
 
                   console.log('Rendering marker for request:', req._id, { lat: reqLat, lng: reqLng, distance });
 
+                  const isResolved = req.status === 'resolved';
+                  const markerIcon = isResolved ? resolvedRequestIcon : requestIcon;
+
                   return (
               <Marker
                 key={req._id || req.id}
                 position={[reqLat, reqLng]}
-                icon={requestIcon} // Use single static icon - always visible
+                icon={markerIcon}
                 eventHandlers={{
                   click: () => {
-                    // Only update map state for route visualization
-                    // Don't open Details Dialog - let the popup show instead
+                    // For resolved requests, don't show route; just clear any existing one
+                    if (req.status === 'resolved') {
+                      setSelectedMapRequest(null);
+                      setRouteCoordinates([]);
+                      setRouteDistance(null);
+                      setRouteEta(null);
+                      setMapCenterOverride([reqLat, reqLng]);
+                      return;
+                    }
+
+                    // For active/assigned requests, show driving route
                     setSelectedMapRequest(req);
                     if (volunteerLocation) {
                       fetchRoute(reqLat, reqLng, req._id);
+                      setMapCenterOverride(null); // use route fitBounds
                     }
                   }
                 }}
@@ -1132,20 +1177,28 @@ I will reach you shortly.`
                     <Typography variant="caption" color="text.secondary" display="block">
                       ⚠ {req.urgency || 'N/A'}
                     </Typography>
-                    {distance && (
+                    {/* For active requests show straight-line distance; for resolved show status */}
+                    {!isResolved && distance && (
                       <Typography variant="caption" color="text.secondary" display="block">
                         📏 ~{distance} km (straight-line)
                       </Typography>
                     )}
+                    {isResolved && (
+                      <Typography variant="caption" color="success.main" fontWeight={600} display="block">
+                        ✅ Status: resolved
+                      </Typography>
+                    )}
                     {/* Show OSRM distance if this request is selected and route is calculated */}
-                    {selectedMapRequest && selectedMapRequest._id === req._id && routeDistance && (
+                    {!isResolved && selectedMapRequest && selectedMapRequest._id === req._id && routeDistance && (
                       <Typography variant="caption" color="primary" fontWeight={600} display="block">
                         �️ {routeDistance} km (driving)
                       </Typography>
                     )}
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontStyle: 'italic' }}>
-                      Click marker for route
-                    </Typography>
+                    {!isResolved && (
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                        Click marker for route
+                      </Typography>
+                    )}
                   </Box>
                 </Popup>
               </Marker>
