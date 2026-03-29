@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -285,6 +285,7 @@ const handleUseLocation = () => {
   const [routeLoading, setRouteLoading] = useState(false);
   const [mapBounds, setMapBounds] = useState(null); // For auto-zoom
   const [shouldFitBounds, setShouldFitBounds] = useState(false);
+  const mapSectionRef = useRef(null);
  
 useEffect(() => {
   (async () => {
@@ -926,6 +927,7 @@ I will reach you shortly.`
       </Box>
       {/* Map at the bottom */}
       <Paper 
+        ref={mapSectionRef}
         elevation={1} 
         sx={{ 
           p: { xs: 1.5, sm: 2 }, 
@@ -1231,6 +1233,12 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
                 const reqLng = selectedRequest.location.coordinates[0];
                 setSelectedMapRequest(selectedRequest);
                 fetchRoute(reqLat, reqLng, selectedRequest._id);
+                setDetailsDialogOpen(false);
+                setTimeout(() => {
+                  if (mapSectionRef.current) {
+                    mapSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 100);
               }}
             >
               Show Route
