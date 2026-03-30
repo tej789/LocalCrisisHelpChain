@@ -298,6 +298,7 @@ const handleUseLocation = () => {
   const [selectedRequestId, setSelectedRequestId] = useState(null); // For marker highlighting
   const mapSectionRef = useRef(null);
   const resolvedSectionRef = useRef(null);
+  const requestsSectionRef = useRef(null);
 
 useEffect(() => {
   (async () => {
@@ -371,6 +372,17 @@ useEffect(() => {
       }
     }
   }, []);
+
+  const handleViewAndScroll = (newView) => {
+    setView(newView);
+
+    // Slight delay so layout can update before scrolling
+    setTimeout(() => {
+      if (requestsSectionRef.current) {
+        requestsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  };
 
   // Initialize availability and verification from auth user
   useEffect(() => {
@@ -683,6 +695,31 @@ I will reach you shortly.`
       Profile
     </Button>
 
+    {/* View Filters from Drawer */}
+    <Button
+      fullWidth
+      variant={view === 'assigned' ? 'contained' : 'outlined'}
+      sx={{ mb: 1, borderRadius: 2, fontWeight: 600 }}
+      onClick={() => {
+        setSidebarOpen(false);
+        handleViewAndScroll('assigned');
+      }}
+    >
+      My Active
+    </Button>
+
+    <Button
+      fullWidth
+      variant={view === 'resolved' ? 'contained' : 'outlined'}
+      sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+      onClick={() => {
+        setSidebarOpen(false);
+        handleViewAndScroll('resolved');
+      }}
+    >
+      My Resolved
+    </Button>
+
     {/* Logout Button */}
     <Button
       fullWidth
@@ -737,7 +774,7 @@ I will reach you shortly.`
       <Button
         variant={view === 'assigned' ? 'contained' : 'outlined'}
         size="large"
-        onClick={() => setView('assigned')}
+        onClick={() => handleViewAndScroll('assigned')}
         sx={{ px: 4, fontWeight: 600 }}
       >
         My Active
@@ -746,7 +783,7 @@ I will reach you shortly.`
       <Button
         variant={view === 'resolved' ? 'contained' : 'outlined'}
         size="large"
-        onClick={() => setView('resolved')}
+        onClick={() => handleViewAndScroll('resolved')}
         sx={{ px: 4, fontWeight: 600 }}
       >
         My Resolved
@@ -778,7 +815,7 @@ I will reach you shortly.`
     label={`Total: ${myAssignedRequests.length}`}
   />
 </Stack>
-<Box sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
+<Box ref={requestsSectionRef} sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
 
 <Paper
   elevation={2}
