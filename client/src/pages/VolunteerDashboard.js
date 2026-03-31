@@ -218,15 +218,23 @@ const handleUseLocation = () => {
         setLocLoading(false);
       }
     },
-    () => {
+    (error) => {
       setLocLoading(false);
-      setSnackbar({ open: true, message: 'Permission denied', severity: 'error' });
+      setSnackbar({ open: true, message: error?.message || 'Permission denied', severity: 'error' });
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 3000,
+      maximumAge: 60000
     }
   );
 };
 
   // Fetch route from OSRM
-  const fetchRoute = async (requestLat, requestLng, requestId) => {
+  // options.fitToRoute (default true) controls whether the map auto-zooms
+  // to include both volunteer and request, or leaves centering to caller.
+  const fetchRoute = async (requestLat, requestLng, requestId, options = {}) => {
+    const { fitToRoute = true } = options;
     if (!volunteerLocation) return;
     
     try {
@@ -251,16 +259,18 @@ const handleUseLocation = () => {
         const etaMinutes = Math.round(route.duration / 60);
         setRouteEta(etaMinutes);
 
-        // Calculate bounds for auto-zoom
-        const bounds = L.latLngBounds([
-          [volunteerLocation.lat, volunteerLocation.lng],
-          [requestLat, requestLng]
-        ]);
-        setMapBounds(bounds);
-        setShouldFitBounds(true);
+        // Calculate bounds for auto-zoom when requested
+        if (fitToRoute) {
+          const bounds = L.latLngBounds([
+            [volunteerLocation.lat, volunteerLocation.lng],
+            [requestLat, requestLng]
+          ]);
+          setMapBounds(bounds);
+          setShouldFitBounds(true);
 
-        // Reset after zoom completes
-        setTimeout(() => setShouldFitBounds(false), 500);
+          // Reset after zoom completes
+          setTimeout(() => setShouldFitBounds(false), 500);
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch route:', err);
@@ -313,44 +323,26 @@ useEffect(() => {
   })();
 }, []);
 
-  // Get volunteer's location: prioritize GPS, fallback to backend saved location
+  // Get volunteer's location: prioritize GPS, but fall back FAST to
+  // the last saved backend location so the map never feels "stuck".
   useEffect(() => {
     let isGPSLocationSet = false;
 
-    // Try to get current GPS location first (preferred)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setVolunteerLocation({ lat: latitude, lng: longitude });
-          isGPSLocationSet = true;
-          console.log('✅ GPS location detected (current):', { lat: latitude, lng: longitude });
-        },
-        (error) => {
-          console.warn('⚠️ GPS permission denied or unavailable:', error.message);
-          // Fallback to backend saved location
-          fetchBackendLocation();
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000, // Reduced timeout to 5s for faster fallback
-          maximumAge: 0
-        }
-      );
+    // Helper function to persist location to backend so that
+    // matching/active sections immediately see the latest coordinates.
+    const persistLocation = async (latitude, longitude) => {
+      try {
+        await api.patch('/api/volunteers/me/location', {
+          latitude,
+          longitude
+        });
+      } catch (err) {
+        console.warn('Failed to persist volunteer GPS location:', err?.message || err);
+      }
+    };
 
-      // Also set a timeout to fallback to backend if GPS takes too long
-      setTimeout(() => {
-        if (!isGPSLocationSet) {
-          console.log('⏱️ GPS taking too long, using saved location as fallback...');
-          fetchBackendLocation();
-        }
-      }, 3000); // Wait 3 seconds max for GPS
-    } else {
-      console.warn('Geolocation not supported by this browser');
-      fetchBackendLocation();
-    }
-
-    // Helper function to fetch backend saved location
+    // Helper function to fetch backend saved location (used both as
+    // parallel fallback and when GPS is denied).
     async function fetchBackendLocation() {
       try {
         const response = await api.get('/api/volunteers/me');
@@ -371,10 +363,64 @@ useEffect(() => {
         console.warn('Could not fetch volunteer location:', err.message);
       }
     }
+
+    // Always kick off backend location fetch immediately so we have
+    // something to show even if GPS is slow.
+    fetchBackendLocation();
+
+    // Try to get current GPS location (preferred, but with a SHORT timeout)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setVolunteerLocation({ lat: latitude, lng: longitude });
+          isGPSLocationSet = true;
+          console.log('✅ GPS location detected (current):', { lat: latitude, lng: longitude });
+
+          // Also update backend automatically so the volunteer's
+          // active section and assignment logic use this location
+          // without requiring an extra "Use My Location" click.
+          await persistLocation(latitude, longitude);
+        },
+        (error) => {
+          console.warn('⚠️ GPS permission denied or unavailable:', error.message);
+          // On error we already kicked off backend fetch, so nothing else to do.
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 3000, // 3s hard limit for GPS; then rely on backend/cached
+          maximumAge: 60000 // allow using a location from last 60s for snappier UX
+        }
+      );
+
+      // Safety: if GPS still hasn't responded very quickly, make sure
+      // backend location has been tried.
+      setTimeout(() => {
+        if (!isGPSLocationSet) {
+          console.log('⏱️ GPS still pending, ensuring saved location is used...');
+          fetchBackendLocation();
+        }
+      }, 1500); // only 1.5s before ensuring fallback
+    } else {
+      console.warn('Geolocation not supported by this browser');
+      fetchBackendLocation();
+    }
   }, []);
 
   const handleViewAndScroll = (newView) => {
     setView(newView);
+
+    // Whenever we switch views, especially into the resolved tab,
+    // clear any existing route/selection so old paths do not linger.
+    if (newView === 'resolved') {
+      setRouteCoordinates([]);
+      setRouteDistance(null);
+      setRouteEta(null);
+      setSelectedMapRequest(null);
+      setMapBounds(null);
+      setShouldFitBounds(false);
+      setMapCenterOverride(null);
+    }
 
     // Slight delay so layout can update before scrolling
     setTimeout(() => {
@@ -1109,7 +1155,7 @@ I will reach you shortly.`
             />
             
             {/* Route Polyline */}
-            {routeCoordinates.length > 0 && (
+            {view !== 'resolved' && routeCoordinates.length > 0 && (
               <Polyline
                 positions={routeCoordinates}
                 color="#2196f3"
@@ -1197,11 +1243,16 @@ I will reach you shortly.`
                       return;
                     }
 
-                    // For active/assigned requests, show driving route
+                    // For active/assigned requests, show driving route and
+                    // center the map on the clicked request marker instead
+                    // of the volunteer icon for a clearer focus.
                     setSelectedMapRequest(req);
                     if (volunteerLocation) {
-                      fetchRoute(reqLat, reqLng, req._id);
-                      setMapCenterOverride(null); // use route fitBounds
+                      fetchRoute(reqLat, reqLng, req._id, { fitToRoute: false });
+                      setMapCenterOverride([reqLat, reqLng]);
+                    } else {
+                      // Even without volunteer location, still center on request
+                      setMapCenterOverride([reqLat, reqLng]);
                     }
                   }
                 }}
@@ -1322,7 +1373,9 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
                 const reqLat = selectedRequest.location.coordinates[1];
                 const reqLng = selectedRequest.location.coordinates[0];
                 setSelectedMapRequest(selectedRequest);
-                fetchRoute(reqLat, reqLng, selectedRequest._id);
+                // Here we still want to show the full route with both
+                // volunteer and request visible, so keep auto-zoom on.
+                fetchRoute(reqLat, reqLng, selectedRequest._id, { fitToRoute: true });
                 setDetailsDialogOpen(false);
                 setTimeout(() => {
                   if (mapSectionRef.current) {
