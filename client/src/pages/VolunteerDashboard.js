@@ -309,6 +309,8 @@ const handleUseLocation = () => {
   const mapSectionRef = useRef(null);
   const resolvedSectionRef = useRef(null);
   const requestsSectionRef = useRef(null);
+  // Throttle backend updates for live GPS sync
+  const liveLocationSyncRef = useRef(0);
 
 useEffect(() => {
   (async () => {
@@ -405,6 +407,56 @@ useEffect(() => {
       console.warn('Geolocation not supported by this browser');
       fetchBackendLocation();
     }
+  }, []);
+
+  // Live GPS tracking: watch the device location and update the
+  // volunteer marker (and occasionally the backend) while the
+  // dashboard is open. This makes the blue icon move as the
+  // volunteer moves.
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        // Update marker position in the UI
+        setVolunteerLocation(prev => {
+          if (!prev || prev.lat !== latitude || prev.lng !== longitude) {
+            console.log('📡 Live GPS update:', { lat: latitude, lng: longitude });
+            return { lat: latitude, lng: longitude };
+          }
+          return prev;
+        });
+
+        // Throttle backend sync to at most once every 15 seconds
+        const now = Date.now();
+        if (now - liveLocationSyncRef.current > 15000) {
+          liveLocationSyncRef.current = now;
+          try {
+            await api.patch('/api/volunteers/me/location', {
+              latitude,
+              longitude
+            });
+          } catch (err) {
+            console.warn('Live GPS sync failed:', err?.message || err);
+          }
+        }
+      },
+      (error) => {
+        console.warn('Live GPS watch error:', error?.message || error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10000
+      }
+    );
+
+    return () => {
+      if (watchId != null && navigator.geolocation.clearWatch) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   const handleViewAndScroll = (newView) => {
