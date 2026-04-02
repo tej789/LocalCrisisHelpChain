@@ -9,6 +9,13 @@ const HelpRequestSchema = new mongoose.Schema({
     coordinates: { type: [Number], required: true }, // [longitude, latitude]
     address: { type: String }
   },
+  // Optional live location for the requester (user) so that
+  // volunteers can see the request move in real time without
+  // losing the original static location/address.
+  liveLocation: {
+    coordinates: { type: [Number] }, // [longitude, latitude]
+    updatedAt: { type: Date }
+  },
   type: { type: String, required: true }, // e.g., food, medicine, shelter, rescue
   urgency: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
   description: { type: String },

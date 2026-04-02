@@ -279,7 +279,7 @@ exports.resolveRequest = async (req, res) => {
 };
 
 /* =========================
-   REQUEST ANALYTICS (NGO)
+  REQUEST ANALYTICS (NGO)
 ========================= */
 exports.getRequestStats = async (req, res) => {
   try {
@@ -371,14 +371,76 @@ exports.getVolunteerLocation = async (req, res) => {
       latitude,
       longitude,
       requestLocation: {
+        // Fixed help location (where assistance is needed)
         latitude: request.location.coordinates[1],
         longitude: request.location.coordinates[0],
         address: request.location.address
-      }
+      },
+      // Optional live position of the requester (user). This lets the
+      // volunteer see where the user currently is without changing the
+      // actual crisis location or route destination.
+      userLiveLocation: (
+        request.liveLocation &&
+        Array.isArray(request.liveLocation.coordinates) &&
+        request.liveLocation.coordinates.length === 2
+      ) ? {
+        latitude: request.liveLocation.coordinates[1],
+        longitude: request.liveLocation.coordinates[0],
+        updatedAt: request.liveLocation.updatedAt
+      } : null
     });
 
   } catch (err) {
     console.error('Get volunteer location error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/* =========================
+   UPDATE REQUEST LIVE LOCATION (USER)
+========================= */
+exports.updateRequestLiveLocation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { latitude, longitude } = req.body;
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'latitude and longitude are required numbers' });
+    }
+
+    const request = await HelpRequest.findOne({
+      _id: id,
+      createdBy: req.user.id,
+      status: { $ne: 'resolved' }
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Active request not found for this user' });
+    }
+
+    request.liveLocation = {
+      coordinates: [longitude, latitude],
+      updatedAt: new Date()
+    };
+
+    await request.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('requestLocationUpdated', {
+        requestId: request._id,
+        coordinates: request.liveLocation.coordinates,
+        updatedAt: request.liveLocation.updatedAt
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      requestId: request._id,
+      liveLocation: request.liveLocation
+    });
+  } catch (err) {
+    console.error('Update request live location error:', err);
     res.status(500).json({ error: err.message });
   }
 };

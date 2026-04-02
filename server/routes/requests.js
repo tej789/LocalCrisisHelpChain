@@ -25,6 +25,14 @@ router.post(
   requestController.createRequest
 );
 
+// User can share live GPS updates for their own request
+router.patch(
+  '/:id/live-location',
+  verifyToken,
+  requireRole('user'),
+  requestController.updateRequestLiveLocation
+);
+
 router.get(
   '/',
   verifyToken,

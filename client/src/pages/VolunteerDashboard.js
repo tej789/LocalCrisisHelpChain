@@ -59,6 +59,16 @@ const resolvedRequestIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+// Purple icon for the live position of the requester (user)
+const userLiveIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 // Haversine formula to calculate distance between two coordinates
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Radius of Earth in kilometers
@@ -73,22 +83,19 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return distance.toFixed(2); // Return distance in km with 2 decimal places
 };
 
-// MapController component to handle dynamic map centering
+// MapController component to handle one-off "fit route" behavior
+// without constantly re-centering while the volunteer or user moves
+// the map. We intentionally do NOT react to `center` changes here so
+// that GPS detection and marker clicks don't suddenly snap the view.
 const MapController = ({ center, zoom, shouldFitBounds, bounds }) => {
   const map = useMap();
 
   useEffect(() => {
     if (shouldFitBounds && bounds) {
-      // Auto-zoom to show both volunteer and request with route
+      // Auto-zoom only when explicitly requested (e.g. "Show Route")
       map.fitBounds(bounds, { padding: [50, 50] });
-    } else if (center && center.length === 2) {
-      // Smoothly fly to the new center with animation
-      map.flyTo(center, zoom, {
-        duration: 1.5, // Animation duration in seconds
-        easeLinearity: 0.25
-      });
     }
-  }, [center, zoom, map, shouldFitBounds, bounds]);
+  }, [map, shouldFitBounds, bounds]);
 
   return null;
 };
@@ -503,11 +510,26 @@ useEffect(() => {
     socket.on('requestResolved', (updatedRequest) => {
       setRequests(prev => prev.map(r => r._id === updatedRequest._id ? updatedRequest : r));
     });
+    // Live movement of the requester icon
+    socket.on('requestLocationUpdated', (payload) => {
+      if (!payload || !payload.requestId || !Array.isArray(payload.coordinates)) return;
+      setRequests(prev => prev.map(r => {
+        if (r._id !== payload.requestId) return r;
+        return {
+          ...r,
+          liveLocation: {
+            coordinates: payload.coordinates,
+            updatedAt: payload.updatedAt
+          }
+        };
+      }));
+    });
     return () => {
       socket.off('newRequest');
       socket.off('requestClaimed');
       socket.off('requestAssigned');
       socket.off('requestResolved');
+      socket.off('requestLocationUpdated');
     };
 
   }, []);
@@ -1233,16 +1255,12 @@ I will reach you shortly.`
               </Marker>
             )}
 
-            {/* Crisis Request Markers - assigned (red) and resolved (green) */}
+            {/* Crisis Request Markers - assigned (red), resolved (green),
+                plus optional live user position (purple) */}
             {displayedRequests
               .filter(r => {
-                // Enhanced filtering with logging
-                if (!r.location) {
+                if (!r.location || !Array.isArray(r.location.coordinates)) {
                   console.warn('Request missing location:', r._id);
-                  return false;
-                }
-                if (!r.location.coordinates) {
-                  console.warn('Request missing coordinates:', r._id);
                   return false;
                 }
                 if (r.location.coordinates.length !== 2) {
@@ -1253,8 +1271,9 @@ I will reach you shortly.`
               })
               .map((req) => {
                 try {
-                  const reqLat = req.location.coordinates[1];
-                  const reqLng = req.location.coordinates[0];
+                  const baseCoords = req.location.coordinates;
+                  const reqLat = baseCoords[1];
+                  const reqLng = baseCoords[0];
                   
                   // Prevent crashes if lat or lng is invalid
                   if (!reqLat || !reqLng || isNaN(reqLat) || isNaN(reqLng)) {
@@ -1278,7 +1297,15 @@ I will reach you shortly.`
                   const isResolved = req.status === 'resolved';
                   const markerIcon = isResolved ? resolvedRequestIcon : requestIcon;
 
+                  const liveCoords =
+                    req.liveLocation &&
+                    Array.isArray(req.liveLocation.coordinates) &&
+                    req.liveLocation.coordinates.length === 2
+                      ? req.liveLocation.coordinates
+                      : null;
+
                   return (
+              <>
               <Marker
                 key={req._id || req.id}
                 position={[reqLat, reqLng]}
@@ -1342,6 +1369,24 @@ I will reach you shortly.`
                   </Box>
                 </Popup>
               </Marker>
+              {/* Optional live user marker, separate from the fixed request */}
+              {liveCoords && (
+                <Marker
+                  key={(req._id || req.id) + '-user'}
+                  position={[liveCoords[1], liveCoords[0]]}
+                  icon={userLiveIcon}
+                >
+                  <Popup>
+                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                      🧍 Requester Current Location
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      This is where the user is now.
+                    </Typography>
+                  </Popup>
+                </Marker>
+              )}
+              </>
                 );
                 } catch (error) {
                   console.error('Error rendering marker for request:', req._id, error);

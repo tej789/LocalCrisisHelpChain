@@ -29,9 +29,24 @@ const requestIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-// MapController component to auto-fit bounds
-const MapController = ({ volunteerLat, volunteerLng, requestLat, requestLng, mapRef }) => {
+// Separate icon for the user's current live position so it doesn't
+// look identical to the fixed request location.
+const userLiveIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// MapController component to auto-fit bounds without fighting user panning/zooming
+// It includes volunteer, request, and (optionally) the live user position
+// when computing the initial view.
+const MapController = ({ volunteerLat, volunteerLng, requestLat, requestLng, userLat, userLng, mapRef }) => {
   const map = useMap();
+  const hasInitiallyCenteredRef = useRef(false);
+  const userInteractedRef = useRef(false);
 
   // Store map instance in ref
   useEffect(() => {
@@ -40,15 +55,53 @@ const MapController = ({ volunteerLat, volunteerLng, requestLat, requestLng, map
     }
   }, [map, mapRef]);
 
+  // Detect when the user manually moves/zooms the map and then
+  // stop automatic re-centering so the map doesn't "fight" them.
   useEffect(() => {
-    if (volunteerLat && volunteerLng && requestLat && requestLng) {
-      const bounds = L.latLngBounds([
-        [volunteerLat, volunteerLng],
-        [requestLat, requestLng]
-      ]);
-      map.fitBounds(bounds, { padding: [50, 50] });
+    if (!map) return;
+
+    const handleUserInteraction = () => {
+      userInteractedRef.current = true;
+    };
+
+    map.on('dragstart', handleUserInteraction);
+    map.on('zoomstart', handleUserInteraction);
+    map.on('movestart', handleUserInteraction);
+
+    return () => {
+      map.off('dragstart', handleUserInteraction);
+      map.off('zoomstart', handleUserInteraction);
+      map.off('movestart', handleUserInteraction);
+    };
+  }, [map]);
+
+  // Auto-fit bounds when data first loads. After that, keep
+  // following updates only while the user hasn't interacted.
+  useEffect(() => {
+    if (!volunteerLat || !volunteerLng || !requestLat || !requestLng) return;
+
+    // Always center the very first time we have both points
+    // so the volunteer and request are visible together.
+    if (!hasInitiallyCenteredRef.current) {
+      hasInitiallyCenteredRef.current = true;
+    } else if (userInteractedRef.current) {
+      // Once the user has panned/zoomed, stop auto-centering
+      // to avoid snapping back while they explore the map.
+      return;
     }
-  }, [volunteerLat, volunteerLng, requestLat, requestLng, map]);
+
+    const points = [
+      [volunteerLat, volunteerLng],
+      [requestLat, requestLng]
+    ];
+
+    if (userLat && userLng) {
+      points.push([userLat, userLng]);
+    }
+
+    const bounds = L.latLngBounds(points);
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }, [volunteerLat, volunteerLng, requestLat, requestLng, userLat, userLng, map]);
 
   return null;
 };
@@ -114,12 +167,14 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
   const [distance, setDistance] = useState(null);
   const [eta, setEta] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [userLiveLocation, setUserLiveLocation] = useState(null);
   
   // Refs for markers to control popups and animation
   const volunteerMarkerRef = useRef(null);
   const requestMarkerRef = useRef(null);
   const previousVolunteerPosRef = useRef(null);
   const mapRef = useRef(null);
+  const liveLocationWatchIdRef = useRef(null);
 
   // Function to recenter map
   const handleRecenterMap = () => {
@@ -187,6 +242,16 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
 
       setLocationData(newLocationData);
 
+      // Optional live requester location (where the user currently is)
+      if (data.userLiveLocation &&
+          typeof data.userLiveLocation.latitude === 'number' &&
+          typeof data.userLiveLocation.longitude === 'number') {
+        setUserLiveLocation({
+          lat: data.userLiveLocation.latitude,
+          lng: data.userLiveLocation.longitude
+        });
+      }
+
       // Fetch route after location is set
       await fetchRoute(
         data.longitude,
@@ -251,6 +316,48 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
     }, 5000);
 
     return () => clearInterval(interval);
+  }, [requestId]);
+
+  // Live tracking for the requester (user): while this map is
+  // visible and geolocation is allowed, keep sending the current
+  // device position to the backend so volunteers see the red icon
+  // move in real time.
+  useEffect(() => {
+    if (!requestId || !navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          await api.patch(`/api/requests/${requestId}/live-location`, {
+            latitude,
+            longitude
+          });
+          setUserLiveLocation({ lat: latitude, lng: longitude });
+        } catch (err) {
+          console.warn('Failed to update request live location:', err?.message || err);
+        }
+      },
+      (error) => {
+        console.warn('User live-location watch error:', error?.message || error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10000
+      }
+    );
+
+    liveLocationWatchIdRef.current = watchId;
+
+    return () => {
+      if (
+        liveLocationWatchIdRef.current != null &&
+        navigator.geolocation &&
+        typeof navigator.geolocation.clearWatch === 'function'
+      ) {
+        navigator.geolocation.clearWatch(liveLocationWatchIdRef.current);
+      }
+    };
   }, [requestId]);
 
   // Auto-open both popups when markers are ready
@@ -395,6 +502,8 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
             volunteerLng={locationData.volunteerLng}
             requestLat={locationData.requestLat}
             requestLng={locationData.requestLng}
+            userLat={userLiveLocation?.lat}
+            userLng={userLiveLocation?.lng}
             mapRef={mapRef}
           />
 
@@ -450,11 +559,25 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
               )}
             </Popup>
           </Marker>
+
+          {/* Live User Location Marker (optional) */}
+          {userLiveLocation && (
+            <Marker
+              position={[userLiveLocation.lat, userLiveLocation.lng]}
+              icon={userLiveIcon}
+            >
+              <Popup>
+                <strong>🧍 Your Current Location</strong>
+                <br />
+                <small>Shown only while tracking is open</small>
+              </Popup>
+            </Marker>
+          )}
         </MapContainer>
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-        � Volunteer location | 🔴 Your request location | 🛣 Blue line with arrows shows route
+        � Volunteer location | 🔴 Your request location | 🟣 Your live location | 🛣 Blue line with arrows shows route
         <br />
         <small>📡 Live tracking: Updates every 5 seconds | Smooth marker animation | Both popups visible automatically</small>
       </Typography>
