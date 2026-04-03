@@ -9,6 +9,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DirectionsIcon from '@mui/icons-material/Directions';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import NavigationIcon from '@mui/icons-material/Navigation';
 import api from '../api/axios';
 
 // Custom Volunteer Icon using divIcon with emoji
@@ -175,6 +176,8 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
   const previousVolunteerPosRef = useRef(null);
   const mapRef = useRef(null);
   const liveLocationWatchIdRef = useRef(null);
+  const initialCenterRef = useRef(null);
+  const hasOpenedPopupsRef = useRef(false);
 
   // Function to recenter map
   const handleRecenterMap = () => {
@@ -242,22 +245,34 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
 
       setLocationData(newLocationData);
 
-      // Optional live requester location (where the user currently is)
-      if (data.userLiveLocation &&
-          typeof data.userLiveLocation.latitude === 'number' &&
-          typeof data.userLiveLocation.longitude === 'number') {
+      // Optional live requester location (where the user currently is).
+      // We prefer routing to this live point instead of the original
+      // fixed request location so volunteers can navigate to wherever
+      // you actually are right now.
+      let targetLat = data.requestLocation.latitude;
+      let targetLng = data.requestLocation.longitude;
+
+      if (
+        data.userLiveLocation &&
+        typeof data.userLiveLocation.latitude === 'number' &&
+        typeof data.userLiveLocation.longitude === 'number'
+      ) {
         setUserLiveLocation({
           lat: data.userLiveLocation.latitude,
           lng: data.userLiveLocation.longitude
         });
+        targetLat = data.userLiveLocation.latitude;
+        targetLng = data.userLiveLocation.longitude;
       }
 
-      // Fetch route after location is set
+      // Fetch route after location is set: always from volunteer to
+      // the best-known user position (live location when available,
+      // otherwise the original request coordinates).
       await fetchRoute(
         data.longitude,
         data.latitude,
-        data.requestLocation.longitude,
-        data.requestLocation.latitude
+        targetLng,
+        targetLat
       );
 
       setLoading(false);
@@ -360,18 +375,23 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
     };
   }, [requestId]);
 
-  // Auto-open both popups when markers are ready
+  // Auto-open volunteer popup only once when markers are ready.
+  // The request popup stays closed until the user clicks so it
+  // doesn't keep dragging the map view toward the request marker.
   useEffect(() => {
-    if (locationData && volunteerMarkerRef.current && requestMarkerRef.current) {
+    if (
+      !hasOpenedPopupsRef.current &&
+      locationData &&
+      volunteerMarkerRef.current &&
+      requestMarkerRef.current
+    ) {
       // Small delay to ensure markers are rendered
       setTimeout(() => {
         if (volunteerMarkerRef.current) {
           volunteerMarkerRef.current.openPopup();
         }
-        if (requestMarkerRef.current) {
-          requestMarkerRef.current.openPopup();
-        }
       }, 300);
+      hasOpenedPopupsRef.current = true;
     }
   }, [locationData]);
 
@@ -395,6 +415,64 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
     return null;
   }
 
+  // Origin/destination used for "Navigate in Google Maps". For the
+  // user, we treat their live GPS position as the origin when
+  // available, falling back to the original request location.
+  const navigationOriginLat = userLiveLocation?.lat ?? locationData.requestLat;
+  const navigationOriginLng = userLiveLocation?.lng ?? locationData.requestLng;
+  const navigationDestLat = locationData.volunteerLat;
+  const navigationDestLng = locationData.volunteerLng;
+
+  // Fix the map center so it doesn't keep re-centering every time
+  // new location data arrives. We capture an initial center once
+  // (based on the request location) and reuse it for the lifetime
+  // of this component. Further location updates move markers but do
+  // not move the base map, avoiding the "flicking" while zoomed.
+  if (!initialCenterRef.current) {
+    initialCenterRef.current = [
+      locationData.requestLat,
+      locationData.requestLng
+    ];
+  }
+
+  // When the requester is standing exactly at the original request
+  // location, their live marker and the fixed request marker would
+  // overlap. To keep both visible, we render the live marker with a
+  // tiny visual offset when they are extremely close.
+  let userLiveMarkerPosition = null;
+  if (userLiveLocation) {
+    const { lat, lng } = userLiveLocation;
+    const reqLat = locationData.requestLat;
+    const reqLng = locationData.requestLng;
+
+    let displayLat = lat;
+    let displayLng = lng;
+
+    if (
+      Math.abs(lat - reqLat) < 0.0003 &&
+      Math.abs(lng - reqLng) < 0.0003
+    ) {
+      displayLat = lat + 0.0004;
+      displayLng = lng + 0.0004;
+    }
+
+    userLiveMarkerPosition = [displayLat, displayLng];
+  }
+
+  // If the volunteer reaches the exact request point, the two markers
+  // would overlap. Nudge the request marker slightly in that case so
+  // both icons are visible.
+  let requestMarkerPosition = [locationData.requestLat, locationData.requestLng];
+  if (
+    Math.abs(locationData.volunteerLat - locationData.requestLat) < 0.0003 &&
+    Math.abs(locationData.volunteerLng - locationData.requestLng) < 0.0003
+  ) {
+    requestMarkerPosition = [
+      locationData.requestLat - 0.0004,
+      locationData.requestLng - 0.0004
+    ];
+  }
+
   return (
     <Paper 
       elevation={3} 
@@ -414,32 +492,70 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
         </IconButton>
       </Box>
 
-      {/* Info Panel - Distance and ETA */}
-      {(distance || eta) && (
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          {distance && (
-            <Chip
-              icon={<DirectionsIcon />}
-              label={`Distance: ${distance} km`}
+      {/* Info Panel - Distance, ETA, and external navigation */}
+      {(distance !== null || eta !== null) && (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            justifyContent: { xs: 'flex-start', sm: 'space-between' },
+            gap: 1.5,
+            mb: 2
+          }}
+        >
+          {(distance !== null || eta !== null) && (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              {distance !== null && (
+                <Chip
+                  icon={<DirectionsIcon />}
+                  label={
+                    parseFloat(distance) < 0.05
+                      ? 'Distance: very close'
+                      : `Distance: ${distance} km`
+                  }
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
+              )}
+              {eta !== null && (
+                <Chip
+                  icon={<AccessTimeIcon />}
+                  label={`ETA: ${eta} min`}
+                  color="success"
+                  variant="outlined"
+                  size="small"
+                />
+              )}
+            </Stack>
+          )}
+
+          {/* Navigate to volunteer in Google Maps */}
+          {navigationOriginLat && navigationOriginLng && navigationDestLat && navigationDestLng && (
+            <Button
+              variant="contained"
               color="primary"
-              variant="outlined"
               size="small"
-            />
+              startIcon={<NavigationIcon />}
+              href={`https://www.google.com/maps/dir/?api=1&origin=${navigationOriginLat},${navigationOriginLng}&destination=${navigationDestLat},${navigationDestLng}&travelmode=driving`}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                width: { xs: '100%', sm: 'auto' },
+                justifyContent: 'center'
+              }}
+            >
+              Navigate in Google Maps
+            </Button>
           )}
-          {eta && (
-            <Chip
-              icon={<AccessTimeIcon />}
-              label={`ETA: ${eta} min`}
-              color="success"
-              variant="outlined"
-              size="small"
-            />
-          )}
-        </Stack>
+        </Box>
       )}
 
       {/* Volunteer Status Banner */}
-      {locationData.volunteerName && eta && (
+      {locationData.volunteerName && eta !== null && (
         <Paper
           elevation={1}
           sx={{
@@ -487,7 +603,7 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
         </Button>
 
         <MapContainer 
-          center={[locationData.volunteerLat, locationData.volunteerLng]} 
+          center={initialCenterRef.current} 
           zoom={13} 
           style={{ height: '100%', width: '100%' }}
         >
@@ -526,17 +642,17 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
             icon={volunteerIcon}
             ref={volunteerMarkerRef}
           >
-            <Popup autoClose={false} closeOnClick={false}>
+            <Popup autoClose={false} closeOnClick={false} autoPan={false}>
               <strong>🙋 Volunteer: {locationData.volunteerName}</strong>
               <br />
               <small>Current Location</small>
-              {distance && (
+              {distance !== null && (
                 <>
                   <br />
                   <small>📏 Distance: {distance} km</small>
                 </>
               )}
-              {eta && (
+              {eta !== null && (
                 <>
                   <br />
                   <small>⏱ ETA: {eta} minutes</small>
@@ -547,11 +663,11 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
 
           {/* Request Location Marker with ref for auto-popup */}
           <Marker 
-            position={[locationData.requestLat, locationData.requestLng]} 
+            position={requestMarkerPosition} 
             icon={requestIcon}
             ref={requestMarkerRef}
           >
-            <Popup autoClose={false} closeOnClick={false}>
+            <Popup autoClose={false} closeOnClick={false} autoPan={false}>
               <strong>🚨 Your Request Location</strong>
               <br />
               {locationData.requestAddress && (
@@ -561,9 +677,9 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
           </Marker>
 
           {/* Live User Location Marker (optional) */}
-          {userLiveLocation && (
+          {userLiveLocation && userLiveMarkerPosition && (
             <Marker
-              position={[userLiveLocation.lat, userLiveLocation.lng]}
+              position={userLiveMarkerPosition}
               icon={userLiveIcon}
             >
               <Popup>

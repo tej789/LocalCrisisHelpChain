@@ -134,7 +134,9 @@ function VolunteerDashboard() {
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [routeDistance, setRouteDistance] = useState(null);
   const [routeEta, setRouteEta] = useState(null);
+  const [routeTargetLabel, setRouteTargetLabel] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [routeDestination, setRouteDestination] = useState(null); // { lat, lng } current routing target
   const [mapBounds, setMapBounds] = useState(null); // For auto-zoom
   const [shouldFitBounds, setShouldFitBounds] = useState(false);
   const [mapCenterOverride, setMapCenterOverride] = useState(null);
@@ -257,6 +259,10 @@ const handleUseLocation = () => {
         // Convert GeoJSON coordinates [lng, lat] to Leaflet format [lat, lng]
         const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
         setRouteCoordinates(coordinates);
+
+        // Remember the current routing destination so external navigation
+        // (e.g. Google Maps) can follow the same target the user selected.
+        setRouteDestination({ lat: requestLat, lng: requestLng });
 
         // Set distance in km
         const distanceKm = (route.distance / 1000).toFixed(2);
@@ -1160,52 +1166,82 @@ I will reach you shortly.`
           />
         </Box>
         
-        {/* Distance and ETA badges - Stack vertically on mobile */}
-        {view !== 'resolved' && routeDistance && routeEta && (
-          <Stack 
-            direction={{ xs: 'column', sm: 'row' }} 
-            spacing={1} 
-            sx={{ mb: 2 }}
-          >
-            <Chip
-              icon={<DirectionsIcon />}
-              label={`Distance: ${routeDistance} km`}
-              color="primary"
-              variant="outlined"
-              size="small"
-              sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'flex-start', sm: 'center' } }}
-            />
-            <Chip
-              icon={<AccessTimeIcon />}
-              label={`ETA: ${routeEta} min`}
-              color="success"
-              variant="outlined"
-              size="small"
-              sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'flex-start', sm: 'center' } }}
-            />
-          </Stack>
-        )}
-        
-        {/* Navigate in Google Maps button - Full width on mobile */}
-        {view !== 'resolved' && selectedMapRequest && volunteerLocation && (
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<NavigationIcon />}
-            href={`https://www.google.com/maps/dir/?api=1&origin=${volunteerLocation.lat},${volunteerLocation.lng}&destination=${selectedMapRequest.location.coordinates[1]},${selectedMapRequest.location.coordinates[0]}&travelmode=driving`}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{ 
-              mb: 2, 
-              textTransform: 'none', 
-              fontWeight: 600,
-              width: { xs: '100%', sm: 'auto' },
-              justifyContent: 'center'
+        {/* Distance/ETA and Navigate button in a single aligned row */}
+        {view !== 'resolved' && volunteerLocation && selectedMapRequest && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              justifyContent: { xs: 'flex-start', sm: 'space-between' },
+              gap: 1.5,
+              mb: 2
             }}
           >
-            Navigate in Google Maps
-          </Button>
+            {(routeDistance !== null && routeEta !== null) && (
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+              >
+                <Chip
+                  icon={<DirectionsIcon />}
+                  label={
+                    parseFloat(routeDistance) < 0.05
+                      ? 'Distance: very close'
+                      : `Distance: ${routeDistance} km`
+                  }
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    width: { xs: '100%', sm: 'auto' },
+                    justifyContent: { xs: 'flex-start', sm: 'center' }
+                  }}
+                />
+                <Chip
+                  icon={<AccessTimeIcon />}
+                  label={`ETA: ${routeEta} min`}
+                  color="success"
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    width: { xs: '100%', sm: 'auto' },
+                    justifyContent: { xs: 'flex-start', sm: 'center' }
+                  }}
+                />
+              </Stack>
+            )}
+
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<NavigationIcon />}
+              href={`https://www.google.com/maps/dir/?api=1&origin=${volunteerLocation.lat},${volunteerLocation.lng}&destination=${(routeDestination?.lat ?? selectedMapRequest.location.coordinates[1])},${(routeDestination?.lng ?? selectedMapRequest.location.coordinates[0])}&travelmode=driving`}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                width: { xs: '100%', sm: 'auto' },
+                justifyContent: 'center'
+              }}
+            >
+              Navigate in Google Maps
+            </Button>
+          </Box>
+        )}
+        {view !== 'resolved' &&
+          routeDistance !== null &&
+          routeEta !== null &&
+          !!routeTargetLabel && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mb: 1, display: 'block' }}
+          >
+            Route to: {routeTargetLabel}
+          </Typography>
         )}
         
         <Box sx={{ 
@@ -1281,6 +1317,22 @@ I will reach you shortly.`
                     return null;
                   }
 
+                  // Display position for the fixed request marker. By default
+                  // this is the real request location, but if the volunteer
+                  // is standing almost exactly on this point we nudge the
+                  // marker slightly so both icons remain visible.
+                  let reqLatDisplay = reqLat;
+                  let reqLngDisplay = reqLng;
+
+                  if (
+                    volunteerLocation &&
+                    Math.abs(volunteerLocation.lat - reqLat) < 0.0003 &&
+                    Math.abs(volunteerLocation.lng - reqLng) < 0.0003
+                  ) {
+                    reqLatDisplay = reqLat - 0.0004;
+                    reqLngDisplay = reqLng - 0.0004;
+                  }
+
                   // Calculate distance if volunteer location is available
                   let distance = null;
                   if (volunteerLocation) {
@@ -1304,11 +1356,61 @@ I will reach you shortly.`
                       ? req.liveLocation.coordinates
                       : null;
 
+                  // Straight-line distance from volunteer to the requester's
+                  // current live position (if both are available), plus a
+                  // small visual offset when the two markers would otherwise
+                  // overlap so both remain visible.
+                  let liveDistance = null;
+                  let liveLatDisplay = null;
+                  let liveLngDisplay = null;
+
+                  if (liveCoords) {
+                    const liveLat = liveCoords[1];
+                    const liveLng = liveCoords[0];
+
+                    // Base display position is the real live coordinates
+                    liveLatDisplay = liveLat;
+                    liveLngDisplay = liveLng;
+
+                    // If the live point is almost exactly on top of the
+                    // fixed request location, nudge it slightly so the
+                    // two markers don't completely overlap visually.
+                    if (
+                      Math.abs(liveLat - reqLat) < 0.0003 &&
+                      Math.abs(liveLng - reqLng) < 0.0003
+                    ) {
+                      liveLatDisplay = liveLat + 0.0004;
+                      liveLngDisplay = liveLng + 0.0004;
+                    }
+
+                    // If the live point is also almost exactly on top of
+                    // the volunteer marker, nudge it slightly in a
+                    // different direction so the blue volunteer icon and
+                    // purple live icon are both visible.
+                    if (
+                      volunteerLocation &&
+                      Math.abs(liveLat - volunteerLocation.lat) < 0.0003 &&
+                      Math.abs(liveLng - volunteerLocation.lng) < 0.0003
+                    ) {
+                      liveLatDisplay = liveLat + 0.0004;
+                      liveLngDisplay = liveLng - 0.0004;
+                    }
+
+                    if (volunteerLocation) {
+                      liveDistance = calculateDistance(
+                        volunteerLocation.lat,
+                        volunteerLocation.lng,
+                        liveLat,
+                        liveLng
+                      );
+                    }
+                  }
+
                   return (
               <>
               <Marker
                 key={req._id || req.id}
-                position={[reqLat, reqLng]}
+                position={[reqLatDisplay, reqLngDisplay]}
                 icon={markerIcon}
                 eventHandlers={{
                   click: () => {
@@ -1318,6 +1420,8 @@ I will reach you shortly.`
                       setRouteCoordinates([]);
                       setRouteDistance(null);
                       setRouteEta(null);
+                      setRouteDestination(null);
+                      setRouteTargetLabel(null);
                       setMapCenterOverride([reqLat, reqLng]);
                       return;
                     }
@@ -1328,6 +1432,7 @@ I will reach you shortly.`
                     setSelectedMapRequest(req);
                     if (volunteerLocation) {
                       fetchRoute(reqLat, reqLng, req._id, { fitToRoute: false });
+                      setRouteTargetLabel('request location');
                       setMapCenterOverride([reqLat, reqLng]);
                     } else {
                       // Even without volunteer location, still center on request
@@ -1347,7 +1452,9 @@ I will reach you shortly.`
                     {/* For active requests show straight-line distance; for resolved show status */}
                     {!isResolved && distance && (
                       <Typography variant="caption" color="text.secondary" display="block">
-                        📏 ~{distance} km (straight-line)
+                        {parseFloat(distance) < 0.05
+                          ? '📏 Very close to you (straight-line)'
+                          : `📏 ~${distance} km (straight-line)`}
                       </Typography>
                     )}
                     {isResolved && (
@@ -1358,7 +1465,7 @@ I will reach you shortly.`
                     {/* Show OSRM distance if this request is selected and route is calculated */}
                     {!isResolved && selectedMapRequest && selectedMapRequest._id === req._id && routeDistance && (
                       <Typography variant="caption" color="primary" fontWeight={600} display="block">
-                        �️ {routeDistance} km (driving)
+                        🛣 {routeDistance} km (driving route)
                       </Typography>
                     )}
                     {!isResolved && (
@@ -1373,8 +1480,32 @@ I will reach you shortly.`
               {liveCoords && (
                 <Marker
                   key={(req._id || req.id) + '-user'}
-                  position={[liveCoords[1], liveCoords[0]]}
+                  position={[
+                    liveLatDisplay != null ? liveLatDisplay : liveCoords[1],
+                    liveLngDisplay != null ? liveLngDisplay : liveCoords[0]
+                  ]}
                   icon={userLiveIcon}
+                  eventHandlers={{
+                    click: () => {
+                      if (req.status === 'resolved') {
+                        return;
+                      }
+
+                      // When clicking the live requester marker, compute
+                      // route and ETA specifically to the moving user
+                      // position instead of the fixed help location.
+                      setSelectedMapRequest(req);
+                      if (volunteerLocation) {
+                        const liveLat = liveCoords[1];
+                        const liveLng = liveCoords[0];
+                        fetchRoute(liveLat, liveLng, req._id, { fitToRoute: false });
+                        setRouteTargetLabel('requester current location');
+                        setMapCenterOverride([liveLat, liveLng]);
+                      } else {
+                        setMapCenterOverride([liveCoords[1], liveCoords[0]]);
+                      }
+                    }
+                  }}
                 >
                   <Popup>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
@@ -1382,6 +1513,21 @@ I will reach you shortly.`
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block">
                       This is where the user is now.
+                    </Typography>
+                    {liveDistance && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {parseFloat(liveDistance) < 0.05
+                          ? '📏 Very close to you (straight-line)'
+                          : `📏 ~${liveDistance} km from you (straight-line)`}
+                      </Typography>
+                    )}
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                      sx={{ mt: 0.5, fontStyle: 'italic' }}
+                    >
+                      Click marker for route to this point
                     </Typography>
                   </Popup>
                 </Marker>
