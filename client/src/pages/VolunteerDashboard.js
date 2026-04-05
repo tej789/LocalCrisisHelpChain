@@ -26,6 +26,7 @@ import NavigationIcon from '@mui/icons-material/Navigation';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Footer from '../components/Footer';
+import LoadingScreen from '../components/LoadingScreen';
 
 const socket = io(process.env.REACT_APP_API_URL);
 
@@ -721,7 +722,9 @@ if (Array.isArray(response.data.data)) {
     // This allows the map marker and route to remain visible
   };
 
-  if (loading) return <p>Loading requests...</p>;
+  if (loading) {
+    return <LoadingScreen message="Loading volunteer dashboard..." />;
+  }
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   // Get unique types and urgencies for filter dropdowns

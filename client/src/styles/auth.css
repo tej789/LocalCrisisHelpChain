@@ -146,9 +146,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: 700;
-  font-size: 1.25rem;
+  overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
 
@@ -158,6 +156,13 @@ body {
   color: var(--text);
   margin: 0;
   line-height: 1.2;
+}
+
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .auth-title {

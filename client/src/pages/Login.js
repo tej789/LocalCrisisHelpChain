@@ -45,7 +45,9 @@ if (user.role === "admin") {
       <div className="auth-hero">
         <div className="hero-copy">
           <div className="brand">
-            <div className="brand-badge" />
+            <div className="brand-badge">
+              <img src="/lchc-logo.svg" alt="Local Crisis Help Chain logo" className="brand-logo" />
+            </div>
             <div className="brand-title">Local Crisis Help Chain</div>
           </div>
           <div className="hero-title">Welcome back</div>
@@ -56,7 +58,9 @@ if (user.role === "admin") {
       <div className="auth-pane">
         <div className="auth-card">
           <div className="brand">
-            <div className="brand-badge" />
+            <div className="brand-badge">
+              <img src="/lchc-logo.svg" alt="LCHC logo" className="brand-logo" />
+            </div>
             <div className="brand-title">LCHC</div>
           </div>
           <div className="auth-title">Sign in</div>
