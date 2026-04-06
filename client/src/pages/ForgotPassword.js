@@ -86,7 +86,9 @@ function ForgotPassword() {
       }}>
         <div className="auth-card">
           <div className="brand">
-            <div className="brand-badge" />
+            <div className="brand-badge">
+              <img src="/lchc-logo.svg" alt="LCHC logo" className="brand-logo" />
+            </div>
             <div className="brand-title">LCHC</div>
           </div>
 
