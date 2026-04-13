@@ -12,13 +12,38 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import NavigationIcon from '@mui/icons-material/Navigation';
 import api from '../api/axios';
 
-// Custom Volunteer Icon using divIcon with emoji
+// Custom Volunteer Icon using a styled SVG inside a divIcon
+// This avoids the default emoji look and feels more like
+// a professional map pin for an emergency vehicle.
 const volunteerIcon = L.divIcon({
-  html: '<div style="font-size: 30px; text-align: center; line-height: 30px;">🚑</div>',
+  html: `
+    <div
+      style="
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #1976d2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+        border: 2px solid #ffffff;
+      "
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="9" width="13" height="6" rx="1.5" fill="#ffffff"/>
+        <rect x="9" y="10" width="2" height="4" fill="#e53935"/>
+        <rect x="8" y="11" width="4" height="2" fill="#e53935"/>
+        <rect x="16" y="10" width="4" height="5" rx="1" fill="#ffffff"/>
+        <circle cx="7" cy="16" r="2" fill="#263238"/>
+        <circle cx="17" cy="16" r="2" fill="#263238"/>
+      </svg>
+    </div>
+  `,
   className: 'volunteer-marker-icon',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-  popupAnchor: [0, -15]
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+  popupAnchor: [0, -20]
 });
 
 const requestIcon = new L.Icon({
@@ -693,7 +718,7 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-        � Volunteer location | 🔴 Your request location | 🟣 Your live location | 🛣 Blue line with arrows shows route
+        🚑 Volunteer location | 🔴 Your request location | 🟣 Your live location | 🛣 Blue line with arrows shows route
         <br />
         <small>📡 Live tracking: Updates every 5 seconds | Smooth marker animation | Both popups visible automatically</small>
       </Typography>
