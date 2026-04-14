@@ -8,6 +8,7 @@ import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import { io } from "socket.io-client";
 
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -21,6 +22,43 @@ import Footer from '../components/Footer';
 
 
 const socket = io(process.env.REACT_APP_API_URL);
+
+// Distinct map marker icons for different request statuses
+const statusMarkerIcons = {
+  open: new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  }),
+  assigned: new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  }),
+  resolved: new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  })
+};
+
+const defaultMarkerIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
 
 function NGODashboard() {
@@ -685,7 +723,14 @@ const urgencyPriority = {
 
       {/* MAP */}
       <Paper sx={{ mt: 4, p: 2, borderRadius: 2, boxShadow: 1 }}>
-        <Typography variant="h6">Request Map</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="h6">Request Map</Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Chip size="small" label="Open" color="warning" sx={{ fontWeight: 700 }} />
+            <Chip size="small" label="Assigned" color="primary" sx={{ fontWeight: 700 }} />
+            <Chip size="small" label="Resolved" color="success" sx={{ fontWeight: 700 }} />
+          </Box>
+        </Box>
         <Box sx={{ height: 400 }}>
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -695,6 +740,7 @@ const urgencyPriority = {
                 <Marker
                   key={r._id}
                   position={[r.location.coordinates[1], r.location.coordinates[0]]}
+                  icon={statusMarkerIcons[r.status] || defaultMarkerIcon}
                 >
                   <Popup>
                     <strong>{r.type}</strong><br />
