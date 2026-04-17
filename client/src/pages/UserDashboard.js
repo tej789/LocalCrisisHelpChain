@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar } from '@mui/material';
+import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar, MenuItem, Rating } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -75,9 +75,24 @@ function UserDashboard() {
   const [myRequests, setMyRequests] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [communityRequests, setCommunityRequests] = useState([]);
+  const [feedbackItems, setFeedbackItems] = useState([]);
+  const [allFeedbackItems, setAllFeedbackItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [allFeedbackLoading, setAllFeedbackLoading] = useState(true);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackActionLoadingId, setFeedbackActionLoadingId] = useState(null);
+  const [feedbackEditOpen, setFeedbackEditOpen] = useState(false);
+  const [allFeedbackDialogOpen, setAllFeedbackDialogOpen] = useState(false);
+  const [editingFeedbackId, setEditingFeedbackId] = useState(null);
+  const [feedbackEditForm, setFeedbackEditForm] = useState({
+    rating: 5,
+    category: 'general',
+    message: '',
+  });
   const [showResolvedOnly, setShowResolvedOnly] = useState(false);
   const myRequestsRef = useRef(null);
+  const feedbackRef = useRef(null);
   const navigate = useNavigate();
   const auth = useAuth();
   console.log("AUTH:", auth);
@@ -85,6 +100,11 @@ console.log("TOKEN VALUE:", auth?.token);
 const allRequests = [...myRequests, ...communityRequests];
   // Minimal presentational profile state (no backend calls)
   const [profile, setProfile] = useState({ name: '', email: '', phone: '', role: '', city: '' });
+  const [feedbackForm, setFeedbackForm] = useState({
+    rating: 5,
+    category: 'general',
+    message: '',
+  });
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -92,29 +112,44 @@ const allRequests = [...myRequests, ...communityRequests];
   });
   
 useEffect(() => {
-  if (!auth?.token) return;
+  if (!auth?.token) {
+    setLoading(false);
+    setFeedbackLoading(false);
+    setAllFeedbackLoading(false);
+    return;
+  }
 
-  const fetchRequests = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const { data } = await api.get('/api/requests');
+      const [requestsResponse, feedbackResponse] = await Promise.all([
+        api.get('/api/requests'),
+        api.get('/api/feedback/my-feedback'),
+      ]);
+      const allFeedbackResponse = await api.get('/api/feedback/all');
 
-      console.log("API DATA:", data);
+      console.log("API DATA:", requestsResponse.data);
 
-      setMyRequests(data.myRequests || []);
-      setCommunityRequests(data.communityRequests || []);
-      setPagination(data.pagination || null);   // ✅ ADD THIS
+      setMyRequests(requestsResponse.data.myRequests || []);
+      setCommunityRequests(requestsResponse.data.communityRequests || []);
+      setPagination(requestsResponse.data.pagination || null);
+      setFeedbackItems(feedbackResponse.data || []);
+      setAllFeedbackItems(allFeedbackResponse.data || []);
 
     } catch (error) {
       console.error('Error fetching requests:', error);
       setMyRequests([]);
       setCommunityRequests([]);
       setPagination(null);
+      setFeedbackItems([]);
+      setAllFeedbackItems([]);
     } finally {
       setLoading(false);
+      setFeedbackLoading(false);
+      setAllFeedbackLoading(false);
     }
   };
 
-  fetchRequests();
+  fetchDashboardData();
 }, [auth?.token]);
 
 // useEffect(() => {
@@ -144,6 +179,11 @@ useEffect(() => {
 
   const handleProfileChange = (field) => (e) => {
     setProfile((p) => ({ ...p, [field]: e.target.value }));
+  };
+
+  const handleFeedbackChange = (field) => (event, value) => {
+    const nextValue = field === 'rating' ? Number(value ?? 5) : event.target.value;
+    setFeedbackForm((current) => ({ ...current, [field]: nextValue }));
   };
 
   // Save updates only to local auth context to avoid backend changes
@@ -186,6 +226,133 @@ contact: profile.contact,
   }
 };
 
+  const handleSubmitFeedback = async () => {
+    if (!feedbackForm.message.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Please share your feedback before submitting.',
+        severity: 'warning',
+      });
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+
+    try {
+      const { data } = await api.post('/api/feedback', feedbackForm);
+
+      setFeedbackItems((current) => [data, ...current]);
+      setAllFeedbackItems((current) => [{
+        ...data,
+        userName: profile.name || auth?.user?.name || 'You',
+      }, ...current]);
+      setFeedbackForm({ rating: 5, category: 'general', message: '' });
+
+      setSnackbar({
+        open: true,
+        message: 'Feedback submitted successfully',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Feedback submit failed', error);
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.error || 'Failed to submit feedback',
+        severity: 'error',
+      });
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
+  const openEditFeedback = (item) => {
+    setEditingFeedbackId(item._id);
+    setFeedbackEditForm({
+      rating: item.rating,
+      category: item.category,
+      message: item.message,
+    });
+    setFeedbackEditOpen(true);
+  };
+
+  const handleFeedbackEditChange = (field) => (event, value) => {
+    const nextValue = field === 'rating' ? Number(value ?? 5) : event.target.value;
+    setFeedbackEditForm((current) => ({ ...current, [field]: nextValue }));
+  };
+
+  const handleUpdateFeedback = async () => {
+    if (!editingFeedbackId) return;
+
+    if (!feedbackEditForm.message.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Please enter feedback message.',
+        severity: 'warning',
+      });
+      return;
+    }
+
+    setFeedbackActionLoadingId(editingFeedbackId);
+
+    try {
+      const { data } = await api.put(`/api/feedback/${editingFeedbackId}`, feedbackEditForm);
+
+      setFeedbackItems((current) => current.map((item) => (
+        item._id === editingFeedbackId ? data : item
+      )));
+
+      setAllFeedbackItems((current) => current.map((item) => (
+        item._id === editingFeedbackId
+          ? { ...item, rating: data.rating, category: data.category, message: data.message, createdAt: data.createdAt }
+          : item
+      )));
+
+      setFeedbackEditOpen(false);
+      setEditingFeedbackId(null);
+
+      setSnackbar({
+        open: true,
+        message: 'Feedback updated successfully',
+        severity: 'success',
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.error || 'Failed to update feedback',
+        severity: 'error',
+      });
+    } finally {
+      setFeedbackActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteFeedback = async (id) => {
+    if (!id) return;
+
+    setFeedbackActionLoadingId(id);
+
+    try {
+      await api.delete(`/api/feedback/${id}`);
+
+      setFeedbackItems((current) => current.filter((item) => item._id !== id));
+      setAllFeedbackItems((current) => current.filter((item) => item._id !== id));
+
+      setSnackbar({
+        open: true,
+        message: 'Feedback deleted successfully',
+        severity: 'success',
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.error || 'Failed to delete feedback',
+        severity: 'error',
+      });
+    } finally {
+      setFeedbackActionLoadingId(null);
+    }
+  };
+
 //stats
 // ================= MY REQUESTS =================
 const myTotal = pagination?.myTotal || 0;
@@ -218,6 +385,8 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   return acc;
 }, {});
   const urgencyData = Object.entries(urgencyCounts).map(([urgency, count]) => ({ urgency, count }));
+  const publicFeedbackPreviewLimit = 3;
+  const recentPublicFeedback = allFeedbackItems.slice(0, publicFeedbackPreviewLimit);
 
   // Map center
   const firstWithCoords = allRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
@@ -312,6 +481,21 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             }}
           >
             Resolved Requests
+          </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setShowResolvedOnly(false);
+              if (feedbackRef.current) {
+                feedbackRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+          >
+            Feedback
           </Button>
 
           {/* Logout Button */}
@@ -623,6 +807,281 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     />
   </Grid>
 </Grid>
+
+<Paper sx={{ p: 3, mb: 6, borderRadius: 3 }} ref={feedbackRef}>
+  <Stack spacing={0.5} sx={{ mb: 3 }}>
+    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+      Feedback
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      Share what is working well and see what other users have submitted.
+    </Typography>
+  </Stack>
+
+  <Grid container spacing={3}>
+    <Grid item xs={12} md={5}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            Rating
+          </Typography>
+          <Rating
+            value={feedbackForm.rating}
+            onChange={handleFeedbackChange('rating')}
+            size="large"
+          />
+        </Box>
+
+        <TextField
+          select
+          fullWidth
+          label="Category"
+          value={feedbackForm.category}
+          onChange={handleFeedbackChange('category')}
+        >
+          <MenuItem value="general">General</MenuItem>
+          <MenuItem value="app">App Experience</MenuItem>
+          <MenuItem value="service">Service Quality</MenuItem>
+          <MenuItem value="response">Response Time</MenuItem>
+          <MenuItem value="other">Other</MenuItem>
+        </TextField>
+
+        <TextField
+          fullWidth
+          label="Your feedback"
+          multiline
+          minRows={4}
+          value={feedbackForm.message}
+          onChange={handleFeedbackChange('message')}
+          placeholder="Tell us how we can improve the experience for you and your community."
+        />
+
+        <Button
+          variant="contained"
+          onClick={handleSubmitFeedback}
+          disabled={feedbackSubmitting}
+          sx={{ alignSelf: 'flex-start', px: 3, fontWeight: 600 }}
+        >
+          {feedbackSubmitting ? 'Submitting...' : 'Submit Feedback'}
+        </Button>
+      </Stack>
+    </Grid>
+
+    <Grid item xs={12} md={7}>
+      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, height: '100%' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+          Public feedback feed
+        </Typography>
+
+        {allFeedbackLoading ? (
+          <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : allFeedbackItems.length === 0 ? (
+          <Typography color="text.secondary">
+            No feedback has been submitted yet.
+          </Typography>
+        ) : (
+          <>
+          <Stack spacing={2}>
+            {recentPublicFeedback.map((item) => (
+              <Card key={item._id} variant="outlined" sx={{ borderRadius: 2 }}>
+                <CardContent>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: 'wrap' }}>
+                    <Rating value={item.rating} readOnly size="small" />
+                    <Chip label={item.category} size="small" />
+                    <Chip label={item.userName || 'Anonymous'} size="small" variant="outlined" />
+                  </Stack>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {item.message}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    {new Date(item.createdAt).toLocaleString()}
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+          {allFeedbackItems.length > publicFeedbackPreviewLimit && (
+            <Box sx={{ mt: 2, textAlign: 'right' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setAllFeedbackDialogOpen(true)}
+              >
+                All Feedback
+              </Button>
+            </Box>
+          )}
+          </>
+        )}
+      </Paper>
+    </Grid>
+  </Grid>
+</Paper>
+
+<Paper variant="outlined" sx={{ p: 2.5, mb: 6, borderRadius: 3 }}>
+  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+    Your feedback history
+  </Typography>
+
+  {feedbackLoading ? (
+    <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+      <CircularProgress size={24} />
+    </Box>
+  ) : feedbackItems.length === 0 ? (
+    <Typography color="text.secondary">
+      You have not submitted feedback yet.
+    </Typography>
+  ) : (
+    <Stack spacing={2}>
+      {feedbackItems.map((item) => (
+        <Card key={item._id} variant="outlined" sx={{ borderRadius: 2 }}>
+          <CardContent>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: 'wrap' }}>
+              <Rating value={item.rating} readOnly size="small" />
+              <Chip label={item.category} size="small" />
+            </Stack>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {item.message}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              {new Date(item.createdAt).toLocaleString()}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => openEditFeedback(item)}
+                disabled={feedbackActionLoadingId === item._id}
+              >
+                Edit
+              </Button>
+              <Button
+                size="small"
+                color="error"
+                variant="outlined"
+                onClick={() => handleDeleteFeedback(item._id)}
+                disabled={feedbackActionLoadingId === item._id}
+              >
+                Delete
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      ))}
+    </Stack>
+  )}
+</Paper>
+
+<Dialog
+  open={feedbackEditOpen}
+  onClose={() => {
+    setFeedbackEditOpen(false);
+    setEditingFeedbackId(null);
+  }}
+  maxWidth="sm"
+  fullWidth
+>
+  <DialogTitle>Edit Feedback</DialogTitle>
+  <DialogContent>
+    <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Rating
+        </Typography>
+        <Rating
+          value={feedbackEditForm.rating}
+          onChange={handleFeedbackEditChange('rating')}
+        />
+      </Box>
+
+      <TextField
+        select
+        fullWidth
+        label="Category"
+        value={feedbackEditForm.category}
+        onChange={handleFeedbackEditChange('category')}
+      >
+        <MenuItem value="general">General</MenuItem>
+        <MenuItem value="app">App Experience</MenuItem>
+        <MenuItem value="service">Service Quality</MenuItem>
+        <MenuItem value="response">Response Time</MenuItem>
+        <MenuItem value="other">Other</MenuItem>
+      </TextField>
+
+      <TextField
+        fullWidth
+        label="Your feedback"
+        multiline
+        minRows={4}
+        value={feedbackEditForm.message}
+        onChange={handleFeedbackEditChange('message')}
+      />
+    </Box>
+  </DialogContent>
+  <DialogActions>
+    <Button
+      onClick={() => {
+        setFeedbackEditOpen(false);
+        setEditingFeedbackId(null);
+      }}
+    >
+      Cancel
+    </Button>
+    <Button
+      variant="contained"
+      onClick={handleUpdateFeedback}
+      disabled={!editingFeedbackId || feedbackActionLoadingId === editingFeedbackId}
+    >
+      Save
+    </Button>
+  </DialogActions>
+</Dialog>
+
+<Dialog
+  open={allFeedbackDialogOpen}
+  onClose={() => setAllFeedbackDialogOpen(false)}
+  maxWidth="md"
+  fullWidth
+>
+  <DialogTitle>All Feedback</DialogTitle>
+  <DialogContent>
+    {allFeedbackLoading ? (
+      <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress size={24} />
+      </Box>
+    ) : allFeedbackItems.length === 0 ? (
+      <Typography color="text.secondary">
+        No feedback has been submitted yet.
+      </Typography>
+    ) : (
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        {allFeedbackItems.map((item) => (
+          <Card key={item._id} variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: 'wrap' }}>
+                <Rating value={item.rating} readOnly size="small" />
+                <Chip label={item.category} size="small" />
+                <Chip label={item.userName || 'Anonymous'} size="small" variant="outlined" />
+              </Stack>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {item.message}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                {new Date(item.createdAt).toLocaleString()}
+              </Typography>
+            </CardContent>
+          </Card>
+        ))}
+      </Stack>
+    )}
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setAllFeedbackDialogOpen(false)}>Close</Button>
+  </DialogActions>
+</Dialog>
+
        {/* Dashboard Main Row: Charts, Map, Recent Requests */}
 <Grid container spacing={3} alignItems="stretch" sx={{ mb: 6 }}>
   <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
