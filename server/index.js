@@ -30,7 +30,7 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json()); 
+app.use(express.json({ limit: '10mb' })); 
 
 /* Make socket available in routes */
 app.set("io", io);

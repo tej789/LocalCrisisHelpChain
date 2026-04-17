@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
 import 'leaflet.marker.slideto';
-import { Box, CircularProgress, Typography, Alert, Paper, IconButton, Chip, Stack, Button } from '@mui/material';
+import { Box, CircularProgress, Typography, Alert, Paper, IconButton, Chip, Stack, Button, Avatar } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DirectionsIcon from '@mui/icons-material/Directions';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -45,6 +45,27 @@ const volunteerIcon = L.divIcon({
   iconAnchor: [17, 17],
   popupAnchor: [0, -20]
 });
+
+const getVolunteerMarkerIcon = (photoUrl) => {
+  if (!photoUrl) return volunteerIcon;
+
+  return L.divIcon({
+    html: `
+      <div style="
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 3px solid #ffffff;
+        background: url('${photoUrl}') center center / cover no-repeat;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+      "></div>
+    `,
+    className: 'volunteer-photo-marker-icon',
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -22]
+  });
+};
 
 const requestIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -261,6 +282,7 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
 
       const newLocationData = {
         volunteerName: data.volunteerName,
+        volunteerPhoto: data.volunteerPhoto || '',
         volunteerLat: newVolunteerLat,
         volunteerLng: newVolunteerLng,
         requestLat: data.requestLocation.latitude,
@@ -498,6 +520,8 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
     ];
   }
 
+  const volunteerMarkerIcon = getVolunteerMarkerIcon(locationData.volunteerPhoto);
+
   return (
     <Paper 
       elevation={3} 
@@ -592,7 +616,7 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
             textAlign: 'center'
           }}
         >
-          <Typography variant="body1" fontWeight={600} color="primary.main">
+          <Typography variant="body1" fontWeight={700} color="primary.main">
             🚑 Volunteer {locationData.volunteerName} is on the way
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -664,13 +688,26 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
           {/* Volunteer Marker with ref for auto-popup */}
           <Marker 
             position={[locationData.volunteerLat, locationData.volunteerLng]} 
-            icon={volunteerIcon}
+            icon={volunteerMarkerIcon}
             ref={volunteerMarkerRef}
           >
             <Popup autoClose={false} closeOnClick={false} autoPan={false}>
-              <strong>🙋 Volunteer: {locationData.volunteerName}</strong>
-              <br />
-              <small>Current Location</small>
+              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ minWidth: 180 }}>
+                <Avatar
+                  src={locationData.volunteerPhoto || undefined}
+                  sx={{ width: 44, height: 44 }}
+                >
+                  {(locationData.volunteerName || 'V').charAt(0).toUpperCase()}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Volunteer: {locationData.volunteerName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Current Location
+                  </Typography>
+                </Box>
+              </Stack>
               {distance !== null && (
                 <>
                   <br />

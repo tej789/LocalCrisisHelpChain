@@ -1,6 +1,25 @@
 const Volunteer = require('../models/Volunteer');
 
 /* ============================
+   Get current volunteer profile
+============================ */
+exports.getMe = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const volunteer = await Volunteer.findById(userId).select('-password');
+
+    if (!volunteer) {
+      return res.status(404).json({ error: 'Volunteer not found' });
+    }
+
+    res.json(volunteer);
+  } catch (err) {
+    console.error('Get volunteer profile error:', err);
+    res.status(500).json({ error: 'Failed to fetch volunteer profile' });
+  }
+};
+
+/* ============================
    GET volunteers
 ============================ */
 exports.getVolunteers = async (req, res) => {
@@ -142,15 +161,28 @@ exports.updateAvailability = async (req, res) => {
 exports.updateBasicProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name } = req.body;
+    const { name, profilePhoto } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: "Name is required" });
     }
 
+    if (profilePhoto !== undefined && typeof profilePhoto !== 'string') {
+      return res.status(400).json({ error: 'profilePhoto must be a string' });
+    }
+
+    if (typeof profilePhoto === 'string' && profilePhoto.length > 2_000_000) {
+      return res.status(400).json({ error: 'Profile photo is too large' });
+    }
+
+    const update = { name };
+    if (profilePhoto !== undefined) {
+      update.profilePhoto = profilePhoto;
+    }
+
     const updated = await Volunteer.findByIdAndUpdate(
       userId,
-      { $set: { name } },
+      { $set: update },
       { new: true, runValidators: true }
     );
 
@@ -158,7 +190,10 @@ exports.updateBasicProfile = async (req, res) => {
       return res.status(404).json({ error: "Volunteer not found" });
     }
 
-    res.json({ name: updated.name });
+    res.json({
+      name: updated.name,
+      profilePhoto: updated.profilePhoto || ''
+    });
 
   } catch (err) {
     console.error("Profile Error:", err);

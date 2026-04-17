@@ -345,7 +345,7 @@ exports.getVolunteerLocation = async (req, res) => {
 
     // Find the request
     const request = await HelpRequest.findById(requestId)
-      .populate('assignedTo', 'name location');
+      .populate('assignedTo', 'name location profilePhoto');
 
     if (!request) {
       return res.status(404).json({ error: 'Request not found' });
@@ -368,6 +368,7 @@ exports.getVolunteerLocation = async (req, res) => {
     res.status(200).json({
       success: true,
       volunteerName: volunteer.name,
+      volunteerPhoto: volunteer.profilePhoto || '',
       latitude,
       longitude,
       requestLocation: {

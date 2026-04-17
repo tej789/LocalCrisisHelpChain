@@ -31,4 +31,11 @@ router.patch(
   volunteerController.updateBasicProfile
 );
 
+router.get(
+  '/me',
+  verifyToken,
+  requireRole('volunteer'),
+  volunteerController.getMe
+);
+
 module.exports = router;

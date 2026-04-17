@@ -152,7 +152,8 @@ exports.login = asyncHandler(async (req, res) => {
       contact: account.contact,
       verified: account.verified,
       isVerified: account.isVerified,
-      isAvailable: account.isAvailable
+      isAvailable: account.isAvailable,
+      profilePhoto: account.profilePhoto || ''
     }
   });
 

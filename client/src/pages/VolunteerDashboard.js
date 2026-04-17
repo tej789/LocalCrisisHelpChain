@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField } from '@mui/material';
+import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField, Avatar } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -313,6 +313,8 @@ const handleUseLocation = () => {
   // Profile state
   const [profileName, setProfileName] = useState(auth.user?.name || "");
   const profileEmail = auth.user?.email || "";
+  const [profilePhoto, setProfilePhoto] = useState(auth.user?.profilePhoto || "");
+  const fileInputRef = useRef(null);
   const [profileLoading, setProfileLoading] = useState(false);
   // Backward-compatible verified check derived directly from auth.user
   const computedVerified = (auth?.user?.isVerified === true) || (auth?.user?.isVerified === undefined && auth?.user?.verified === true);
@@ -363,6 +365,20 @@ useEffect(() => {
       try {
         const response = await api.get('/api/volunteers/me');
         const volunteer = response.data.data || response.data;
+
+        if (volunteer) {
+          setProfileName(volunteer.name || auth?.user?.name || '');
+          setProfilePhoto(volunteer.profilePhoto || auth?.user?.profilePhoto || '');
+
+          if (auth?.user && (volunteer.profilePhoto !== auth.user.profilePhoto || volunteer.name !== auth.user.name)) {
+            try {
+              auth.updateUser({
+                name: volunteer.name || auth.user.name,
+                profilePhoto: volunteer.profilePhoto || ''
+              });
+            } catch {}
+          }
+        }
         
         if (volunteer.location && volunteer.location.coordinates && volunteer.location.coordinates.length === 2) {
           const [lng, lat] = volunteer.location.coordinates;
@@ -502,7 +518,34 @@ useEffect(() => {
     const isVerified = (u.isVerified === true) || (u.isVerified === undefined && u.verified === true);
     setMyVerified(!!isVerified);
     setMyAvailability(!!u.isAvailable);
+    setProfileName(u.name || '');
+    setProfilePhoto(u.profilePhoto || '');
   }, [auth?.user]);
+
+  const handleProfilePhotoSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setSnackbar({ open: true, message: 'Please select an image file.', severity: 'error' });
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 1_500_000) {
+      setSnackbar({ open: true, message: 'Image too large. Please use a file under 1.5MB.', severity: 'error' });
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfilePhoto(typeof reader.result === 'string' ? reader.result : '');
+    };
+    reader.readAsDataURL(file);
+
+    event.target.value = '';
+  };
 
   useEffect(() => {
     socket.on('newRequest', (newRequest) => {
@@ -571,15 +614,20 @@ useEffect(() => {
     setProfileLoading(true);
     try {
       const { data } = await api.patch("/api/volunteers/me/basic", {
-        name: profileName
+        name: profileName,
+        profilePhoto
       });
 
       auth.login({
         token: auth.token,
-        user: { ...auth.user, name: data.name }
+        user: {
+          ...auth.user,
+          name: data.name,
+          profilePhoto: data.profilePhoto || ''
+        }
       });
 
-      setSnackbar({ open: true, message: "Name updated successfully", severity: 'success' });
+      setSnackbar({ open: true, message: "Profile updated successfully", severity: 'success' });
     } catch (err) {
       setSnackbar({ open: true, message: err.response?.data?.error || "Update failed", severity: 'error' });
     }
@@ -797,6 +845,18 @@ I will reach you shortly.`
     <Typography variant="h6" sx={{ flexGrow: 1 }}>
       Volunteer Dashboard
     </Typography>
+
+    <Button
+      onClick={() => setProfileOpen(true)}
+      sx={{ minWidth: 0, p: 0, borderRadius: '50%' }}
+    >
+      <Avatar
+        src={profilePhoto || undefined}
+        sx={{ width: 38, height: 38, bgcolor: 'grey.400' }}
+      >
+        {(profileName || auth?.user?.name || 'V').charAt(0).toUpperCase()}
+      </Avatar>
+    </Button>
   </Toolbar>
 </AppBar>
 
@@ -807,6 +867,23 @@ I will reach you shortly.`
   onClose={() => setSidebarOpen(false)}
 >
   <Box sx={{ width: 250, p: 2 }}>
+    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+      <Avatar
+        src={profilePhoto || undefined}
+        sx={{ width: 44, height: 44, bgcolor: 'grey.400' }}
+      >
+        {(profileName || auth?.user?.name || 'V').charAt(0).toUpperCase()}
+      </Avatar>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
+          {profileName || auth?.user?.name || 'Volunteer'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" noWrap>
+          {profileEmail || auth?.user?.email || ''}
+        </Typography>
+      </Box>
+    </Stack>
+
     <Typography variant="h6" sx={{ mb: 2 }}>
       Menu
     </Typography>
@@ -1651,6 +1728,40 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
         }}
       >
         <Box textAlign="center" mb={2}>
+          <Avatar
+            src={profilePhoto || undefined}
+            sx={{ width: 84, height: 84, mx: 'auto', mb: 1.5 }}
+          >
+            {(profileName || 'V').charAt(0).toUpperCase()}
+          </Avatar>
+
+          <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 1.5 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Upload Photo
+            </Button>
+            <Button
+              size="small"
+              color="error"
+              variant="outlined"
+              onClick={() => setProfilePhoto('')}
+              disabled={!profilePhoto}
+            >
+              Remove
+            </Button>
+          </Stack>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleProfilePhotoSelect}
+            style={{ display: 'none' }}
+          />
+
           <Typography variant="h5" fontWeight={700}>
             Volunteer Profile
           </Typography>

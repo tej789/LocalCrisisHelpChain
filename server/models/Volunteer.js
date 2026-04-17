@@ -10,6 +10,10 @@ const VolunteerSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   password: String,
   role: { type: String, default: 'volunteer' },
+  profilePhoto: {
+    type: String,
+    default: ''
+  },
 
   verified: { type: Boolean, default: false },
 
