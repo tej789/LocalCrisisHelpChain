@@ -1124,11 +1124,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 
        {/* Dashboard Main Row: Charts, Map, Recent Requests */}
 <Grid container spacing={3} alignItems="stretch" sx={{ mb: 6 }}>
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
+  <Grid item xs={12} sm={6} lg={3} sx={{ display: 'flex' }}>
     <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', borderRadius: 3, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 8 }, flex: 1 }}>
       <Stack direction="row" alignItems="center" spacing={1} mb={1}>
         <CategoryIcon color="primary" />
-        <Typography variant="h6">Requests by Type</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Requests by Type</Typography>
       </Stack>
       <Box sx={{ flex: 1, minHeight: { xs: 200, md: 260 } }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -1147,11 +1147,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   </Grid>
 
 
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
+  <Grid item xs={12} sm={6} lg={3} sx={{ display: 'flex' }}>
     <Paper elevation={3} sx={{ p: 2, display: 'flex', flexDirection: 'column', borderRadius: 3, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 8 }, flex: 1 }}>
       <Stack direction="row" alignItems="center" spacing={1} mb={1}>
         <PriorityHighIcon color="error" />
-        <Typography variant="h6">Requests by Urgency</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Requests by Urgency</Typography>
       </Stack>
       <Box sx={{ flex: 1, minHeight: { xs: 240, md: 260 } }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -1167,11 +1167,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     </Paper>
   </Grid>
 
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
+  <Grid item xs={12} sm={6} lg={3} sx={{ display: 'flex' }}>
     <Paper elevation={1} sx={{ p: 2, display: 'flex', flexDirection: 'column', borderRadius: 3, boxShadow: 1, transition: 'box-shadow 0.15s', '&:hover': { boxShadow: 4 }, flex: 1 }}>
       <Stack direction="row" alignItems="center" spacing={1} mb={1}>
         <MapIcon color="info" />
-        <Typography variant="h6">Live Request Map</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Live Request Map</Typography>
       </Stack>
       <Box sx={{ flex: 1, minHeight: { xs: 240, md: 260 } }}>
         {loading ? (
@@ -1200,7 +1200,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     </Paper>
   </Grid>
 
-  <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: 'flex' }}>
+  <Grid item xs={12} sm={6} lg={3} sx={{ display: 'flex' }}>
   <Paper
   elevation={1}
   sx={{
@@ -1219,7 +1219,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 >
       <Stack direction="row" alignItems="center" spacing={1} mb={1}>
         <ListAltIcon color="secondary" />
-        <Typography variant="h6">Community Requests</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Community Requests</Typography>
       </Stack>
       <Box sx={{ flex: 1, overflow: 'auto', minHeight: { xs: 240, md: 260 }, pr: 0.5 }}>
         {loading ? <CircularProgress /> : (
