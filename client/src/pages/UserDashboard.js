@@ -25,6 +25,7 @@ import {
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import VolunteerLocationMap from '../components/VolunteerLocationMap';
@@ -71,6 +72,7 @@ function UserDashboard() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState(null); // Track volunteer feature
   const [myRequests, setMyRequests] = useState([]);
@@ -447,6 +449,34 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
         onClose={() => setSidebarOpen(false)}
       >
         <Box sx={{ width: 250, p: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              p: 1.5,
+              borderRadius: 2,
+              mb: 2,
+              bgcolor: 'grey.100',
+            }}
+          >
+            <Avatar
+              src={auth?.user?.profilePhoto || undefined}
+              sx={{ width: 44, height: 44, bgcolor: 'primary.main', fontWeight: 600 }}
+            >
+              {(profile.name || auth?.user?.name || 'U').charAt(0).toUpperCase()}
+            </Avatar>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" fontWeight={700} noWrap>
+                {profile.name || auth?.user?.name || 'User'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {profile.email || auth?.user?.email || 'No email available'}
+              </Typography>
+            </Box>
+          </Box>
+
           <Typography variant="h6" sx={{ mb: 2 }}>
             Menu
           </Typography>
@@ -531,6 +561,19 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             }}
           >
             Feedback
+          </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<InfoOutlinedIcon />}
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setAboutOpen(true);
+            }}
+          >
+            About LCHC
           </Button>
 
           {/* Logout Button */}
@@ -630,6 +673,80 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   >
     Close
   </Button>
+</Dialog>
+
+<Dialog
+  open={aboutOpen}
+  onClose={() => setAboutOpen(false)}
+  maxWidth="md"
+  fullWidth
+>
+  <DialogTitle sx={{ pb: 1 }}>
+    About Local Crisis HelpChain (LCHC)
+  </DialogTitle>
+
+  <DialogContent dividers>
+    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+      LCHC is a coordinated crisis-response platform that helps people raise verified help requests,
+      connect with volunteers and NGOs, and follow each case from open to resolved in a transparent way.
+    </Typography>
+
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            How LCHC Works
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Users submit emergency or support requests with location and urgency details. NGOs and volunteers
+            review nearby requests, accept assignments, and update progress until resolution.
+          </Typography>
+        </Paper>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            Professional Tracking
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Real-time status stages like Open, Assigned, and Resolved give a clear operational view.
+            This improves accountability and helps communities understand response timelines.
+          </Typography>
+        </Paper>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            Trust and Safety
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Role-based access, profile management, and request visibility controls are designed to keep
+            sensitive community information protected while enabling fast response coordination.
+          </Typography>
+        </Paper>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+            Community Impact
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            LCHC shortens the gap between people in need and active responders. The platform combines
+            structured workflows with local participation to build resilient support networks.
+          </Typography>
+        </Paper>
+      </Grid>
+    </Grid>
+  </DialogContent>
+
+  <DialogActions sx={{ p: 2 }}>
+    <Button variant="contained" onClick={() => setAboutOpen(false)}>
+      Close
+    </Button>
+  </DialogActions>
 </Dialog>
 
 <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
