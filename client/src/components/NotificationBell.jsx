@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   IconButton,
   Badge,
@@ -7,16 +7,22 @@ import {
   Typography,
   Box,
   Divider,
-  CircularProgress
+  CircularProgress,
+  Button
 } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import { useNotifications } from "../context/NotificationContext";
 
-function NotificationBell() {
+function NotificationBell({ onViewAll }) {
   const { notifications, unreadCount, markAsRead, loading } = useNotifications();
   const [anchorEl, setAnchorEl] = useState(null);
 
   const open = Boolean(anchorEl);
+
+  const recentNotifications = useMemo(
+    () => notifications.slice(0, 5),
+    [notifications]
+  );
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -63,7 +69,7 @@ function NotificationBell() {
         ) : notifications.length === 0 ? (
           <MenuItem disabled>No notifications</MenuItem>
         ) : (
-          notifications.map((notification) => (
+          recentNotifications.map((notification) => (
             <MenuItem
               key={notification._id}
               onClick={() => handleNotificationClick(notification)}
@@ -90,6 +96,17 @@ function NotificationBell() {
               </Box>
             </MenuItem>
           ))
+        )}
+
+        {notifications.length > 5 && (
+          <>
+            <Divider />
+            <Box p={1.5} display="flex" justifyContent="center">
+              <Button size="small" onClick={onViewAll || handleClose}>
+                View all notifications
+              </Button>
+            </Box>
+          </>
         )}
       </Menu>
     </>

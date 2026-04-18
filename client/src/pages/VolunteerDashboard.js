@@ -28,6 +28,7 @@ import api from '../api/axios';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
 import NotificationBell from '../components/NotificationBell';
+import NotificationCenterDialog from '../components/NotificationCenterDialog';
 
 const socket = io(process.env.REACT_APP_API_URL);
 
@@ -131,6 +132,7 @@ const urgencyPriority = {
 function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const [volunteerLocation, setVolunteerLocation] = useState(null); // { lat, lng }
   const [routeCoordinates, setRouteCoordinates] = useState([]);
@@ -904,6 +906,18 @@ I will reach you shortly.`
       Profile
     </Button>
 
+    <Button
+      fullWidth
+      variant="outlined"
+      sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+      onClick={() => {
+        setSidebarOpen(false);
+        setNotificationsOpen(true);
+      }}
+    >
+      Notifications
+    </Button>
+
     {/* View Filters from Drawer */}
     <Button
       fullWidth
@@ -946,6 +960,11 @@ I will reach you shortly.`
 </Drawer>
 
   <Container maxWidth="lg">
+  <NotificationCenterDialog
+    open={notificationsOpen}
+    onClose={() => setNotificationsOpen(false)}
+    title="Your Notifications"
+  />
   {/* Welcome Box - Same as User Dashboard */}
   <Paper
     elevation={2}

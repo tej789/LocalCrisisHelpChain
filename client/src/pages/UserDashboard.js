@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar, MenuItem, Rating } from '@mui/material';
+import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar, MenuItem, Rating, Avatar } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -26,6 +26,7 @@ import {
 import LogoutIcon from "@mui/icons-material/Logout";
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import NotificationBell from '../components/NotificationBell';
+import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import VolunteerLocationMap from '../components/VolunteerLocationMap';
 
 
@@ -85,6 +86,7 @@ function UserDashboard() {
   const [feedbackEditOpen, setFeedbackEditOpen] = useState(false);
   const [allFeedbackDialogOpen, setAllFeedbackDialogOpen] = useState(false);
   const [editingFeedbackId, setEditingFeedbackId] = useState(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [feedbackEditForm, setFeedbackEditForm] = useState({
     rating: 5,
     category: 'general',
@@ -420,7 +422,21 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             User Dashboard
           </Typography>
           
-          <NotificationBell />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NotificationBell />
+            <IconButton
+              onClick={() => setProfileOpen(true)}
+              sx={{ p: 0.5, border: 'none', boxShadow: 'none', bgcolor: 'transparent' }}
+              aria-label="open profile"
+            >
+              <Avatar
+                src={auth?.user?.profilePhoto || undefined}
+                sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: 14 }}
+              >
+                {(profile.name || auth?.user?.name || 'U').charAt(0).toUpperCase()}
+              </Avatar>
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
 
@@ -446,6 +462,18 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             }}
           >
             Profile
+          </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              setNotificationsOpen(true);
+            }}
+          >
+            Notifications
           </Button>
 
           {/* File Help Request – navigates to existing submit-request form */}
@@ -523,6 +551,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
       
       {/* FIXED: container width */}
       <Container maxWidth="lg">
+<NotificationCenterDialog
+  open={notificationsOpen}
+  onClose={() => setNotificationsOpen(false)}
+  title="Your Notifications"
+/>
 <Dialog
   open={profileOpen}
   onClose={() => setProfileOpen(false)}
