@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
+import NotificationBell from '../components/NotificationBell';
 
 const socket = io(process.env.REACT_APP_API_URL);
 
@@ -845,6 +846,8 @@ I will reach you shortly.`
     <Typography variant="h6" sx={{ flexGrow: 1 }}>
       Volunteer Dashboard
     </Typography>
+
+    <NotificationBell />
 
     <Button
       onClick={() => setProfileOpen(true)}

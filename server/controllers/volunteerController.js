@@ -1,4 +1,5 @@
 const Volunteer = require('../models/Volunteer');
+const Notification = require('../models/Notification');
 
 /* ============================
    Get current volunteer profile
@@ -198,5 +199,46 @@ exports.updateBasicProfile = async (req, res) => {
   } catch (err) {
     console.error("Profile Error:", err);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+};
+
+/* ============================
+   GET volunteer notifications
+============================ */
+exports.getMyNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({
+      volunteerId: req.user.id
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json(notifications);
+  } catch (err) {
+    console.error('Fetch volunteer notification error:', err);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+};
+
+/* ============================
+   Mark volunteer notification read
+============================ */
+exports.markNotificationRead = async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        volunteerId: req.user.id
+      },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    res.json(notification);
+  } catch (err) {
+    console.error('Mark volunteer notification read error:', err);
+    res.status(500).json({ error: 'Failed to update notification' });
   }
 };

@@ -4,8 +4,11 @@ const NotificationSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+      ref: 'User'
+    },
+    volunteerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Volunteer'
     },
     requestId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,5 +35,16 @@ const NotificationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+NotificationSchema.pre('validate', function (next) {
+  const hasUserRecipient = Boolean(this.userId);
+  const hasVolunteerRecipient = Boolean(this.volunteerId);
+
+  if (hasUserRecipient === hasVolunteerRecipient) {
+    this.invalidate('userId', 'Notification must target exactly one recipient');
+  }
+
+  next();
+});
 
 module.exports = mongoose.model('Notification', NotificationSchema);

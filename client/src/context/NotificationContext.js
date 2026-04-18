@@ -5,16 +5,31 @@ import { useAuth } from "./AuthContext";
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const getNotificationsBasePath = () => {
+    const role = user?.role?.toLowerCase();
+
+    if (role === 'user') return '/api/users/notifications';
+    if (role === 'volunteer') return '/api/volunteers/notifications';
+
+    return null;
+  };
 
   const fetchNotifications = async () => {
     if (!token) return;
 
+    const basePath = getNotificationsBasePath();
+    if (!basePath) {
+      setNotifications([]);
+      return;
+    }
+
     try {
       setLoading(true);
-      const { data } = await api.get("/api/users/notifications", {
+      const { data } = await api.get(basePath, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -27,9 +42,12 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const markAsRead = async (id) => {
+    const basePath = getNotificationsBasePath();
+    if (!basePath) return;
+
     try {
       await api.put(
-        `/api/users/notifications/${id}/read`,
+        `${basePath}/${id}/read`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -48,7 +66,7 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     fetchNotifications();
-  }, [token]);
+  }, [token, user?.role]);
 
   return (
     <NotificationContext.Provider

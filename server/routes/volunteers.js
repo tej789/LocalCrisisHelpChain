@@ -38,4 +38,18 @@ router.get(
   volunteerController.getMe
 );
 
+router.get(
+  '/notifications',
+  verifyToken,
+  requireRole('volunteer'),
+  volunteerController.getMyNotifications
+);
+
+router.put(
+  '/notifications/:id/read',
+  verifyToken,
+  requireRole('volunteer'),
+  volunteerController.markNotificationRead
+);
+
 module.exports = router;

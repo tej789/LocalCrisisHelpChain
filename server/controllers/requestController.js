@@ -217,20 +217,25 @@ exports.assignVolunteer = async (req, res) => {
 if (user) {
   await sendAssignmentEmail(user, vol);
 }
-await sendVolunteerAssignmentEmail(vol, updated);
+await sendVolunteerAssignmentEmail(vol, updated, user);
 
-// 🔔 Create notification for the user
-console.log("Before notification create");
-
-
-await Notification.create({
-  userId: updated.createdBy,
-  requestId: updated._id,
-  type: "assigned",
-  title: "Request Assigned",
-  message: `Volunteer ${vol.name} has been assigned to your request.`,
-});
-console.log("After notification create");
+    // Create notifications for both user and assigned volunteer.
+    await Notification.insertMany([
+      {
+        userId: updated.createdBy,
+        requestId: updated._id,
+        type: 'assigned',
+        title: 'Request Assigned',
+        message: `Volunteer ${vol.name} has been assigned to your request.`
+      },
+      {
+        volunteerId: vol._id,
+        requestId: updated._id,
+        type: 'assigned',
+        title: 'New Assignment',
+        message: `You have been assigned to a ${updated.type} request.`
+      }
+    ]);
     const io = req.app.get('io');
     if (io) io.emit('requestAssigned', updated);
 

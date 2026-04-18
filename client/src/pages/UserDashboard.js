@@ -389,9 +389,16 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   const recentPublicFeedback = allFeedbackItems.slice(0, publicFeedbackPreviewLimit);
 
   // Map center
-  const firstWithCoords = allRequests.find(r => r.location && r.location.coordinates && r.location.coordinates.length === 2);
+  const requestWithCoords = myRequests.find(
+    (r) => r.location && r.location.coordinates && r.location.coordinates.length === 2
+  ) || allRequests.find(
+    (r) => r.location && r.location.coordinates && r.location.coordinates.length === 2
+  );
+
   const defaultPosition = [20.5937, 78.9629]; // Center of India
-  const mapCenter = firstWithCoords ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]] : defaultPosition;
+  const mapCenter = requestWithCoords
+    ? [requestWithCoords.location.coordinates[1], requestWithCoords.location.coordinates[0]]
+    : defaultPosition;
 
   return (
     <Box sx={{ p: { xs: 1, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>

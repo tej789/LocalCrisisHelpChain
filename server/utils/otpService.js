@@ -86,6 +86,9 @@ exports.sendAssignmentEmail = async (user, volunteer) => {
 // Volunteer Assigned request Mail
 exports.sendVolunteerAssignmentEmail = async (volunteer, request, user) => {
   try {
+    const requesterName = user?.name || "User";
+    const requesterEmail = user?.email || "";
+
     const sendSmtpEmail = {
       sender: {
         email: process.env.BREVO_SENDER_EMAIL,
@@ -104,8 +107,8 @@ exports.sendVolunteerAssignmentEmail = async (volunteer, request, user) => {
         <p>You have been assigned a new crisis request.</p>
 
         <p><strong>User Details:</strong><br/>
-        Name: ${user.name || "User"}<br/>
-        Email: ${user.email}</p>
+        Name: ${requesterName}<br/>
+        Email: ${requesterEmail}</p>
 
         <p><strong>Request Details:</strong><br/>
         Type: ${request.type}<br/>
@@ -117,8 +120,8 @@ exports.sendVolunteerAssignmentEmail = async (volunteer, request, user) => {
         <p>– Local Crisis HelpChain</p>
       `,
       replyTo: {
-        email: user.email,
-        name: user.name,
+        email: requesterEmail || volunteer.email,
+        name: requesterName,
       },
     };
 
