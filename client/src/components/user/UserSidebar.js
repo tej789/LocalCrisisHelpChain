@@ -1,14 +1,12 @@
 import React from 'react';
-import { Box, List, ListItem, ListItemIcon, ListItemText, Typography, Divider, Button } from '@mui/material';
+import { Box, List, ListItem, ListItemIcon, ListItemText, Typography, Button } from '@mui/material';
 import { 
   Dashboard as DashboardIcon,
   AddCircle as AddIcon,
-  List as ListIcon,
   Public as PublicIcon,
   Person as PersonIcon,
   Help as HelpIcon,
-  Logout as LogoutIcon,
-  CheckCircle as CheckCircleIcon
+  Logout as LogoutIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -41,10 +39,9 @@ function UserSidebar({ isMobile, sidebarOpen, toggleSidebar, handleLogout }) {
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard/user' },
-    { text: 'Profile', icon: <PersonIcon />, path: '/user/profile' },
-    // File Help Request entry just below Profile, going to existing submit-request form
     { text: 'File Help Request', icon: <AddIcon />, path: '/submit-request' },
     { text: 'Community Requests', icon: <PublicIcon />, path: '/requests' },
+    { text: 'Profile', icon: <PersonIcon />, path: '/user/profile' },
     { text: 'Help', icon: <HelpIcon />, path: '/user/help' },
   ];
 
