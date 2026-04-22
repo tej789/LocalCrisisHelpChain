@@ -29,6 +29,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import VolunteerLocationMap from '../components/VolunteerLocationMap';
+import Footer from '../components/Footer';
 
 
 
@@ -1374,9 +1375,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
   )}
        
         {/* Footer */}
-        <Box mt={8} textAlign="center" color="text.secondary" fontSize={16}>
-          &copy; {new Date().getFullYear()} Local Crisis HelpChain. All rights reserved.
-
+        <Box mt={8} mx={{ xs: -2, md: 0 }}>
+          <Footer
+            text={`© ${new Date().getFullYear()} Local Crisis HelpChain · User Dashboard`}
+            showProfessionalLinks
+          />
         </Box>
         <Snackbar
   open={snackbar.open}
