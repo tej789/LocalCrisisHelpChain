@@ -1,0 +1,264 @@
+const AppError = require('../utils/AppError');
+
+const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
+const NOMINATIM_API = 'https://nominatim.openstreetmap.org/reverse';
+const SEARCH_RADIUS_PRIMARY = 5000;
+const SEARCH_RADIUS_FALLBACK = 15000;
+const EARTH_RADIUS_KM = 6371;
+const API_TIMEOUT_MS = 8000;
+
+function toRadians(value) {
+  return (value * Math.PI) / 180;
+}
+
+function distanceInKm(lat1, lon1, lat2, lon2) {
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function extractCoordinates(element) {
+  if (typeof element.lat === 'number' && typeof element.lon === 'number') {
+    return { lat: element.lat, lon: element.lon };
+  }
+
+  if (element.center && typeof element.center.lat === 'number' && typeof element.center.lon === 'number') {
+    return { lat: element.center.lat, lon: element.center.lon };
+  }
+
+  return null;
+}
+
+function normalizePlace(element, index, fallbackName, userLat, userLon) {
+  const coords = extractCoordinates(element);
+  if (!coords) return null;
+
+  const name = element.tags?.name || `${fallbackName} ${index + 1}`;
+
+  // Try multiple address sources from OSM
+  const osmAddress = [
+    element.tags?.['addr:housenumber'] && element.tags?.['addr:street']
+      ? `${element.tags['addr:housenumber']} ${element.tags['addr:street']}`
+      : element.tags?.['addr:street'],
+    element.tags?.['addr:city'] || element.tags?.['addr:town'] || element.tags?.['addr:village'],
+    element.tags?.['addr:state'],
+  ]
+    .filter((v) => v && String(v).trim())
+    .join(', ');
+
+  const distance = distanceInKm(userLat, userLon, coords.lat, coords.lon);
+
+  return {
+    id: `${element.type}-${element.id}`,
+    name,
+    address: osmAddress && osmAddress.trim() ? osmAddress : null,
+    lat: coords.lat,
+    lon: coords.lon,
+    distance,
+    needsReverseGeo: !osmAddress || !osmAddress.trim(),
+  };
+}
+
+function buildOverpassQuery(lat, lon, category, radius) {
+  const timeoutSec = Math.ceil(API_TIMEOUT_MS / 1000);
+
+  if (category === 'hospitals') {
+    return `
+      [out:json][timeout:${timeoutSec}];
+      (
+        node(around:${radius},${lat},${lon})[amenity=hospital];
+        way(around:${radius},${lat},${lon})[amenity=hospital];
+        node(around:${radius},${lat},${lon})[amenity=clinic];
+        way(around:${radius},${lat},${lon})[amenity=clinic];
+      );
+      out center tags;
+    `;
+  }
+
+  return `
+    [out:json][timeout:${timeoutSec}];
+    (
+      node(around:${radius},${lat},${lon})[amenity=shelter];
+      way(around:${radius},${lat},${lon})[amenity=shelter];
+      node(around:${radius},${lat},${lon})[social_facility=shelter];
+      way(around:${radius},${lat},${lon})[social_facility=shelter];
+    );
+    out center tags;
+  `;
+}
+
+async function fetchAddressViaReverseGeo(lat, lon) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const response = await fetch(
+      `${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+      { signal: controller.signal }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) throw new Error('Reverse geo API error');
+
+    const data = await response.json();
+
+    if (data.display_name) {
+      return data.display_name.split(',').slice(0, 3).join(',').trim();
+    }
+
+    const address = data.address || {};
+    const addressStr = [
+      address.house_number && address.road ? `${address.house_number} ${address.road}` : address.road,
+      address.neighbourhood || address.suburb || address.village || address.town || address.city,
+      address.district || address.county,
+    ]
+      .filter((v) => v && v.trim())
+      .join(', ')
+      .trim();
+
+    return addressStr || null;
+  } catch (error) {
+    console.error(`Address fetch error for [${lat}, ${lon}]:`, error.message);
+    return null;
+  }
+}
+
+async function enrichAddresses(places) {
+  const toFetch = places.filter((p) => p.needsReverseGeo);
+
+  if (toFetch.length > 0) {
+    const results = await Promise.allSettled(
+      toFetch.map((p) => fetchAddressViaReverseGeo(p.lat, p.lon))
+    );
+
+    for (let i = 0; i < toFetch.length; i++) {
+      const result = results[i];
+      if (result.status === 'fulfilled' && result.value) {
+        toFetch[i].address = result.value;
+      } else {
+        toFetch[i].address = 'Exact location found via map';
+      }
+      delete toFetch[i].needsReverseGeo;
+    }
+  }
+
+  return places.map((p) => ({
+    ...p,
+    address: p.address || 'Exact location found via map',
+  }));
+}
+
+async function fetchCategoryPlaces(lat, lon, category) {
+  const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
+  let lastError = null;
+
+  // Try primary radius with timeout
+  try {
+    const query = buildOverpassQuery(lat, lon, category, SEARCH_RADIUS_PRIMARY);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    const response = await fetch(OVERPASS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: query,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let places = (data.elements || [])
+      .map((item, index) => normalizePlace(item, index, fallbackName, lat, lon))
+      .filter(Boolean)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 8);
+
+    places = await enrichAddresses(places);
+
+    const result = { places, radiusUsed: SEARCH_RADIUS_PRIMARY };
+    return result;
+  } catch (error) {
+    lastError = error;
+    console.error(`Primary radius fetch failed for ${category}:`, error.message);
+  }
+
+  // Fallback: Try larger radius silently
+  try {
+    const query = buildOverpassQuery(lat, lon, category, SEARCH_RADIUS_FALLBACK);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    const response = await fetch(OVERPASS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: query,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      let places = (data.elements || [])
+        .map((item, index) => normalizePlace(item, index, fallbackName, lat, lon))
+        .filter(Boolean)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 8);
+
+      places = await enrichAddresses(places);
+
+      const result = { places, radiusUsed: SEARCH_RADIUS_FALLBACK };
+      return result;
+    }
+  } catch (error) {
+    console.error(`Fallback radius fetch failed for ${category}:`, error.message);
+  }
+
+  // Return empty result if both fail
+  const result = { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY };
+  return result;
+}
+
+exports.getNearbyServices = async (req, res, next) => {
+  try {
+    const { lat, lon } = req.query;
+
+    if (!lat || !lon) {
+      return next(new AppError('Latitude and longitude are required', 400));
+    }
+
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lon);
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return next(new AppError('Invalid latitude or longitude', 400));
+    }
+
+    // Fetch both hospitals and shelters in parallel
+    const [hospitalsResult, sheltersResult] = await Promise.all([
+      fetchCategoryPlaces(latitude, longitude, 'hospitals'),
+      fetchCategoryPlaces(latitude, longitude, 'shelters'),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        hospitals: hospitalsResult,
+        shelters: sheltersResult,
+      },
+    });
+  } catch (error) {
+    console.error('Nearby services error:', error);
+    next(new AppError('Failed to fetch nearby services', 500));
+  }
+};

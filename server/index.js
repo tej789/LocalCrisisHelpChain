@@ -51,6 +51,7 @@ app.use("/api/requests", require("./routes/requests"));
 app.use("/api/feedback", require("./routes/feedback"));
 app.use("/api/ngo", require("./routes/ngo"));
 app.use("/api/volunteers", require("./routes/volunteers"));
+app.use("/api/nearby-services", require("./routes/nearbyServices"));
 app.use("/api/admin", adminRoutes);
 
 /* ==============================

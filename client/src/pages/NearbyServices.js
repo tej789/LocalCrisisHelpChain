@@ -24,6 +24,7 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/axios';
 
 const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org/reverse';
@@ -45,16 +46,6 @@ function normalizeCoordinates(lat, lon) {
   };
 }
 
-function getCacheKey(lat, lon, category) {
-  const normalized = normalizeCoordinates(lat, lon);
-  return `${CACHE_KEY_PREFIX}${category}_${normalized.lat}_${normalized.lon}`;
-}
-
-function getAddressCacheKey(lat, lon) {
-  const normalized = normalizeCoordinates(lat, lon);
-  return `${ADDRESS_CACHE_PREFIX}${normalized.lat}_${normalized.lon}`;
-}
-
 function getLastLocationCache() {
   try {
     const cached = localStorage.getItem(LOCATION_CACHE_KEY);
@@ -73,16 +64,10 @@ function setLastLocationCache(lat, lon) {
   }
 }
 
-function hasLocationDrifted(newLat, newLon, oldLat, oldLon) {
-  const dLat = (newLat - oldLat) * 111000;
-  const dLon = (newLon - oldLon) * 111000 * Math.cos((newLat * Math.PI) / 180);
-  const distance = Math.sqrt(dLat * dLat + dLon * dLon);
-  return distance > MIN_LOCATION_DRIFT_METERS;
-}
-
-function getCachedAddress(lat, lon) {
+// Cache helper functions
+function getCachedResult(category) {
   try {
-    const key = getAddressCacheKey(lat, lon);
+    const key = `${CACHE_KEY_PREFIX}${category}`;
     const cached = localStorage.getItem(key);
     if (!cached) return null;
 
@@ -98,86 +83,12 @@ function getCachedAddress(lat, lon) {
   }
 }
 
-function setCachedAddress(lat, lon, address) {
+function setCachedResult(category, data) {
   try {
-    const key = getAddressCacheKey(lat, lon);
-    localStorage.setItem(key, JSON.stringify({ data: address, timestamp: Date.now() }));
-  } catch {
-    // Silently fail if localStorage is full
-  }
-}
-
-async function fetchAddressViaReverseGeo(lat, lon) {
-  const cached = getCachedAddress(lat, lon);
-  if (cached !== null) return cached;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-    const response = await fetch(
-      `${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
-      { signal: controller.signal }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) throw new Error('Reverse geo API error');
-
-    const data = await response.json();
-
-    if (data.display_name) {
-      const addressStr = data.display_name.split(',').slice(0, 3).join(',').trim();
-      setCachedAddress(lat, lon, addressStr);
-      return addressStr;
-    }
-
-    const address = data.address || {};
-    const addressStr = [
-      address.house_number && address.road ? `${address.house_number} ${address.road}` : address.road,
-      address.neighbourhood || address.suburb || address.village || address.town || address.city,
-      address.district || address.county,
-    ]
-      .filter((v) => v && v.trim())
-      .join(', ')
-      .trim();
-
-    if (addressStr) {
-      setCachedAddress(lat, lon, addressStr);
-      return addressStr;
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`Address fetch error for [${lat}, ${lon}]:`, error.message);
-    return null;
-  }
-}
-
-function getCachedPlaces(lat, lon, category) {
-  try {
-    const key = getCacheKey(lat, lon, category);
-    const cached = localStorage.getItem(key);
-    if (!cached) return null;
-
-    const { data, timestamp } = JSON.parse(cached);
-    if (Date.now() - timestamp > CACHE_DURATION_MS) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedPlaces(lat, lon, category, data) {
-  try {
-    const key = getCacheKey(lat, lon, category);
+    const key = `${CACHE_KEY_PREFIX}${category}`;
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
   } catch {
-    // Silently fail if localStorage is full or unavailable
+    // Silently fail if localStorage is full
   }
 }
 
@@ -212,7 +123,7 @@ function normalizePlace(element, index, fallbackName, userLat, userLon) {
   if (!coords) return null;
 
   const name = element.tags?.name || `${fallbackName} ${index + 1}`;
-  
+
   // Try multiple address sources from OSM
   const osmAddress = [
     element.tags?.['addr:housenumber'] && element.tags?.['addr:street']
@@ -265,40 +176,72 @@ function buildOverpassQuery(lat, lon, category, radius) {
   `;
 }
 
-async function fetchCategoryPlaces(lat, lon, category, signal) {
-  // Check cache first
-  const cached = getCachedPlaces(lat, lon, category);
-  if (cached !== null) {
-    return cached;
-  }
+async function fetchAddressViaReverseGeo(lat, lon) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-  const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
-  let lastError = null;
+    const response = await fetch(
+      `${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+      { signal: controller.signal }
+    );
 
-  const enrichAddresses = async (places) => {
-    const toFetch = places.filter((p) => p.needsReverseGeo);
+    clearTimeout(timeoutId);
 
-    if (toFetch.length > 0) {
-      const results = await Promise.allSettled(
-        toFetch.map((p) => fetchAddressViaReverseGeo(p.lat, p.lon))
-      );
+    if (!response.ok) throw new Error('Reverse geo API error');
 
-      for (let i = 0; i < toFetch.length; i++) {
-        const result = results[i];
-        if (result.status === 'fulfilled' && result.value) {
-          toFetch[i].address = result.value;
-        } else {
-          toFetch[i].address = 'Exact location found via map';
-        }
-        delete toFetch[i].needsReverseGeo;
-      }
+    const data = await response.json();
+
+    if (data.display_name) {
+      return data.display_name.split(',').slice(0, 3).join(',').trim();
     }
 
-    return places.map((p) => ({
-      ...p,
-      address: p.address || 'Exact location found via map',
-    }));
-  };
+    const address = data.address || {};
+    const addressStr = [
+      address.house_number && address.road ? `${address.house_number} ${address.road}` : address.road,
+      address.neighbourhood || address.suburb || address.village || address.town || address.city,
+      address.district || address.county,
+    ]
+      .filter((v) => v && v.trim())
+      .join(', ')
+      .trim();
+
+    return addressStr || null;
+  } catch (error) {
+    console.error(`Address fetch error for [${lat}, ${lon}]:`, error.message);
+    return null;
+  }
+}
+
+async function enrichAddresses(places) {
+  const toFetch = places.filter((p) => p.needsReverseGeo);
+
+  if (toFetch.length > 0) {
+    const results = await Promise.allSettled(
+      toFetch.map((p) => fetchAddressViaReverseGeo(p.lat, p.lon))
+    );
+
+    for (let i = 0; i < toFetch.length; i++) {
+      const result = results[i];
+      if (result.status === 'fulfilled' && result.value) {
+        toFetch[i].address = result.value;
+      } else {
+        toFetch[i].address = 'Exact location found via map';
+      }
+      delete toFetch[i].needsReverseGeo;
+    }
+  }
+
+  return places.map((p) => ({
+    ...p,
+    address: p.address || 'Exact location found via map',
+  }));
+}
+
+// Fallback: Direct API call to Overpass
+async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
+  const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
+  let lastError = null;
 
   // Try primary radius with timeout
   try {
@@ -329,10 +272,10 @@ async function fetchCategoryPlaces(lat, lon, category, signal) {
     places = await enrichAddresses(places);
 
     const result = { places, radiusUsed: SEARCH_RADIUS_PRIMARY };
-    setCachedPlaces(lat, lon, category, result);
     return result;
   } catch (error) {
     lastError = error;
+    console.log(`Primary radius failed for ${category}, trying fallback...`);
   }
 
   // Fallback: Try larger radius silently
@@ -361,16 +304,93 @@ async function fetchCategoryPlaces(lat, lon, category, signal) {
       places = await enrichAddresses(places);
 
       const result = { places, radiusUsed: SEARCH_RADIUS_FALLBACK };
-      setCachedPlaces(lat, lon, category, result);
       return result;
     }
-  } catch {
-    // Fallback also failed, return empty
+  } catch (error) {
+    console.log(`Fallback radius also failed for ${category}:`, error.message);
   }
 
   // Return empty result if both fail
   const result = { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY };
   return result;
+}
+
+async function fetchNearbyServicesFromBackend(lat, lon) {
+  try {
+    // Try to get cached result
+    const cacheKey = `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+    const cachedKey = `${CACHE_KEY_PREFIX}${cacheKey}`;
+    const cached = localStorage.getItem(cachedKey);
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp <= CACHE_DURATION_MS) {
+          console.log('Using cached nearby services:', data);
+          return data;
+        }
+        localStorage.removeItem(cachedKey);
+      } catch {
+        // Continue to fetch fresh data
+      }
+    }
+
+    // Try to call backend endpoint first
+    console.log('Attempting to fetch nearby services from backend for:', { lat, lon });
+    try {
+      const response = await api.get(`/nearby-services?lat=${lat}&lon=${lon}`);
+
+      console.log('Backend response:', response.data);
+
+      if (response.data?.success && response.data?.data) {
+        const result = {
+          hospitals: response.data.data.hospitals || { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+          shelters: response.data.data.shelters || { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+        };
+
+        console.log('Using backend result:', result);
+
+        // Cache the result
+        try {
+          localStorage.setItem(cachedKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+        } catch {
+          // Silently fail
+        }
+
+        return result;
+      }
+    } catch (backendError) {
+      console.warn('Backend call failed, falling back to direct API:', backendError.message);
+    }
+
+    // Fallback to direct API calls
+    console.log('Falling back to direct Overpass API calls for:', { lat, lon });
+    const [hospitalsResult, sheltersResult] = await Promise.all([
+      fetchCategoryPlacesDirect(lat, lon, 'hospitals'),
+      fetchCategoryPlacesDirect(lat, lon, 'shelters'),
+    ]);
+
+    const result = {
+      hospitals: hospitalsResult,
+      shelters: sheltersResult,
+    };
+
+    console.log('Using direct API result:', result);
+
+    // Cache the result
+    try {
+      localStorage.setItem(cachedKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+    } catch {
+      // Silently fail
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Fetch nearby services error:', error);
+    return {
+      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+    };
+  }
 }
 
 function ResultsSection({ title, icon, places, loading, color, mapLink, radiusUsed }) {
@@ -575,7 +595,34 @@ function NearbyServices() {
   }, [locationState.manualLat, locationState.manualLon]);
 
   useEffect(() => {
-    // Clear stale location cache on mount to prevent using old inaccurate coordinates
+    // Clear corrupted cache on mount
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach((key) => {
+        if (key.startsWith(CACHE_KEY_PREFIX)) {
+          const cached = localStorage.getItem(key);
+          if (cached) {
+            try {
+              const { data } = JSON.parse(cached);
+              // Remove cache entries with empty results
+              if (
+                (!data.hospitals || data.hospitals.places?.length === 0) &&
+                (!data.shelters || data.shelters.places?.length === 0)
+              ) {
+                console.log('Clearing corrupted empty cache:', key);
+                localStorage.removeItem(key);
+              }
+            } catch {
+              // Ignore parsing errors
+            }
+          }
+        }
+      });
+    } catch {
+      // Silently fail
+    }
+
+    // Clear stale location cache on mount
     localStorage.removeItem(LOCATION_CACHE_KEY);
     getCurrentLocation();
   }, [getCurrentLocation]);
@@ -588,32 +635,31 @@ function NearbyServices() {
     if (locationState.latitude === null || locationState.longitude === null) return;
 
     let cancelled = false;
-    const abortController = new AbortController();
 
     const fetchNearbyPlaces = async () => {
       setPlacesState((current) => ({ ...current, loading: true, error: '' }));
 
       try {
-        const [shelterResult, hospitalResult] = await Promise.all([
-          fetchCategoryPlaces(locationState.latitude, locationState.longitude, 'shelters', abortController.signal),
-          fetchCategoryPlaces(locationState.latitude, locationState.longitude, 'hospitals', abortController.signal),
-        ]);
+        const result = await fetchNearbyServicesFromBackend(
+          locationState.latitude,
+          locationState.longitude
+        );
 
         if (!cancelled) {
           setPlacesState({
             loading: false,
             error: '',
-            shelters: shelterResult.places,
-            hospitals: hospitalResult.places,
-            shelterRadiusUsed: shelterResult.radiusUsed,
-            hospitalRadiusUsed: hospitalResult.radiusUsed,
+            shelters: result.shelters?.places || [],
+            hospitals: result.hospitals?.places || [],
+            shelterRadiusUsed: result.shelters?.radiusUsed || SEARCH_RADIUS_PRIMARY,
+            hospitalRadiusUsed: result.hospitals?.radiusUsed || SEARCH_RADIUS_PRIMARY,
           });
         }
       } catch (error) {
         if (!cancelled) {
           setPlacesState({
             loading: false,
-            error: error?.name === 'AbortError' ? '' : 'No results found nearby. Try opening Maps for broader search.',
+            error: 'No results found nearby. Try opening Maps for broader search.',
             shelters: [],
             hospitals: [],
             shelterRadiusUsed: SEARCH_RADIUS_PRIMARY,
@@ -627,7 +673,6 @@ function NearbyServices() {
 
     return () => {
       cancelled = true;
-      abortController.abort();
     };
   }, [locationState.latitude, locationState.longitude, locationState.loading, locationState.error]);
 
