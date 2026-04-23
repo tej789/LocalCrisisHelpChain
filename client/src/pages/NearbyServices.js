@@ -181,10 +181,12 @@ async function fetchAddressViaReverseGeo(lat, lon) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const response = await fetch(
-      `${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
-      { signal: controller.signal }
-    );
+    // Use ThingProxy for CORS compatibility on deployed version
+    const proxyUrl = `https://thingproxy.freeboard.io/fetch/${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+
+    const response = await fetch(proxyUrl, {
+      signal: controller.signal
+    });
 
     clearTimeout(timeoutId);
 
@@ -249,9 +251,11 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-    const response = await fetch(OVERPASS_API, {
+    // Try with ThingProxy which better supports POST requests with payloads
+    const proxyUrl = `https://thingproxy.freeboard.io/fetch/${OVERPASS_API}`;
+    
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: query,
       signal: signal || controller.signal,
     });
@@ -275,7 +279,7 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
     return result;
   } catch (error) {
     lastError = error;
-    console.log(`Primary radius failed for ${category}, trying fallback...`);
+    console.log(`Primary radius failed for ${category}, trying fallback...`, error.message);
   }
 
   // Fallback: Try larger radius silently
@@ -284,9 +288,10 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-    const response = await fetch(OVERPASS_API, {
+    const proxyUrl = `https://thingproxy.freeboard.io/fetch/${OVERPASS_API}`;
+
+    const response = await fetch(proxyUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: query,
       signal: signal || controller.signal,
     });
