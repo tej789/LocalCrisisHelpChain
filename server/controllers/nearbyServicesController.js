@@ -214,33 +214,51 @@ async function fetchOverpassData(query, category, radius) {
 }
 
 async function fetchNominatimPlaces(lat, lon, category, radius) {
-  const queryText = category === 'hospitals' ? 'hospital OR clinic OR medical center' : 'shelter OR homeless shelter';
   const viewbox = buildBoundingBox(lat, lon, radius);
-  const url = `${NOMINATIM_SEARCH_API}?q=${encodeURIComponent(queryText)}&format=jsonv2&limit=12&viewbox=${encodeURIComponent(viewbox)}&bounded=1&addressdetails=1`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const queryTerms = category === 'hospitals'
+    ? ['hospital', 'clinic', 'medical center', 'health center']
+    : ['shelter', 'homeless shelter', 'night shelter'];
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-      },
-      signal: controller.signal,
-    });
+    const responses = await Promise.allSettled(
+      queryTerms.map(async (term) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        const url = `${NOMINATIM_SEARCH_API}?q=${encodeURIComponent(term)}&format=jsonv2&limit=10&viewbox=${encodeURIComponent(viewbox)}&bounded=1&addressdetails=1`;
 
-    clearTimeout(timeoutId);
+        try {
+          const response = await fetch(url, {
+            headers: {
+              Accept: 'application/json',
+            },
+            signal: controller.signal,
+          });
 
-    if (!response.ok) {
-      throw new Error(`Nominatim search error: ${response.status}`);
-    }
+          clearTimeout(timeoutId);
 
-    const data = await response.json();
-    if (!Array.isArray(data)) {
+          if (!response.ok) {
+            throw new Error(`Nominatim search error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          return Array.isArray(data) ? data : [];
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      })
+    );
+
+    const rawItems = responses
+      .filter((result) => result.status === 'fulfilled')
+      .flatMap((result) => result.value);
+
+    if (rawItems.length === 0) {
       return [];
     }
 
-    const places = data
+    const seen = new Set();
+    const places = rawItems
       .map((item, index) => {
         const placeLat = Number(item.lat);
         const placeLon = Number(item.lon);
@@ -248,6 +266,12 @@ async function fetchNominatimPlaces(lat, lon, category, radius) {
         if (Number.isNaN(placeLat) || Number.isNaN(placeLon)) {
           return null;
         }
+
+        const key = `${item.place_id || ''}-${placeLat.toFixed(5)}-${placeLon.toFixed(5)}`;
+        if (seen.has(key)) {
+          return null;
+        }
+        seen.add(key);
 
         const distance = distanceInKm(lat, lon, placeLat, placeLon);
         const displayName = item.display_name || '';
@@ -268,7 +292,6 @@ async function fetchNominatimPlaces(lat, lon, category, radius) {
 
     return places;
   } catch (error) {
-    clearTimeout(timeoutId);
     console.error(`Nominatim fallback failed for ${category}:`, error.message);
     return [];
   }
@@ -291,7 +314,7 @@ async function fetchCategoryPlaces(lat, lon, category) {
 
       places = await enrichAddresses(places);
 
-      if (places.length > 0 || radius === SEARCH_RADIUS_FALLBACK) {
+      if (places.length > 0) {
         return { places, radiusUsed: radius, source: 'overpass' };
       }
     } catch (error) {
