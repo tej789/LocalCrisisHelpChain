@@ -32,7 +32,7 @@ const SEARCH_RADIUS_PRIMARY = 5000;
 const SEARCH_RADIUS_FALLBACK = 15000;
 const EARTH_RADIUS_KM = 6371;
 const API_TIMEOUT_MS = 8000;
-const CACHE_KEY_PREFIX = 'nearby_services_cache_';
+const CACHE_KEY_PREFIX = 'nearby_services_cache_v2_';
 const CACHE_DURATION_MS = 30 * 60 * 1000;
 const ADDRESS_CACHE_PREFIX = 'addr_cache_';
 const LOCATION_CACHE_KEY = 'last_detected_location';
@@ -342,7 +342,7 @@ async function fetchNearbyServicesFromBackend(lat, lon) {
     // Try to call backend endpoint first
     console.log('Attempting to fetch nearby services from backend for:', { lat, lon });
     try {
-      const response = await api.get(`/nearby-services?lat=${lat}&lon=${lon}`);
+      const response = await api.get(`/api/nearby-services?lat=${lat}&lon=${lon}`);
 
       console.log('Backend response:', response.data);
 

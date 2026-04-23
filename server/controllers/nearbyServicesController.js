@@ -1,11 +1,15 @@
 const AppError = require('../utils/AppError');
 
-const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_APIS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+];
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org/reverse';
 const SEARCH_RADIUS_PRIMARY = 5000;
 const SEARCH_RADIUS_FALLBACK = 15000;
 const EARTH_RADIUS_KM = 6371;
-const API_TIMEOUT_MS = 8000;
+const API_TIMEOUT_MS = 12000;
 
 function toRadians(value) {
   return (value * Math.PI) / 180;
@@ -153,62 +157,58 @@ async function enrichAddresses(places) {
   }));
 }
 
-async function fetchCategoryPlaces(lat, lon, category) {
-  const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
+async function fetchOverpassData(query, category, radius) {
   let lastError = null;
 
-  // Try primary radius with timeout
-  try {
-    const query = buildOverpassQuery(lat, lon, category, SEARCH_RADIUS_PRIMARY);
+  for (const endpoint of OVERPASS_APIS) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-    const response = await fetch(OVERPASS_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: query,
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+          Accept: 'application/json',
+        },
+        body: query,
+        signal: controller.signal,
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data.elements)) {
+        throw new Error('Invalid Overpass response format');
+      }
+
+      return data;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+      console.error(
+        `Overpass fetch failed for ${category} (radius ${radius}) via ${endpoint}:`,
+        error.message
+      );
     }
-
-    const data = await response.json();
-    let places = (data.elements || [])
-      .map((item, index) => normalizePlace(item, index, fallbackName, lat, lon))
-      .filter(Boolean)
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 8);
-
-    places = await enrichAddresses(places);
-
-    const result = { places, radiusUsed: SEARCH_RADIUS_PRIMARY };
-    return result;
-  } catch (error) {
-    lastError = error;
-    console.error(`Primary radius fetch failed for ${category}:`, error.message);
   }
 
-  // Fallback: Try larger radius silently
-  try {
-    const query = buildOverpassQuery(lat, lon, category, SEARCH_RADIUS_FALLBACK);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  throw lastError || new Error('All Overpass endpoints failed');
+}
 
-    const response = await fetch(OVERPASS_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: query,
-      signal: controller.signal,
-    });
+async function fetchCategoryPlaces(lat, lon, category) {
+  const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
+  const radiusCandidates = [SEARCH_RADIUS_PRIMARY, SEARCH_RADIUS_FALLBACK];
 
-    clearTimeout(timeoutId);
+  for (const radius of radiusCandidates) {
+    try {
+      const query = buildOverpassQuery(lat, lon, category, radius);
+      const data = await fetchOverpassData(query, category, radius);
 
-    if (response.ok) {
-      const data = await response.json();
       let places = (data.elements || [])
         .map((item, index) => normalizePlace(item, index, fallbackName, lat, lon))
         .filter(Boolean)
@@ -217,11 +217,12 @@ async function fetchCategoryPlaces(lat, lon, category) {
 
       places = await enrichAddresses(places);
 
-      const result = { places, radiusUsed: SEARCH_RADIUS_FALLBACK };
-      return result;
+      if (places.length > 0 || radius === SEARCH_RADIUS_FALLBACK) {
+        return { places, radiusUsed: radius };
+      }
+    } catch (error) {
+      console.error(`Radius ${radius} fetch failed for ${category}:`, error.message);
     }
-  } catch (error) {
-    console.error(`Fallback radius fetch failed for ${category}:`, error.message);
   }
 
   // Return empty result if both fail
