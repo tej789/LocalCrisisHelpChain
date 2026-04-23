@@ -520,6 +520,19 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             File Help Request
           </Button>
 
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<MapIcon />}
+            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
+            onClick={() => {
+              setSidebarOpen(false);
+              navigate('/user/nearby-services');
+            }}
+          >
+            Nearby Shelters & Hospitals
+          </Button>
+
           {/* My Open Requests – scrolls to My Requests section showing open items */}
           <Button
             fullWidth
