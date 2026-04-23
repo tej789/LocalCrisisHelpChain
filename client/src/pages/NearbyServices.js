@@ -367,28 +367,11 @@ async function fetchNearbyServicesFromBackend(lat, lon) {
       console.warn('Backend call failed, falling back to direct API:', backendError.message);
     }
 
-    // Fallback to direct API calls
-    console.log('Falling back to direct Overpass API calls for:', { lat, lon });
-    const [hospitalsResult, sheltersResult] = await Promise.all([
-      fetchCategoryPlacesDirect(lat, lon, 'hospitals'),
-      fetchCategoryPlacesDirect(lat, lon, 'shelters'),
-    ]);
-
-    const result = {
-      hospitals: hospitalsResult,
-      shelters: sheltersResult,
+    // If backend is unavailable, return empty result and keep UI responsive.
+    return {
+      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
     };
-
-    console.log('Using direct API result:', result);
-
-    // Cache the result
-    try {
-      localStorage.setItem(cachedKey, JSON.stringify({ data: result, timestamp: Date.now() }));
-    } catch {
-      // Silently fail
-    }
-
-    return result;
   } catch (error) {
     console.error('Fetch nearby services error:', error);
     return {

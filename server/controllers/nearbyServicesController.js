@@ -6,6 +6,7 @@ const OVERPASS_APIS = [
   'https://lz4.overpass-api.de/api/interpreter',
 ];
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org/reverse';
+const NOMINATIM_SEARCH_API = 'https://nominatim.openstreetmap.org/search';
 const SEARCH_RADIUS_PRIMARY = 5000;
 const SEARCH_RADIUS_FALLBACK = 15000;
 const EARTH_RADIUS_KM = 6371;
@@ -23,6 +24,18 @@ function distanceInKm(lat1, lon1, lat2, lon2) {
     Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function buildBoundingBox(lat, lon, radiusMeters) {
+  const latDelta = radiusMeters / 111320;
+  const lonDelta = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180));
+
+  const left = lon - lonDelta;
+  const right = lon + lonDelta;
+  const top = lat + latDelta;
+  const bottom = lat - latDelta;
+
+  return `${left},${top},${right},${bottom}`;
 }
 
 function extractCoordinates(element) {
@@ -200,6 +213,67 @@ async function fetchOverpassData(query, category, radius) {
   throw lastError || new Error('All Overpass endpoints failed');
 }
 
+async function fetchNominatimPlaces(lat, lon, category, radius) {
+  const queryText = category === 'hospitals' ? 'hospital OR clinic OR medical center' : 'shelter OR homeless shelter';
+  const viewbox = buildBoundingBox(lat, lon, radius);
+  const url = `${NOMINATIM_SEARCH_API}?q=${encodeURIComponent(queryText)}&format=jsonv2&limit=12&viewbox=${encodeURIComponent(viewbox)}&bounded=1&addressdetails=1`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Nominatim search error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    const places = data
+      .map((item, index) => {
+        const placeLat = Number(item.lat);
+        const placeLon = Number(item.lon);
+
+        if (Number.isNaN(placeLat) || Number.isNaN(placeLon)) {
+          return null;
+        }
+
+        const distance = distanceInKm(lat, lon, placeLat, placeLon);
+        const displayName = item.display_name || '';
+        const name = (displayName.split(',')[0] || '').trim() || `${category === 'hospitals' ? 'Hospital' : 'Shelter'} ${index + 1}`;
+
+        return {
+          id: `nominatim-${category}-${item.place_id || index}`,
+          name,
+          address: displayName || 'Exact location found via map',
+          lat: placeLat,
+          lon: placeLon,
+          distance,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 8);
+
+    return places;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error(`Nominatim fallback failed for ${category}:`, error.message);
+    return [];
+  }
+}
+
 async function fetchCategoryPlaces(lat, lon, category) {
   const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
   const radiusCandidates = [SEARCH_RADIUS_PRIMARY, SEARCH_RADIUS_FALLBACK];
@@ -223,6 +297,12 @@ async function fetchCategoryPlaces(lat, lon, category) {
     } catch (error) {
       console.error(`Radius ${radius} fetch failed for ${category}:`, error.message);
     }
+  }
+
+  // Final fallback: text search via Nominatim within expanded bounding box
+  const nominatimPlaces = await fetchNominatimPlaces(lat, lon, category, SEARCH_RADIUS_FALLBACK);
+  if (nominatimPlaces.length > 0) {
+    return { places: nominatimPlaces, radiusUsed: SEARCH_RADIUS_FALLBACK };
   }
 
   // Return empty result if both fail
