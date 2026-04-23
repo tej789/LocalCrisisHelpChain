@@ -292,7 +292,7 @@ async function fetchCategoryPlaces(lat, lon, category) {
       places = await enrichAddresses(places);
 
       if (places.length > 0 || radius === SEARCH_RADIUS_FALLBACK) {
-        return { places, radiusUsed: radius };
+        return { places, radiusUsed: radius, source: 'overpass' };
       }
     } catch (error) {
       console.error(`Radius ${radius} fetch failed for ${category}:`, error.message);
@@ -302,11 +302,11 @@ async function fetchCategoryPlaces(lat, lon, category) {
   // Final fallback: text search via Nominatim within expanded bounding box
   const nominatimPlaces = await fetchNominatimPlaces(lat, lon, category, SEARCH_RADIUS_FALLBACK);
   if (nominatimPlaces.length > 0) {
-    return { places: nominatimPlaces, radiusUsed: SEARCH_RADIUS_FALLBACK };
+    return { places: nominatimPlaces, radiusUsed: SEARCH_RADIUS_FALLBACK, source: 'nominatim' };
   }
 
   // Return empty result if both fail
-  const result = { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY };
+  const result = { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' };
   return result;
 }
 

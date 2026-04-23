@@ -32,7 +32,7 @@ const SEARCH_RADIUS_PRIMARY = 5000;
 const SEARCH_RADIUS_FALLBACK = 15000;
 const EARTH_RADIUS_KM = 6371;
 const API_TIMEOUT_MS = 8000;
-const CACHE_KEY_PREFIX = 'nearby_services_cache_v2_';
+const CACHE_KEY_PREFIX = 'nearby_services_cache_v3_';
 const CACHE_DURATION_MS = 30 * 60 * 1000;
 const ADDRESS_CACHE_PREFIX = 'addr_cache_';
 const LOCATION_CACHE_KEY = 'last_detected_location';
@@ -348,8 +348,8 @@ async function fetchNearbyServicesFromBackend(lat, lon) {
 
       if (response.data?.success && response.data?.data) {
         const result = {
-          hospitals: response.data.data.hospitals || { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
-          shelters: response.data.data.shelters || { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+          hospitals: response.data.data.hospitals || { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
+          shelters: response.data.data.shelters || { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
         };
 
         console.log('Using backend result:', result);
@@ -369,20 +369,22 @@ async function fetchNearbyServicesFromBackend(lat, lon) {
 
     // If backend is unavailable, return empty result and keep UI responsive.
     return {
-      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
-      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
+      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
     };
   } catch (error) {
     console.error('Fetch nearby services error:', error);
     return {
-      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
-      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY },
+      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
+      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
     };
   }
 }
 
-function ResultsSection({ title, icon, places, loading, color, mapLink, radiusUsed }) {
+function ResultsSection({ title, icon, places, loading, color, mapLink, radiusUsed, source }) {
   const radiusKm = Math.round((radiusUsed || SEARCH_RADIUS_PRIMARY) / 1000);
+  const sourceLabel = source === 'overpass' ? 'Overpass' : source === 'nominatim' ? 'Nominatim fallback' : 'No source';
+  const sourceChipColor = source === 'nominatim' ? 'warning' : source === 'overpass' ? 'success' : 'default';
 
   return (
     <Card sx={{ borderRadius: 3, boxShadow: 1 }}>
@@ -397,6 +399,13 @@ function ResultsSection({ title, icon, places, loading, color, mapLink, radiusUs
               <Typography variant="body2" color="text.secondary">
                 Top nearby results within approximately {radiusKm} km.
               </Typography>
+              <Chip
+                size="small"
+                color={sourceChipColor}
+                variant="outlined"
+                label={`Source: ${sourceLabel}`}
+                sx={{ mt: 0.5, fontSize: '0.7rem' }}
+              />
             </Box>
           </Stack>
 
@@ -492,6 +501,8 @@ function NearbyServices() {
     hospitals: [],
     shelterRadiusUsed: SEARCH_RADIUS_PRIMARY,
     hospitalRadiusUsed: SEARCH_RADIUS_PRIMARY,
+    shelterSource: 'none',
+    hospitalSource: 'none',
   });
 
   const getCurrentLocation = useCallback(() => {
@@ -641,6 +652,8 @@ function NearbyServices() {
             hospitals: result.hospitals?.places || [],
             shelterRadiusUsed: result.shelters?.radiusUsed || SEARCH_RADIUS_PRIMARY,
             hospitalRadiusUsed: result.hospitals?.radiusUsed || SEARCH_RADIUS_PRIMARY,
+            shelterSource: result.shelters?.source || 'none',
+            hospitalSource: result.hospitals?.source || 'none',
           });
         }
       } catch (error) {
@@ -652,6 +665,8 @@ function NearbyServices() {
             hospitals: [],
             shelterRadiusUsed: SEARCH_RADIUS_PRIMARY,
             hospitalRadiusUsed: SEARCH_RADIUS_PRIMARY,
+            shelterSource: 'none',
+            hospitalSource: 'none',
           });
         }
       }
@@ -808,6 +823,7 @@ function NearbyServices() {
               color="primary"
               mapLink={mapLinks.shelters}
               radiusUsed={placesState.shelterRadiusUsed}
+              source={placesState.shelterSource}
             />
 
             <ResultsSection
@@ -818,6 +834,7 @@ function NearbyServices() {
               color="error"
               mapLink={mapLinks.hospitals}
               radiusUsed={placesState.hospitalRadiusUsed}
+              source={placesState.hospitalSource}
             />
           </Stack>
         </Stack>
