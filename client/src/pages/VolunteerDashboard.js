@@ -12,7 +12,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
@@ -103,6 +103,22 @@ const MapController = ({ center, zoom, shouldFitBounds, bounds }) => {
   return null;
 };
 
+const MapZoomTracker = ({ onZoomChange }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    onZoomChange(map.getZoom());
+  }, [map, onZoomChange]);
+
+  useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom());
+    },
+  });
+
+  return null;
+};
+
 const typeIcons = {
   food: <RestaurantIcon color="primary" />,
   medicine: <LocalHospitalIcon color="error" />,
@@ -144,6 +160,7 @@ function VolunteerDashboard() {
   const [mapBounds, setMapBounds] = useState(null); // For auto-zoom
   const [shouldFitBounds, setShouldFitBounds] = useState(false);
   const [mapCenterOverride, setMapCenterOverride] = useState(null);
+  const [mapZoom, setMapZoom] = useState(6);
 const navigate = useNavigate();
 
   // Add CSS for selected marker animation and mobile popup styling
@@ -168,6 +185,65 @@ const navigate = useNavigate();
       .selected-marker {
         animation: pulse 2s infinite;
         filter: brightness(1.2) saturate(1.3);
+      }
+
+      .leaflet-tooltip.request-map-label,
+      .leaflet-tooltip.request-map-live-label {
+        border-radius: 10px;
+        border-width: 1px;
+        border-style: solid;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.14);
+        padding: 6px 8px;
+        backdrop-filter: blur(4px);
+      }
+
+      .leaflet-tooltip.request-map-label {
+        background: rgba(255, 255, 255, 0.96);
+        border-color: #93c5fd;
+      }
+
+      .leaflet-tooltip.request-map-live-label {
+        background: rgba(248, 245, 255, 0.96);
+        border-color: #c4b5fd;
+      }
+
+      .leaflet-tooltip.request-map-label:before {
+        border-top-color: #93c5fd !important;
+      }
+
+      .leaflet-tooltip.request-map-live-label:before {
+        border-top-color: #c4b5fd !important;
+      }
+
+      .map-label-title {
+        color: #0f172a;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 3px;
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .map-label-meta {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.2;
+        border-radius: 999px;
+        padding: 2px 7px;
+      }
+
+      .map-label-meta.request {
+        color: #0b5394;
+        background: #e8f2fe;
+      }
+
+      .map-label-meta.live {
+        color: #5b21b6;
+        background: #f1e8ff;
       }
       
       /* Mobile popup styling */
@@ -822,6 +898,10 @@ I am the assigned volunteer from Local Crisis HelpChain regarding your ${selecte
 I will reach you shortly.`
     )
   : '';
+
+const labelZoomThreshold = 14;
+const showPersistentLabels = mapZoom >= labelZoomThreshold;
+
   return (
     <Box
   sx={{
@@ -1357,6 +1437,8 @@ I will reach you shortly.`
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+
+            <MapZoomTracker onZoomChange={setMapZoom} />
             
             {/* Dynamic map controller - smoothly centers map when volunteer location changes or auto-zooms to route */}
             <MapController 
@@ -1450,6 +1532,17 @@ I will reach you shortly.`
 
                   const isResolved = req.status === 'resolved';
                   const markerIcon = isResolved ? resolvedRequestIcon : requestIcon;
+                  const requesterName =
+                    req.name ||
+                    req.requesterName ||
+                    req.user?.name ||
+                    req.requestedBy?.name ||
+                    `Request ${String(req._id || req.id || '').slice(-4)}`;
+                  const needTypeRaw = req.type || req.needType || 'other';
+                  const needType =
+                    typeof needTypeRaw === 'string' && needTypeRaw.length > 0
+                      ? `${needTypeRaw.charAt(0).toUpperCase()}${needTypeRaw.slice(1)}`
+                      : 'Other';
 
                   const liveCoords =
                     req.liveLocation &&
@@ -1543,6 +1636,17 @@ I will reach you shortly.`
                   }
                 }}
               >
+                <Tooltip
+                  permanent={showPersistentLabels}
+                  direction="top"
+                  offset={[0, -30]}
+                  className="request-map-label"
+                >
+                  <Box>
+                    <Box className="map-label-title">{requesterName}</Box>
+                    <Box className="map-label-meta request">Need: {needType} • Request</Box>
+                  </Box>
+                </Tooltip>
                 <Popup>
                   <Box sx={{ minWidth: 150, maxWidth: 200 }}>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
@@ -1609,6 +1713,17 @@ I will reach you shortly.`
                     }
                   }}
                 >
+                  <Tooltip
+                    permanent={showPersistentLabels}
+                    direction="right"
+                    offset={[14, -2]}
+                    className="request-map-live-label"
+                  >
+                    <Box>
+                      <Box className="map-label-title">{requesterName}</Box>
+                      <Box className="map-label-meta live">Need: {needType} • Live</Box>
+                    </Box>
+                  </Tooltip>
                   <Popup>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                       🧍 Requester Current Location
@@ -1877,7 +1992,13 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
         </Alert>
       </Snackbar>
      {/* Footer */}
-<Footer text="© 2026 Local Crisis HelpChain · Volunteer Dashboard" />
+<Footer
+  text={`© ${new Date().getFullYear()} Local Crisis HelpChain · Volunteer Dashboard`}
+  variant="volunteer"
+  volunteerStatus={myAvailability ? 'available' : 'offline'}
+  activeAssignments={activeAssignedRequests.length}
+  resolvedAssignments={resolvedRequests.length}
+/>
     </Container>
     </Box>
   );
