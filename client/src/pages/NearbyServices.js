@@ -107,6 +107,12 @@ function distanceInKm(lat1, lon1, lat2, lon2) {
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function clampPlacesToRadius(places, radiusMeters) {
+  const radiusKm = radiusMeters / 1000;
+  const toleranceKm = 0.5;
+  return places.filter((place) => place.distance <= radiusKm + toleranceKm);
+}
+
 function buildBoundingBox(lat, lon, radiusMeters) {
   const latDelta = radiusMeters / 111320;
   const lonDelta = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180));
@@ -334,7 +340,7 @@ async function fetchNominatimPlacesDirect(lat, lon, category, radius) {
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 8);
 
-    return places;
+    return clampPlacesToRadius(places, radius);
   } catch (error) {
     console.error(`Nominatim fallback failed for ${category}:`, error.message);
     return [];
@@ -375,6 +381,8 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 8);
 
+    places = clampPlacesToRadius(places, SEARCH_RADIUS_PRIMARY);
+
     places = await enrichAddresses(places);
 
     const result = { places, radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'overpass' };
@@ -410,6 +418,8 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 8);
 
+      places = clampPlacesToRadius(places, SEARCH_RADIUS_FALLBACK);
+
       places = await enrichAddresses(places);
 
       const result = { places, radiusUsed: SEARCH_RADIUS_FALLBACK, source: 'overpass' };
@@ -419,9 +429,24 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
     console.log(`Fallback radius also failed for ${category}:`, error.message);
   }
 
-  const nominatimPlaces = await fetchNominatimPlacesDirect(lat, lon, category, SEARCH_RADIUS_FALLBACK);
-  if (nominatimPlaces.length > 0) {
-    return { places: nominatimPlaces, radiusUsed: SEARCH_RADIUS_FALLBACK, source: 'nominatim' };
+  const nominatimPrimaryPlaces = await fetchNominatimPlacesDirect(
+    lat,
+    lon,
+    category,
+    SEARCH_RADIUS_PRIMARY
+  );
+  if (nominatimPrimaryPlaces.length > 0) {
+    return { places: nominatimPrimaryPlaces, radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'nominatim' };
+  }
+
+  const nominatimFallbackPlaces = await fetchNominatimPlacesDirect(
+    lat,
+    lon,
+    category,
+    SEARCH_RADIUS_FALLBACK
+  );
+  if (nominatimFallbackPlaces.length > 0) {
+    return { places: nominatimFallbackPlaces, radiusUsed: SEARCH_RADIUS_FALLBACK, source: 'nominatim' };
   }
 
   // Return empty result if both fail
