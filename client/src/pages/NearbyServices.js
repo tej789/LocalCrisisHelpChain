@@ -28,6 +28,7 @@ import api from '../api/axios';
 
 const OVERPASS_API = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org/reverse';
+const NOMINATIM_SEARCH_API = 'https://nominatim.openstreetmap.org/search';
 const SEARCH_RADIUS_PRIMARY = 5000;
 const SEARCH_RADIUS_FALLBACK = 15000;
 const EARTH_RADIUS_KM = 6371;
@@ -106,6 +107,18 @@ function distanceInKm(lat1, lon1, lat2, lon2) {
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function buildBoundingBox(lat, lon, radiusMeters) {
+  const latDelta = radiusMeters / 111320;
+  const lonDelta = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180));
+
+  const left = lon - lonDelta;
+  const right = lon + lonDelta;
+  const top = lat + latDelta;
+  const bottom = lat - latDelta;
+
+  return `${left},${top},${right},${bottom}`;
+}
+
 function extractCoordinates(element) {
   if (typeof element.lat === 'number' && typeof element.lon === 'number') {
     return { lat: element.lat, lon: element.lon };
@@ -157,8 +170,14 @@ function buildOverpassQuery(lat, lon, category, radius) {
       (
         node(around:${radius},${lat},${lon})[amenity=hospital];
         way(around:${radius},${lat},${lon})[amenity=hospital];
+        relation(around:${radius},${lat},${lon})[amenity=hospital];
         node(around:${radius},${lat},${lon})[amenity=clinic];
         way(around:${radius},${lat},${lon})[amenity=clinic];
+        relation(around:${radius},${lat},${lon})[amenity=clinic];
+        node(around:${radius},${lat},${lon})[healthcare=hospital];
+        way(around:${radius},${lat},${lon})[healthcare=hospital];
+        node(around:${radius},${lat},${lon})[healthcare=clinic];
+        way(around:${radius},${lat},${lon})[healthcare=clinic];
       );
       out center tags;
     `;
@@ -181,10 +200,9 @@ async function fetchAddressViaReverseGeo(lat, lon) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    // Use ThingProxy for CORS compatibility on deployed version
-    const proxyUrl = `https://thingproxy.freeboard.io/fetch/${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+    const reverseGeoUrl = `${NOMINATIM_API}?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
 
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(reverseGeoUrl, {
       signal: controller.signal
     });
 
@@ -240,6 +258,89 @@ async function enrichAddresses(places) {
   }));
 }
 
+async function fetchNominatimPlacesDirect(lat, lon, category, radius) {
+  const viewbox = buildBoundingBox(lat, lon, radius);
+  const queryTerms = category === 'hospitals'
+    ? ['hospital', 'clinic', 'medical center', 'health center']
+    : ['shelter', 'homeless shelter', 'night shelter'];
+
+  try {
+    const responses = await Promise.allSettled(
+      queryTerms.map(async (term) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        const searchUrl = `${NOMINATIM_SEARCH_API}?q=${encodeURIComponent(term)}&format=jsonv2&limit=10&viewbox=${encodeURIComponent(viewbox)}&bounded=1&addressdetails=1`;
+        try {
+          const response = await fetch(searchUrl, {
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`Nominatim search error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          return Array.isArray(data) ? data : [];
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      })
+    );
+
+    const rawItems = responses
+      .filter((result) => result.status === 'fulfilled')
+      .flatMap((result) => result.value);
+
+    if (rawItems.length === 0) {
+      return [];
+    }
+
+    const seen = new Set();
+    const places = rawItems
+      .map((item, index) => {
+        const placeLat = Number(item.lat);
+        const placeLon = Number(item.lon);
+
+        if (Number.isNaN(placeLat) || Number.isNaN(placeLon)) {
+          return null;
+        }
+
+        const key = `${item.place_id || ''}-${placeLat.toFixed(5)}-${placeLon.toFixed(5)}`;
+        if (seen.has(key)) {
+          return null;
+        }
+        seen.add(key);
+
+        const distance = distanceInKm(lat, lon, placeLat, placeLon);
+        const displayName = item.display_name || '';
+        const name =
+          (displayName.split(',')[0] || '').trim() ||
+          `${category === 'hospitals' ? 'Hospital' : 'Shelter'} ${index + 1}`;
+
+        return {
+          id: `nominatim-${category}-${item.place_id || index}`,
+          name,
+          address: displayName || 'Exact location found via map',
+          lat: placeLat,
+          lon: placeLon,
+          distance,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 8);
+
+    return places;
+  } catch (error) {
+    console.error(`Nominatim fallback failed for ${category}:`, error.message);
+    return [];
+  }
+}
+
 // Fallback: Direct API call to Overpass
 async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
   const fallbackName = category === 'hospitals' ? 'Hospital' : 'Shelter';
@@ -251,11 +352,12 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-    // Try with ThingProxy which better supports POST requests with payloads
-    const proxyUrl = `https://thingproxy.freeboard.io/fetch/${OVERPASS_API}`;
-    
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(OVERPASS_API, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        Accept: 'application/json',
+      },
       body: query,
       signal: signal || controller.signal,
     });
@@ -275,7 +377,7 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
 
     places = await enrichAddresses(places);
 
-    const result = { places, radiusUsed: SEARCH_RADIUS_PRIMARY };
+    const result = { places, radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'overpass' };
     return result;
   } catch (error) {
     lastError = error;
@@ -288,10 +390,12 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-    const proxyUrl = `https://thingproxy.freeboard.io/fetch/${OVERPASS_API}`;
-
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(OVERPASS_API, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        Accept: 'application/json',
+      },
       body: query,
       signal: signal || controller.signal,
     });
@@ -308,16 +412,39 @@ async function fetchCategoryPlacesDirect(lat, lon, category, signal) {
 
       places = await enrichAddresses(places);
 
-      const result = { places, radiusUsed: SEARCH_RADIUS_FALLBACK };
+      const result = { places, radiusUsed: SEARCH_RADIUS_FALLBACK, source: 'overpass' };
       return result;
     }
   } catch (error) {
     console.log(`Fallback radius also failed for ${category}:`, error.message);
   }
 
+  const nominatimPlaces = await fetchNominatimPlacesDirect(lat, lon, category, SEARCH_RADIUS_FALLBACK);
+  if (nominatimPlaces.length > 0) {
+    return { places: nominatimPlaces, radiusUsed: SEARCH_RADIUS_FALLBACK, source: 'nominatim' };
+  }
+
   // Return empty result if both fail
-  const result = { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY };
+  const result = { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' };
   return result;
+}
+
+async function fetchNearbyServicesDirect(lat, lon) {
+  const [hospitalsResult, sheltersResult] = await Promise.allSettled([
+    fetchCategoryPlacesDirect(lat, lon, 'hospitals'),
+    fetchCategoryPlacesDirect(lat, lon, 'shelters'),
+  ]);
+
+  return {
+    hospitals:
+      hospitalsResult.status === 'fulfilled'
+        ? hospitalsResult.value
+        : { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
+    shelters:
+      sheltersResult.status === 'fulfilled'
+        ? sheltersResult.value
+        : { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
+  };
 }
 
 async function fetchNearbyServicesFromBackend(lat, lon) {
@@ -354,24 +481,40 @@ async function fetchNearbyServicesFromBackend(lat, lon) {
 
         console.log('Using backend result:', result);
 
-        // Cache the result
-        try {
-          localStorage.setItem(cachedKey, JSON.stringify({ data: result, timestamp: Date.now() }));
-        } catch {
-          // Silently fail
+        const hasBackendResults =
+          (result.hospitals?.places?.length || 0) > 0 || (result.shelters?.places?.length || 0) > 0;
+
+        if (hasBackendResults) {
+          // Cache only non-empty backend results
+          try {
+            localStorage.setItem(cachedKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+          } catch {
+            // Silently fail
+          }
+
+          return result;
         }
 
-        return result;
+        console.warn('Backend returned empty nearby services. Trying direct fallback...');
       }
     } catch (backendError) {
       console.warn('Backend call failed, falling back to direct API:', backendError.message);
     }
 
-    // If backend is unavailable, return empty result and keep UI responsive.
-    return {
-      hospitals: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
-      shelters: { places: [], radiusUsed: SEARCH_RADIUS_PRIMARY, source: 'none' },
-    };
+    const directResult = await fetchNearbyServicesDirect(lat, lon);
+
+    const hasDirectResults =
+      (directResult.hospitals?.places?.length || 0) > 0 || (directResult.shelters?.places?.length || 0) > 0;
+
+    if (hasDirectResults) {
+      try {
+        localStorage.setItem(cachedKey, JSON.stringify({ data: directResult, timestamp: Date.now() }));
+      } catch {
+        // Silently fail
+      }
+    }
+
+    return directResult;
   } catch (error) {
     console.error('Fetch nearby services error:', error);
     return {
