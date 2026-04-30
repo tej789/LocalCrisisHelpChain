@@ -1,7 +1,13 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar, MenuItem, Rating, Avatar } from '@mui/material';
+import { Box, Typography, Card, CardContent, Divider, Paper, CircularProgress, Tooltip, Stack, Chip, Container, Button, TextField, Drawer, IconButton, AppBar, Toolbar, MenuItem, Rating, Avatar, List, ListItemButton, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
+import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -13,6 +19,7 @@ import MapIcon from '@mui/icons-material/Map';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import 'leaflet/dist/leaflet.css';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Snackbar, Alert } from '@mui/material';
@@ -72,6 +79,7 @@ const SummaryCard = ({ label, value, color }) => (
 function UserDashboard() {
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -99,6 +107,9 @@ function UserDashboard() {
   const myRequestsRef = useRef(null);
   const feedbackRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const auth = useAuth();
   console.log("AUTH:", auth);
 console.log("TOKEN VALUE:", auth?.token);
@@ -115,6 +126,268 @@ const allRequests = [...myRequests, ...communityRequests];
     message: '',
     severity: 'success',
   });
+
+  const sidebarWidth = sidebarCollapsed ? 92 : 286;
+
+  const closeMobileSidebar = () => setSidebarOpen(false);
+
+  const navigateAndClose = (path) => {
+    navigate(path);
+    if (isMobile) closeMobileSidebar();
+  };
+
+  const openDialogAndClose = (setter) => {
+    setter(true);
+    if (isMobile) closeMobileSidebar();
+  };
+
+  const scrollToSection = (ref, extraAction) => {
+    if (typeof extraAction === 'function') {
+      extraAction();
+    }
+
+    if (isMobile) closeMobileSidebar();
+
+    if (ref?.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const sidebarItems = [
+    {
+      key: 'dashboard',
+      label: 'Dashboard',
+      icon: <DashboardOutlinedIcon fontSize="small" />,
+      active: location.pathname === '/dashboard/user',
+      onClick: () => navigateAndClose('/dashboard/user'),
+    },
+    {
+      key: 'profile',
+      label: 'Profile',
+      icon: <PersonOutlineIcon fontSize="small" />,
+      active: profileOpen,
+      onClick: () => openDialogAndClose(setProfileOpen),
+    },
+    {
+      key: 'notifications',
+      label: 'Notifications',
+      icon: <NotificationsNoneIcon fontSize="small" />,
+      active: notificationsOpen,
+      onClick: () => openDialogAndClose(setNotificationsOpen),
+    },
+    {
+      key: 'request',
+      label: 'File Help Request',
+      icon: <AssignmentIcon fontSize="small" />,
+      onClick: () => navigateAndClose('/submit-request'),
+    },
+    {
+      key: 'nearby',
+      label: 'Nearby Services',
+      icon: <MapIcon fontSize="small" />,
+      onClick: () => navigateAndClose('/user/nearby-services'),
+    },
+    {
+      key: 'open',
+      label: 'My Open Requests',
+      icon: <ListAltIcon fontSize="small" />,
+      onClick: () => scrollToSection(myRequestsRef, () => setShowResolvedOnly(false)),
+    },
+    {
+      key: 'resolved',
+      label: 'Resolved Requests',
+      icon: <DoneAllIcon fontSize="small" />,
+      active: showResolvedOnly,
+      onClick: () => {
+        setShowResolvedOnly(true);
+        if (isMobile) closeMobileSidebar();
+      },
+    },
+    {
+      key: 'feedback',
+      label: 'Feedback',
+      icon: <RateReviewOutlinedIcon fontSize="small" />,
+      onClick: () => scrollToSection(feedbackRef, () => setShowResolvedOnly(false)),
+    },
+    {
+      key: 'about',
+      label: 'About LCHC',
+      icon: <InfoOutlinedIcon fontSize="small" />,
+      onClick: () => openDialogAndClose(setAboutOpen),
+    },
+  ];
+
+  const renderSidebarContent = (collapsed = false) => (
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto',
+      }}
+    >
+      <Box
+        sx={{
+          px: collapsed ? 1.25 : 2,
+          py: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
+          <Avatar
+            src={auth?.user?.profilePhoto || undefined}
+            sx={{ width: 44, height: 44, bgcolor: 'primary.main', fontWeight: 700 }}
+          >
+            {(profile.name || auth?.user?.name || 'U').charAt(0).toUpperCase()}
+          </Avatar>
+
+          {!collapsed && (
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={800} noWrap>
+                {profile.name || auth?.user?.name || 'User'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {profile.email || auth?.user?.email || 'No email available'}
+              </Typography>
+            </Box>
+          )}
+        </Stack>
+
+        {!collapsed && !isMobile && (
+          <IconButton
+            size="small"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-label="collapse navigation"
+            sx={{ border: '1px solid', borderColor: 'divider' }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Box>
+
+      {collapsed && !isMobile && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1.5 }}>
+          <IconButton
+            size="small"
+            onClick={() => setSidebarCollapsed(false)}
+            aria-label="expand navigation"
+            sx={{ border: '1px solid', borderColor: 'divider' }}
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
+
+      <Divider />
+
+      <List sx={{ px: collapsed ? 1 : 1.5, py: 1.5, flex: 1 }}>
+        {sidebarItems.map((item) => {
+          const active = Boolean(item.active);
+
+          return (
+            <Tooltip key={item.key} title={collapsed ? item.label : ''} placement="right" arrow disableHoverListener={!collapsed}>
+              <ListItemButton
+                onClick={item.onClick}
+                sx={{
+                  mb: 0.75,
+                  borderRadius: 2,
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  px: collapsed ? 1.5 : 2,
+                  backgroundColor: active ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
+                  color: active ? 'primary.main' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: active ? 'rgba(59, 130, 246, 0.18)' : 'rgba(15, 23, 42, 0.04)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: collapsed ? 0 : 40, color: active ? 'primary.main' : 'text.secondary' }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && (
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ fontWeight: active ? 700 : 500, fontSize: 14 }}
+                  />
+                )}
+              </ListItemButton>
+            </Tooltip>
+          );
+        })}
+      </List>
+
+      <Box
+        sx={{
+          p: collapsed ? 1.25 : 1.75,
+          mt: 'auto',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.04) 0%, rgba(239, 68, 68, 0.08) 100%)',
+        }}
+      >
+        {!collapsed && (
+          <Stack spacing={0.25} sx={{ mb: 1.25 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              Account
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Sign out when you are done.
+            </Typography>
+          </Stack>
+        )}
+
+        {collapsed ? (
+          <Tooltip title="Logout" placement="right" arrow>
+            <IconButton
+              onClick={() => openDialogAndClose(setLogoutOpen)}
+              aria-label="logout"
+              sx={{
+                width: 44,
+                height: 44,
+                mx: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                bgcolor: 'error.main',
+                boxShadow: '0 10px 20px rgba(239, 68, 68, 0.28)',
+                '&:hover': {
+                  bgcolor: 'error.dark',
+                },
+              }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<LogoutIcon />}
+            onClick={() => openDialogAndClose(setLogoutOpen)}
+            sx={{
+              minHeight: 48,
+              fontWeight: 800,
+              textTransform: 'none',
+              borderRadius: 2.5,
+              bgcolor: 'error.main',
+              color: '#fff',
+              boxShadow: '0 12px 24px rgba(239, 68, 68, 0.22)',
+              '&:hover': {
+                bgcolor: 'error.dark',
+                boxShadow: '0 14px 28px rgba(239, 68, 68, 0.28)',
+              },
+            }}
+          >
+            Logout
+          </Button>
+        )}
+      </Box>
+    </Box>
+  );
   
 useEffect(() => {
   if (!auth?.token) {
@@ -406,25 +679,73 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     : defaultPosition;
 
   return (
-    <Box sx={{ p: { xs: 1, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
-      
-      {/* Top Navigation Bar with Hamburger Menu */}
-      <AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>
-        <Toolbar>
+    <Box sx={{
+      p: { xs: 1, md: 4 },
+      pl: { md: `${sidebarWidth + 32}px` },
+      minHeight: '100vh',
+      backgroundColor: 'background.default',
+      transition: 'padding-left 0.25s ease',
+    }}>
+
+      {!isMobile && (
+        <Paper
+          elevation={4}
+          sx={{
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            bottom: 16,
+            width: sidebarWidth,
+            borderRadius: 4,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          {renderSidebarContent(sidebarCollapsed)}
+        </Paper>
+      )}
+
+      {/* Top Navigation Bar */}
+      <AppBar
+        position="static"
+        color="default"
+        elevation={0}
+        sx={{
+          mb: 3,
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          overflow: 'hidden',
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <Toolbar sx={{ gap: 1.5 }}>
           <IconButton
             edge="start"
             color="inherit"
-            aria-label="menu"
-            onClick={() => setSidebarOpen(true)}
-            sx={{ mr: 2 }}
+            aria-label="open navigation"
+            onClick={() => {
+              if (isMobile) {
+                setSidebarOpen(true);
+              } else {
+                setSidebarCollapsed((current) => !current);
+              }
+            }}
+            sx={{ mr: 1 }}
           >
             <MenuIcon />
           </IconButton>
-          
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
             User Dashboard
           </Typography>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationBell />
             <IconButton
@@ -443,167 +764,21 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar Drawer */}
       <Drawer
         anchor="left"
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        open={sidebarOpen && isMobile}
+        onClose={closeMobileSidebar}
+        PaperProps={{
+          sx: {
+            width: 320,
+            borderRadius: '0 24px 24px 0',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            overflow: 'hidden',
+          },
+        }}
       >
-        <Box sx={{ width: 250, p: 2 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              p: 1.5,
-              borderRadius: 2,
-              mb: 2,
-              bgcolor: 'grey.100',
-            }}
-          >
-            <Avatar
-              src={auth?.user?.profilePhoto || undefined}
-              sx={{ width: 44, height: 44, bgcolor: 'primary.main', fontWeight: 600 }}
-            >
-              {(profile.name || auth?.user?.name || 'U').charAt(0).toUpperCase()}
-            </Avatar>
-
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="subtitle2" fontWeight={700} noWrap>
-                {profile.name || auth?.user?.name || 'User'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>
-                {profile.email || auth?.user?.email || 'No email available'}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Menu
-          </Typography>
-          
-          {/* Profile Button */}
-          <Button
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setProfileOpen(true);
-            }}
-          >
-            Profile
-          </Button>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setNotificationsOpen(true);
-            }}
-          >
-            Notifications
-          </Button>
-
-          {/* File Help Request – navigates to existing submit-request form */}
-          <Button
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              navigate('/submit-request');
-            }}
-          >
-            File Help Request
-          </Button>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<MapIcon />}
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              navigate('/user/nearby-services');
-            }}
-          >
-            Nearby Shelters & Hospitals
-          </Button>
-
-          {/* My Open Requests – scrolls to My Requests section showing open items */}
-          <Button
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setShowResolvedOnly(false);
-              if (myRequestsRef.current) {
-                myRequestsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }}
-          >
-            My Open Requests
-          </Button>
-
-          {/* Resolved Requests shortcut (before Logout) */}
-          <Button
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setShowResolvedOnly(true);
-            }}
-          >
-            Resolved Requests
-          </Button>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setShowResolvedOnly(false);
-              if (feedbackRef.current) {
-                feedbackRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }}
-          >
-            Feedback
-          </Button>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<InfoOutlinedIcon />}
-            sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setAboutOpen(true);
-            }}
-          >
-            About LCHC
-          </Button>
-
-          {/* Logout Button */}
-          <Button
-            fullWidth
-            variant="contained"
-            color="error"
-            sx={{ borderRadius: 2, fontWeight: 600 }}
-            onClick={() => {
-              setSidebarOpen(false);
-              setLogoutOpen(true);
-            }}
-          >
-            Logout
-          </Button>
-        </Box>
+        {renderSidebarContent(false)}
       </Drawer>
       
       {/* FIXED: container width */}
