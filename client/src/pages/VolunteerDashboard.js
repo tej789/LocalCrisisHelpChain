@@ -1,7 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField, Avatar } from '@mui/material';
+import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField, Avatar, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
+import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import HomeIcon from '@mui/icons-material/Home';
@@ -12,7 +17,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip as LeafletTooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
@@ -29,6 +34,7 @@ import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
 import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 const socket = io(process.env.REACT_APP_API_URL);
 
@@ -147,6 +153,7 @@ const urgencyPriority = {
 
 function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
@@ -162,6 +169,8 @@ function VolunteerDashboard() {
   const [mapCenterOverride, setMapCenterOverride] = useState(null);
   const [mapZoom, setMapZoom] = useState(6);
 const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Add CSS for selected marker animation and mobile popup styling
   useEffect(() => {
@@ -406,6 +415,228 @@ const handleUseLocation = () => {
   const requestsSectionRef = useRef(null);
   // Throttle backend updates for live GPS sync
   const liveLocationSyncRef = useRef(0);
+  const sidebarWidth = sidebarCollapsed ? 92 : 286;
+
+  const closeMobileSidebar = () => setSidebarOpen(false);
+
+  const openDialogAndClose = (setter) => {
+    setter(true);
+    if (isMobile) closeMobileSidebar();
+  };
+
+  const handleViewAndScrollWithSidebar = (newView) => {
+    handleViewAndScroll(newView);
+    if (isMobile) closeMobileSidebar();
+  };
+
+  const sidebarItems = [
+    {
+      key: 'profile',
+      label: 'Profile',
+      icon: <PersonOutlineIcon fontSize="small" />,
+      active: profileOpen,
+      onClick: () => openDialogAndClose(setProfileOpen),
+    },
+    {
+      key: 'notifications',
+      label: 'Notifications',
+      icon: <NotificationsNoneIcon fontSize="small" />,
+      active: notificationsOpen,
+      onClick: () => openDialogAndClose(setNotificationsOpen),
+    },
+    {
+      key: 'active',
+      label: 'My Active',
+      icon: <DashboardOutlinedIcon fontSize="small" />,
+      active: view === 'assigned',
+      onClick: () => handleViewAndScrollWithSidebar('assigned'),
+    },
+    {
+      key: 'resolved',
+      label: 'My Resolved',
+      icon: <CheckCircleIcon fontSize="small" />,
+      active: view === 'resolved',
+      onClick: () => handleViewAndScrollWithSidebar('resolved'),
+    },
+  ];
+
+  const renderSidebarContent = (collapsed = false) => (
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto',
+      }}
+    >
+      <Box
+        sx={{
+          px: collapsed ? 1.25 : 2,
+          py: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
+          <Avatar
+            src={profilePhoto || undefined}
+            sx={{ width: 44, height: 44, bgcolor: 'primary.main', fontWeight: 700 }}
+          >
+            {(profileName || auth?.user?.name || 'V').charAt(0).toUpperCase()}
+          </Avatar>
+
+          {!collapsed && (
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={800} noWrap>
+                {profileName || auth?.user?.name || 'Volunteer'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                {profileEmail || auth?.user?.email || 'No email available'}
+              </Typography>
+            </Box>
+          )}
+        </Stack>
+
+        {!collapsed && !isMobile && (
+          <IconButton
+            size="small"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-label="collapse navigation"
+            sx={{ border: '1px solid', borderColor: 'divider' }}
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Box>
+
+      {collapsed && !isMobile && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1.5 }}>
+          <IconButton
+            size="small"
+            onClick={() => setSidebarCollapsed(false)}
+            aria-label="expand navigation"
+            sx={{ border: '1px solid', borderColor: 'divider' }}
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
+
+      <Divider />
+
+      <List sx={{ px: collapsed ? 1 : 1.5, py: 1.5, flex: 1 }}>
+        {sidebarItems.map((item) => {
+          const active = Boolean(item.active);
+
+          return (
+            <Tooltip key={item.key} title={collapsed ? item.label : ''} placement="right" arrow disableHoverListener={!collapsed}>
+              <ListItemButton
+                onClick={item.onClick}
+                sx={{
+                  mb: 0.75,
+                  borderRadius: 2,
+                  minHeight: 48,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  px: collapsed ? 1.5 : 2,
+                  backgroundColor: active ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
+                  color: active ? 'primary.main' : 'text.primary',
+                  '&:hover': {
+                    backgroundColor: active ? 'rgba(59, 130, 246, 0.18)' : 'rgba(15, 23, 42, 0.04)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: collapsed ? 0 : 40, color: active ? 'primary.main' : 'text.secondary' }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && (
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ fontWeight: active ? 700 : 500, fontSize: 14 }}
+                  />
+                )}
+              </ListItemButton>
+            </Tooltip>
+          );
+        })}
+      </List>
+
+      <Box
+        sx={{
+          p: collapsed ? 1.25 : 1.75,
+          mt: 'auto',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.03) 0%, rgba(239, 68, 68, 0.08) 100%)',
+        }}
+      >
+        {!collapsed && (
+          <Stack spacing={0.25} sx={{ mb: 1.25 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              Account
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Sign out when you finish your shift.
+            </Typography>
+          </Stack>
+        )}
+
+        {collapsed ? (
+          <Tooltip title="Logout" placement="right" arrow>
+            <IconButton
+              onClick={() => {
+                setSidebarOpen(false);
+                auth.logout();
+              }}
+              aria-label="logout"
+              sx={{
+                width: 44,
+                height: 44,
+                mx: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                bgcolor: 'error.main',
+                boxShadow: '0 10px 20px rgba(239, 68, 68, 0.28)',
+                '&:hover': {
+                  bgcolor: 'error.dark',
+                },
+              }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<LogoutIcon />}
+            onClick={() => {
+              setSidebarOpen(false);
+              auth.logout();
+            }}
+            sx={{
+              minHeight: 48,
+              fontWeight: 800,
+              textTransform: 'none',
+              borderRadius: 2.5,
+              bgcolor: 'error.main',
+              color: '#fff',
+              boxShadow: '0 12px 24px rgba(239, 68, 68, 0.22)',
+              '&:hover': {
+                bgcolor: 'error.dark',
+                boxShadow: '0 14px 28px rgba(239, 68, 68, 0.28)',
+              },
+            }}
+          >
+            Logout
+          </Button>
+        )}
+      </Box>
+    </Box>
+  );
 
 useEffect(() => {
   (async () => {
@@ -904,140 +1135,106 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
 
   return (
     <Box
-  sx={{
-    p: { xs: 1, md: 4 },
-    minHeight: '100vh',
-    backgroundColor: 'background.default',
-    display: 'flex',
-    flexDirection: 'column'
-  }}
->
-{/* Top Navigation Bar with Hamburger Menu */}
-<AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>
-  <Toolbar>
-    <IconButton
-      edge="start"
-      color="inherit"
-      aria-label="menu"
-      onClick={() => setSidebarOpen(true)}
-      sx={{ mr: 2 }}
+      sx={{
+        p: { xs: 1, md: 4 },
+        pl: { md: `${sidebarWidth + 32}px` },
+        minHeight: '100vh',
+        backgroundColor: 'background.default',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'padding-left 0.25s ease',
+      }}
     >
-      <MenuIcon />
-    </IconButton>
-    
-    <Typography variant="h6" sx={{ flexGrow: 1 }}>
-      Volunteer Dashboard
-    </Typography>
+      {!isMobile && (
+        <Paper
+          elevation={4}
+          sx={{
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            bottom: 16,
+            width: sidebarWidth,
+            borderRadius: 4,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          {renderSidebarContent(sidebarCollapsed)}
+        </Paper>
+      )}
 
-    <NotificationBell />
-
-    <Button
-      onClick={() => setProfileOpen(true)}
-      sx={{ minWidth: 0, p: 0, borderRadius: '50%' }}
-    >
-      <Avatar
-        src={profilePhoto || undefined}
-        sx={{ width: 38, height: 38, bgcolor: 'grey.400' }}
+      {/* Top Navigation Bar with Hamburger Menu */}
+      <AppBar
+        position="static"
+        color="default"
+        elevation={0}
+        sx={{
+          mb: 3,
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(12px)',
+        }}
       >
-        {(profileName || auth?.user?.name || 'V').charAt(0).toUpperCase()}
-      </Avatar>
-    </Button>
-  </Toolbar>
-</AppBar>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={() => {
+              if (isMobile) {
+                setSidebarOpen(true);
+              } else {
+                setSidebarCollapsed((current) => !current);
+              }
+            }}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
+            Volunteer Dashboard
+          </Typography>
 
-{/* Sidebar Drawer */}
-<Drawer
-  anchor="left"
-  open={sidebarOpen}
-  onClose={() => setSidebarOpen(false)}
->
-  <Box sx={{ width: 250, p: 2 }}>
-    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-      <Avatar
-        src={profilePhoto || undefined}
-        sx={{ width: 44, height: 44, bgcolor: 'grey.400' }}
+          <NotificationBell />
+
+          <Button
+            onClick={() => setProfileOpen(true)}
+            sx={{ minWidth: 0, p: 0, borderRadius: '50%' }}
+          >
+            <Avatar
+              src={profilePhoto || undefined}
+              sx={{ width: 38, height: 38, bgcolor: 'grey.400' }}
+            >
+              {(profileName || auth?.user?.name || 'V').charAt(0).toUpperCase()}
+            </Avatar>
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      <Drawer
+        anchor="left"
+        open={sidebarOpen && isMobile}
+        onClose={closeMobileSidebar}
+        PaperProps={{
+          sx: {
+            width: 320,
+            borderRadius: '0 24px 24px 0',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            overflow: 'hidden',
+          },
+        }}
       >
-        {(profileName || auth?.user?.name || 'V').charAt(0).toUpperCase()}
-      </Avatar>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
-          {profileName || auth?.user?.name || 'Volunteer'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" noWrap>
-          {profileEmail || auth?.user?.email || ''}
-        </Typography>
-      </Box>
-    </Stack>
-
-    <Typography variant="h6" sx={{ mb: 2 }}>
-      Menu
-    </Typography>
-    
-    {/* Profile Button */}
-    <Button
-      fullWidth
-      variant="outlined"
-      sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-      onClick={() => {
-        setSidebarOpen(false);
-        setProfileOpen(true);
-      }}
-    >
-      Profile
-    </Button>
-
-    <Button
-      fullWidth
-      variant="outlined"
-      sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-      onClick={() => {
-        setSidebarOpen(false);
-        setNotificationsOpen(true);
-      }}
-    >
-      Notifications
-    </Button>
-
-    {/* View Filters from Drawer */}
-    <Button
-      fullWidth
-      variant={view === 'assigned' ? 'contained' : 'outlined'}
-      sx={{ mb: 1, borderRadius: 2, fontWeight: 600 }}
-      onClick={() => {
-        setSidebarOpen(false);
-        handleViewAndScroll('assigned');
-      }}
-    >
-      My Active
-    </Button>
-
-    <Button
-      fullWidth
-      variant={view === 'resolved' ? 'contained' : 'outlined'}
-      sx={{ mb: 2, borderRadius: 2, fontWeight: 600 }}
-      onClick={() => {
-        setSidebarOpen(false);
-        handleViewAndScroll('resolved');
-      }}
-    >
-      My Resolved
-    </Button>
-
-    {/* Logout Button */}
-    <Button
-      fullWidth
-      variant="contained"
-      color="error"
-      sx={{ borderRadius: 2, fontWeight: 600 }}
-      onClick={() => {
-        setSidebarOpen(false);
-        auth.logout();
-      }}
-    >
-      Logout
-    </Button>
-  </Box>
-</Drawer>
+        {renderSidebarContent(false)}
+      </Drawer>
 
   <Container maxWidth="lg">
   <NotificationCenterDialog
@@ -1636,7 +1833,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                   }
                 }}
               >
-                <Tooltip
+                <LeafletTooltip
                   permanent={showPersistentLabels}
                   direction="top"
                   offset={[0, -30]}
@@ -1646,7 +1843,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                     <Box className="map-label-title">{requesterName}</Box>
                     <Box className="map-label-meta request">Need: {needType} • Request</Box>
                   </Box>
-                </Tooltip>
+                </LeafletTooltip>
                 <Popup>
                   <Box sx={{ minWidth: 150, maxWidth: 200 }}>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
@@ -1713,7 +1910,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                     }
                   }}
                 >
-                  <Tooltip
+                  <LeafletTooltip
                     permanent={showPersistentLabels}
                     direction="right"
                     offset={[14, -2]}
@@ -1723,7 +1920,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       <Box className="map-label-title">{requesterName}</Box>
                       <Box className="map-label-meta live">Need: {needType} • Live</Box>
                     </Box>
-                  </Tooltip>
+                  </LeafletTooltip>
                   <Popup>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                       🧍 Requester Current Location
