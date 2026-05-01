@@ -4,12 +4,19 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-polylinedecorator';
 import 'leaflet.marker.slideto';
-import { Box, CircularProgress, Typography, Alert, Paper, IconButton, Chip, Stack, Button, Avatar } from '@mui/material';
+import { Box, CircularProgress, Typography, Alert, Paper, IconButton, Chip, Stack, Button, Avatar, Divider } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DirectionsIcon from '@mui/icons-material/Directions';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import NavigationIcon from '@mui/icons-material/Navigation';
+import AmbulanceIcon from '@mui/icons-material/LocalHospital';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import PersonPinIcon from '@mui/icons-material/PersonPin';
+import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
+import Route from '@mui/icons-material/Route';
+import DistanceIcon from '@mui/icons-material/Straighten';
+import InfoIcon from '@mui/icons-material/Info';
 import api from '../api/axios';
 
 // Custom Volunteer Icon using a styled SVG inside a divIcon
@@ -533,9 +540,12 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" fontWeight={600}>
-          📍 Track Volunteer {routeLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
-        </Typography>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <LocationOnIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+          <Typography variant="h6" fontWeight={600}>
+            Track Volunteer {routeLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
+          </Typography>
+        </Stack>
         <IconButton onClick={onClose} size="small">
           <CloseIcon />
         </IconButton>
@@ -609,16 +619,19 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
           elevation={1}
           sx={{
             mb: 2,
-            p: 1.5,
+            p: 2,
             borderRadius: 2,
             background: 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)',
-            border: '1px solid #bbdefb',
+            border: '1px solid #90caf9',
             textAlign: 'center'
           }}
         >
-          <Typography variant="body1" fontWeight={700} color="primary.main">
-            🚑 Volunteer {locationData.volunteerName} is on the way
-          </Typography>
+          <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} mb={1}>
+            <AmbulanceIcon sx={{ fontSize: 32, color: 'error.main' }} />
+            <Typography variant="body1" fontWeight={700} color="primary.main">
+              Volunteer {locationData.volunteerName} is on the way
+            </Typography>
+          </Stack>
           <Typography variant="body2" color="text.secondary">
             Arriving in ~{eta} minutes
           </Typography>
@@ -711,13 +724,19 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
               {distance !== null && (
                 <>
                   <br />
-                  <small>📏 Distance: {distance} km</small>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <DistanceIcon sx={{ fontSize: 16 }} />
+                    <small><strong>Distance:</strong> {distance} km</small>
+                  </Stack>
                 </>
               )}
               {eta !== null && (
                 <>
                   <br />
-                  <small>⏱ ETA: {eta} minutes</small>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <AccessTimeIcon sx={{ fontSize: 16 }} />
+                    <small><strong>ETA:</strong> {eta} minutes</small>
+                  </Stack>
                 </>
               )}
             </Popup>
@@ -730,11 +749,19 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
             ref={requestMarkerRef}
           >
             <Popup autoClose={false} closeOnClick={false} autoPan={false}>
-              <strong>🚨 Your Request Location</strong>
-              <br />
-              {locationData.requestAddress && (
-                <small>{locationData.requestAddress}</small>
-              )}
+              <Stack spacing={1} sx={{ minWidth: 200 }}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <LocationOnIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Request Location
+                  </Typography>
+                </Stack>
+                {locationData.requestAddress && (
+                  <Typography variant="caption" color="text.secondary">
+                    {locationData.requestAddress}
+                  </Typography>
+                )}
+              </Stack>
             </Popup>
           </Marker>
 
@@ -745,20 +772,71 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
               icon={userLiveIcon}
             >
               <Popup>
-                <strong>🧍 Your Current Location</strong>
-                <br />
-                <small>Shown only while tracking is open</small>
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <PersonPinIcon sx={{ fontSize: 18, color: 'info.main' }} />
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Your Live Location
+                    </Typography>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Shown only while tracking is open
+                  </Typography>
+                </Stack>
               </Popup>
             </Marker>
           )}
         </MapContainer>
       </Box>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-        🚑 Volunteer location | 🔴 Your request location | 🟣 Your live location | 🛣 Blue line with arrows shows route
-        <br />
-        <small>📡 Live tracking: Updates every 5 seconds | Smooth marker animation | Both popups visible automatically</small>
-      </Typography>
+      <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#fafafa' }}>
+        <Stack spacing={1.5}>
+          {/* Legend Title */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <InfoIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+            <Typography variant="subtitle2" fontWeight={600}>
+              Map Legend
+            </Typography>
+          </Stack>
+          
+          <Divider />
+          
+          {/* Legend Items */}
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <AmbulanceIcon sx={{ fontSize: 20, color: 'error.main' }} />
+              <Typography variant="body2">Volunteer Location</Typography>
+            </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <LocationOnIcon sx={{ fontSize: 20, color: 'error.main' }} />
+              <Typography variant="body2">Your Request Location</Typography>
+            </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <PersonPinIcon sx={{ fontSize: 20, color: 'info.main' }} />
+              <Typography variant="body2">Your Live Location</Typography>
+            </Stack>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Route sx={{ fontSize: 20, color: 'primary.main' }} />
+              <Typography variant="body2">Route with Navigation</Typography>
+            </Stack>
+          </Stack>
+          
+          <Divider sx={{ my: 1 }} />
+          
+          {/* Update Info */}
+          <Stack direction="row" spacing={1} alignItems="flex-start">
+            <SignalCellularAltIcon sx={{ fontSize: 18, color: 'success.main', mt: 0.5 }} />
+            <Box>
+              <Typography variant="body2" fontWeight={600}>
+                Live Tracking Active
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Updates every 5 seconds • Smooth marker animation • Automatic popup display
+              </Typography>
+            </Box>
+          </Stack>
+        </Stack>
+      </Paper>
     </Paper>
   );
 };
