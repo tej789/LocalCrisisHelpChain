@@ -1008,9 +1008,12 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
         </>
       )}
         <Paper sx={{ p: 3, mb: 4, borderRadius: 3 }} ref={myRequestsRef}>
-  <Typography variant="h6" gutterBottom>
-    📌 My Requests
-  </Typography>
+  <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+    <AssignmentIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+    <Typography variant="h5" fontWeight={700}>
+      My Requests
+    </Typography>
+  </Stack>
 
   {myRequests.filter(r => showResolvedOnly ? r.status === "resolved" : r.status !== "resolved").length === 0 ? (
     <Typography color="text.secondary">
@@ -1023,58 +1026,98 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 <Card
   key={req._id}
   sx={{
-    mb: 2,
-    borderRadius: 3,
-    boxShadow: 1,
-    transition: "all 0.2s",
+    mb: 2.5,
+    borderRadius: 2,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    transition: "all 0.3s ease",
+    border: '1px solid #e5e7eb',
     "&:hover": {
-      boxShadow: 4,
-      transform: "translateY(-2px)"
+      boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+      transform: "translateY(-2px)",
+      borderColor: '#1976d2'
     }
   }}
->        <CardContent>
-          <Stack direction="row" spacing={1} mb={1}>
-            <Chip label={req.type} color="primary" size="small" />
-            <Chip label={req.urgency} size="small" />
-            <Chip label={req.status} size="small" />
-          </Stack>
-
-<Typography variant="h6" fontWeight={600}>            {req.description}
-          </Typography>
-<Typography
-  variant="body2"
-  sx={{ mt: 1, fontWeight: 500 }}
-  color={
-  req.status === "assigned"
-    ? "success.main"
-    : req.status === "resolved"
-    ? "primary.main"
-    : "text.secondary"
-}
->
-  {req.status === "open" && "Not assigned yet"}
-
-  {req.status === "assigned" &&
-    `✔ Assigned to ${req.assignedTo?.name}`}
-
-  {req.status === "resolved" &&
-    `✅ Resolved by ${req.assignedTo?.name || "Volunteer"}`}
-</Typography>
-
-          {/* Track Volunteer Button - Only show when status is assigned (and not in resolved-only view) */}
-          {!showResolvedOnly && req.status === "assigned" && (
-            <Button
-              variant="contained"
-              color="primary"
+>  <CardContent sx={{ '&:last-child': { pb: 2 } }}>
+    {/* Header with Category and Status */}
+    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
+      <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+            <Chip 
+              label={req.type} 
+              color="primary" 
               size="small"
-              sx={{ mt: 2, borderRadius: 2 }}
-              onClick={() => setSelectedRequestId(req._id)}
-            >
-              📍 Track Volunteer
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+              variant="filled"
+              sx={{ fontWeight: 600 }}
+            />
+            <Chip 
+              label={req.urgency} 
+              size="small"
+              icon={req.urgency === 'high' ? <PriorityHighIcon sx={{ fontSize: 14 }} /> : undefined}
+              variant={req.urgency === 'high' ? "filled" : "outlined"}
+              color={req.urgency === 'high' ? 'error' : 'default'}
+              sx={{ fontWeight: 500 }}
+            />
+      </Stack>
+      <Chip 
+        label={req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+        color={req.status === 'open' ? 'warning' : req.status === 'assigned' ? 'info' : 'success'}
+        sx={{ fontWeight: 600 }}
+      />
+    </Stack>
+
+    {/* Description/Title */}
+    <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5, color: '#111' }}>
+      {req.description}
+    </Typography>
+
+    {/* Status Information with Icon */}
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ 
+      p: 1.5, 
+      bgcolor: req.status === 'open' ? '#fff3cd' : req.status === 'assigned' ? '#cfe2ff' : '#d1e7dd', 
+      borderRadius: 1.5,
+      borderLeft: `4px solid ${req.status === 'open' ? '#ffc107' : req.status === 'assigned' ? '#0dcaf0' : '#198754'}`,
+      mb: 2
+    }}>
+      {req.status === 'open' && <PendingActionsIcon sx={{ fontSize: 18, color: '#856404' }} />}
+      {req.status === 'assigned' && <HandshakeIcon sx={{ fontSize: 18, color: '#084298' }} />}
+      {req.status === 'resolved' && <DoneAllIcon sx={{ fontSize: 18, color: '#0f5132' }} />}
+      <Typography variant="body2" fontWeight={600} sx={{ color: '#333' }}>
+  {req.status === "open" && "Awaiting volunteer assignment"}
+  {req.status === "assigned" &&
+    `Assigned to ${req.assignedTo?.name || 'a volunteer'}`}
+  {req.status === "resolved" &&
+    `Completed by ${req.assignedTo?.name || 'a volunteer'}`}
+      </Typography>
+    </Stack>
+
+    {/* Location Information */}
+    {req.location?.address && (
+      <Typography variant="body2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, color: '#555' }}>
+        <MapIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+        <span><strong>Location:</strong> {req.location.address}</span>
+      </Typography>
+    )}
+
+    {/* Action Button */}
+    {!showResolvedOnly && req.status === "assigned" && (
+      <Button
+        variant="contained"
+        color="primary"
+        size="small"
+        startIcon={<MapIcon />}
+        sx={{ 
+          mt: 1.5, 
+          borderRadius: 1.5,
+          textTransform: 'none',
+          fontWeight: 600,
+          py: 0.75
+        }}
+        onClick={() => setSelectedRequestId(req._id)}
+      >
+        Track Volunteer Location
+      </Button>
+    )}
+  </CardContent>
+</Card>
     ))
   )}
  </Paper>
