@@ -870,6 +870,19 @@ useEffect(() => {
     socket.on('requestResolved', (updatedRequest) => {
       setRequests(prev => prev.map(r => r._id === updatedRequest._id ? updatedRequest : r));
     });
+    // SOS alerts targeted to individual volunteers
+    socket.on('sosAlert', (payload) => {
+      try {
+        const currentId = auth?.user?._id || auth?.user?.id || null;
+        if (!currentId) return;
+        if (!payload || !payload.volunteerId) return;
+        if (payload.volunteerId.toString() === currentId.toString()) {
+          setSnackbar({ open: true, message: `Emergency nearby — open requests page to respond.`, severity: 'warning' });
+          // Optionally add to requests list
+          if (payload.request) setRequests(prev => [payload.request, ...prev]);
+        }
+      } catch (e) { }
+    });
     // Live movement of the requester icon
     socket.on('requestLocationUpdated', (payload) => {
       if (!payload || !payload.requestId || !Array.isArray(payload.coordinates)) return;
@@ -884,12 +897,21 @@ useEffect(() => {
         };
       }));
     });
+    // Register volunteer's socket room so server can target alerts to this volunteer
+    try {
+      const volunteerId = auth?.user?._id || auth?.user?.id;
+      if (volunteerId) {
+        socket.emit('registerVolunteer', volunteerId);
+        console.log('Registered volunteer socket room for', volunteerId);
+      }
+    } catch (e) {}
     return () => {
       socket.off('newRequest');
       socket.off('requestClaimed');
       socket.off('requestAssigned');
       socket.off('requestResolved');
       socket.off('requestLocationUpdated');
+      socket.off('sosAlert');
     };
 
   }, []);

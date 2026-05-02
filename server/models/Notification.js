@@ -17,7 +17,7 @@ const NotificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['assigned', 'resolved'],
+      enum: ['assigned', 'resolved', 'sos'],
       required: true
     },
     title: {

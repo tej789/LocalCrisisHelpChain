@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
+console.log('Loading requests routes file');
+
 const requestController = require('../controllers/requestController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
@@ -24,6 +26,18 @@ router.post(
   requireRole('user'),
   requestController.createRequest
 );
+
+router.post(
+  '/sos',
+  verifyToken,
+  requireRole('user'),
+  requestController.sosAlert
+);
+
+// Lightweight ping for debugging route registration (no auth)
+router.get('/sos-ping', (req, res) => {
+  res.json({ ok: true, msg: 'sos route reachable' });
+});
 
 // User can share live GPS updates for their own request
 router.patch(

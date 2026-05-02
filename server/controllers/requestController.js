@@ -6,6 +6,118 @@ const {
   sendAssignmentEmail,
   sendVolunteerAssignmentEmail
 } = require("../utils/otpService");
+// In-memory cooldown tracker for SOS (userId -> timestamp ms)
+const sosCooldownMap = new Map();
+const SOS_COOLDOWN_MS = parseInt(process.env.SOS_COOLDOWN_MS || '120000', 10); // default 2 minutes
+const haversine = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c * 1000; // meters
+};
+
+/* =========================
+   SOS ALERT - one-tap emergency
+   Creates a lightweight HelpRequest and notifies nearby volunteers
+========================= */
+exports.sosAlert = async (req, res) => {
+  console.log('SOS endpoint called by user:', req.user?.id || 'unknown');
+  console.log('Request body:', req.body);
+  // Cooldown enforcement
+  try {
+    const last = sosCooldownMap.get(req.user.id);
+    const now = Date.now();
+    if (last && (now - last) < SOS_COOLDOWN_MS) {
+      const wait = Math.ceil((SOS_COOLDOWN_MS - (now - last)) / 1000);
+      return res.status(429).json({ success: false, error: `Please wait ${wait}s before sending another SOS.` });
+    }
+    // reserve slot
+    sosCooldownMap.set(req.user.id, Date.now());
+  } catch (e) {
+    // ignore errors in cooldown map
+  }
+
+  try {
+    const { latitude, longitude, address, message } = req.body;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      // clear cooldown when invalid
+      try { sosCooldownMap.delete(req.user.id); } catch (e) {}
+      return res.status(400).json({ error: 'latitude and longitude required (numbers)' });
+    }
+
+    const user = await User.findById(req.user.id).select('name contact');
+
+    // Create a short-lived HelpRequest to attach to notifications
+    const helpRequest = new HelpRequest({
+      title: message ? message.slice(0, 80) : 'SOS Alert',
+      name: user?.name || 'Anonymous',
+      contact: user?.contact || '',
+      location: { type: 'Point', coordinates: [longitude, latitude], address: address || 'Live SOS' },
+      type: 'rescue',
+      urgency: 'high',
+      description: message || 'User triggered SOS',
+      status: 'open',
+      createdBy: req.user.id
+    });
+
+    await helpRequest.save();
+
+    const maxDistance = parseInt(process.env.SOS_MAX_DISTANCE || '5000', 10); // meters
+
+    // Find nearby volunteers (geo query)
+    const nearby = await Volunteer.find({
+      isAvailable: true,
+      isVerified: true,
+      location: {
+        $nearSphere: {
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          $maxDistance: maxDistance
+        }
+      }
+    }).limit(10);
+
+    // Create notifications for found volunteers
+    const notifications = [];
+    for (const vol of nearby) {
+      const dist = (vol.location && Array.isArray(vol.location.coordinates) && vol.location.coordinates.length === 2)
+        ? Math.round(haversine(latitude, longitude, vol.location.coordinates[1], vol.location.coordinates[0]))
+        : null;
+
+      notifications.push({
+        volunteerId: vol._id,
+        requestId: helpRequest._id,
+        type: 'sos',
+        title: 'Emergency Nearby',
+        message: `SOS from ${user?.name || 'a user'}${dist ? ` — approx ${Math.round(dist)}m away` : ''}`
+      });
+    }
+
+    if (notifications.length) await Notification.insertMany(notifications);
+
+    // Notify via socket.io so volunteers online receive real-time alert
+    const io = req.app.get('io');
+    if (io) {
+      nearby.forEach((vol) => {
+        try {
+          io.to(`vol_${vol._id.toString()}`).emit('sosAlert', {
+            volunteerId: vol._id.toString(),
+            request: helpRequest
+          });
+        } catch (e) {
+          // fallback to broadcast
+          try { io.emit('sosAlert', { volunteerId: vol._id.toString(), request: helpRequest }); } catch (e) {}
+        }
+      });
+    }
+
+    return res.json({ success: true, alerted: nearby.length, requestId: helpRequest._id });
+  } catch (err) {
+    console.error('SOS alert error:', err);
+    return res.status(500).json({ error: 'Failed to send SOS' });
+  }
+};
 /* =========================
    CREATE REQUEST
 ========================= */

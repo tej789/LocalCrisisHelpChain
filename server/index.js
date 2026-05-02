@@ -35,6 +35,12 @@ app.use(express.json({ limit: '10mb' }));
 /* Make socket available in routes */
 app.set("io", io);
 
+// DEBUG: log every incoming request to help diagnose route hits
+app.use((req, res, next) => {
+  console.log(`Incoming ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 /* ==============================
    Health Check Route
 ============================== */
@@ -54,11 +60,48 @@ app.use("/api/volunteers", require("./routes/volunteers"));
 app.use("/api/nearby-services", require("./routes/nearbyServices"));
 app.use("/api/admin", adminRoutes);
 
+// Debug: print registered routes (robust against missing internals)
+setImmediate(() => {
+  try {
+    const routes = [];
+    if (!app._router || !Array.isArray(app._router.stack)) {
+      console.log('No router stack available on app yet');
+    } else {
+      app._router.stack.forEach((middleware) => {
+        try {
+          if (middleware && middleware.route) {
+            const path = middleware.route.path;
+            const methods = Object.keys(middleware.route.methods || {}).join(',').toUpperCase();
+            routes.push(`${methods} ${path}`);
+          } else if (middleware && middleware.name === 'router' && middleware.handle && Array.isArray(middleware.handle.stack)) {
+            middleware.handle.stack.forEach((handler) => {
+              if (handler && handler.route) {
+                const path = handler.route.path;
+                const methods = Object.keys(handler.route.methods || {}).join(',').toUpperCase();
+                routes.push(`${methods} ${path}`);
+              }
+            });
+          }
+        } catch (inner) {
+          // continue on inner errors
+        }
+      });
+    }
+
+    console.log('Registered routes:');
+    if (routes.length === 0) console.log('  (no routes discovered)');
+    routes.forEach(r => console.log(' ', r));
+  } catch (e) {
+    console.error('Failed to list routes', e);
+  }
+});
+
 /* ==============================
    Error Handling Middleware
 ============================== */
 // Handle unknown routes
 app.use((req, res, next) => {
+  console.log('Unhandled route reached:', req.originalUrl);
   next(new AppError(`Route not found - ${req.originalUrl}`, 404));
 });
 app.use(errorHandler); 
@@ -85,6 +128,20 @@ io.on("connection", socket => {
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+  });
+});
+// Track volunteers who register and place them into rooms `vol_<volunteerId>`
+io.on('connection', (socket) => {
+  socket.on('registerVolunteer', (volunteerId) => {
+    try {
+      if (volunteerId) {
+        const room = `vol_${volunteerId}`;
+        socket.join(room);
+        console.log(`Socket ${socket.id} joined room ${room}`);
+      }
+    } catch (e) {
+      console.error('registerVolunteer error', e);
+    }
   });
 });
 

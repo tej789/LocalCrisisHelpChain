@@ -37,6 +37,7 @@ import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import VolunteerLocationMap from '../components/VolunteerLocationMap';
 import Footer from '../components/Footer';
+import SosButton from '../components/SosButton';
 
 
 
@@ -47,21 +48,26 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 const SummaryCard = ({ label, value, color }) => (
   <Paper
     sx={{
-      p: 2,
+      p: 2.5,
       textAlign: 'center',
-      borderRadius: 3,
+      borderRadius: 2,
       minWidth: 120,
-      minHeight: 88,
+      minHeight: 95,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      boxShadow: 1,
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12)',
+        transform: 'translateY(-2px)',
+      },
     }}
   >
     <Typography
       variant="h5"
-      sx={{ fontWeight: 700 }}
+      sx={{ fontWeight: 700, lineHeight: 1.2 }}
       color={color || 'text.primary'}
     >
       {value}
@@ -69,7 +75,7 @@ const SummaryCard = ({ label, value, color }) => (
     <Typography
       variant="body2"
       color="text.secondary"
-      sx={{ mt: 0.5 }}
+      sx={{ mt: 0.75, fontWeight: 500 }}
     >
       {label}
     </Typography>
@@ -638,6 +644,10 @@ const myOpen = myRequests.filter(
   r => r.status === "open"
 ).length;
 
+const myAssigned = myRequests.filter(
+  r => r.status === "assigned"
+).length;
+
 const myResolved = myRequests.filter(
   r => r.status === "resolved"
 ).length;
@@ -748,6 +758,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationBell />
+            <SosButton />
             <IconButton
               onClick={() => setProfileOpen(true)}
               sx={{ p: 0.5, border: 'none', boxShadow: 'none', bgcolor: 'transparent' }}
@@ -1134,9 +1145,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
      )}
 
      {/* ================= MY REQUESTS SUMMARY ================= */}
-<Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-  🔹 My Requests Summary
-</Typography>
+<Box sx={{ mb: 3 }}>
+  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: 0.3 }}>
+    My Requests Summary
+  </Typography>
+</Box>
 
 <Grid
   container
@@ -1158,6 +1171,14 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 
   <Grid item xs={6} sm={4} md={3}>
     <SummaryCard
+      label="My Assigned"
+      value={myAssigned}
+      color="info.main"
+    />
+  </Grid>
+
+  <Grid item xs={6} sm={4} md={3}>
+    <SummaryCard
       label="My Resolved"
       value={myResolved}
       color="success.main"
@@ -1166,9 +1187,11 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 </Grid>
 
 {/* ================= COMMUNITY OVERVIEW ================= */}
-<Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-  🔹 Community Overview
-</Typography>
+<Box sx={{ mb: 3 }}>
+  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: 0.3 }}>
+    Community Overview
+  </Typography>
+</Box>
 
 <Grid
   container
