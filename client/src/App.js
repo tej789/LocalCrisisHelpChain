@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from "./pages/AdminDashboard";
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 
 
 function App() {
@@ -28,6 +29,15 @@ function App() {
   element={
     <RoleProtectedRoute roles={['admin']}>
       <AdminDashboard />
+    </RoleProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/analytics"
+  element={
+    <RoleProtectedRoute roles={['admin', 'ngo']}>
+      <AnalyticsDashboard />
     </RoleProtectedRoute>
   }
 />

@@ -59,6 +59,7 @@ app.use("/api/ngo", require("./routes/ngo"));
 app.use("/api/volunteers", require("./routes/volunteers"));
 app.use("/api/nearby-services", require("./routes/nearbyServices"));
 app.use("/api/admin", adminRoutes);
+app.use("/api/analytics", require("./routes/analytics"));
 
 // Debug: print registered routes (robust against missing internals)
 setImmediate(() => {

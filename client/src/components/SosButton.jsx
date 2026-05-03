@@ -8,6 +8,7 @@ export default function SosButton() {
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [successState, setSuccessState] = useState(false);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
 
   // Handle countdown logic
@@ -27,7 +28,18 @@ export default function SosButton() {
     }
   }, [countdown, confirmOpen]);
 
+  // Success state cooldown: lock button for 3 seconds after successful send
+  React.useEffect(() => {
+    if (!successState) return;
+    const timer = setTimeout(() => {
+      setSuccessState(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [successState]);
+
   const handleClick = () => {
+    // Prevent click if already in process or locked in success state
+    if (loading || successState || confirmOpen) return;
     setCountdown(3);
     setConfirmOpen(true);
   };
@@ -58,6 +70,9 @@ export default function SosButton() {
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.post(url, { latitude, longitude, message: 'SOS: immediate assistance required' }, { headers });
+        
+        // Success state locks button for 3 seconds
+        setSuccessState(true);
         setSnack({ open: true, message: `SOS sent — alerted ${res.data.alerted} volunteer(s)`, severity: 'success' });
       } catch (err) {
         console.error('SOS error:', err);
@@ -75,17 +90,23 @@ export default function SosButton() {
     <>
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         <Fab
-          color="error"
+          color={successState ? 'success' : 'error'}
           aria-label="sos"
           onClick={handleClick}
-          disabled={loading}
-          sx={{ width: 56, height: 56 }}
+          disabled={loading || confirmOpen || successState}
+          sx={{ width: 56, height: 56, transition: 'all 0.3s ease' }}
         >
-          {loading ? <CircularProgress color="inherit" size={22} /> : <LocalHospitalIcon />}
+          {loading ? (
+            <CircularProgress color="inherit" size={22} />
+          ) : successState ? (
+            <Typography sx={{ fontSize: '1.5rem' }}>✓</Typography>
+          ) : (
+            <LocalHospitalIcon />
+          )}
         </Fab>
       </Box>
 
-      <Dialog open={confirmOpen} onClose={handleCancel} maxWidth="xs" fullWidth>
+      <Dialog open={confirmOpen} onClose={handleCancel} maxWidth="xs" fullWidth disableEscapeKeyDown>
         <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>
           Confirm Emergency SOS
         </DialogTitle>

@@ -30,10 +30,29 @@ const sidebarStyle = {
           padding: "10px 15px",
           display: "block",
           borderRadius: "6px",
-          backgroundColor: "rgba(255,255,255,0.15)"
+          backgroundColor: "rgba(255,255,255,0.15)",
+          marginBottom: "10px"
         }}
       >
         Dashboard
+      </Link>
+
+      <Link
+        to="/admin/analytics"
+        style={{
+          color: "#fff",
+          textDecoration: "none",
+          padding: "10px 15px",
+          display: "block",
+          borderRadius: "6px",
+          backgroundColor: "rgba(255,255,255,0.1)",
+          transition: "0.2s",
+          cursor: "pointer"
+        }}
+        onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.15)"}
+        onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.1)"}
+      >
+        📊 SOS Analytics
       </Link>
     </aside>
   );
