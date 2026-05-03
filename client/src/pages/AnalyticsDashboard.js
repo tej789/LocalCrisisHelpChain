@@ -5,6 +5,7 @@ import {
   Paper,
   Typography,
   Box,
+  Button,
   CircularProgress,
   Alert,
   TextField,
@@ -12,6 +13,7 @@ import {
   Tab,
   Tabs
 } from '@mui/material';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import {
   LineChart,
   Line,
@@ -33,6 +35,7 @@ import {
   Radar
 } from 'recharts';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const COLORS = ['#ff7300', '#00C49F', '#FFBB28', '#FF8042', '#0088FE', '#82CA9D'];
@@ -105,6 +108,19 @@ const tableCellStyle = {
   borderBottom: '1px solid #e2e8f0',
 };
 
+const PageShell = ({ children }) => (
+  <Box
+    sx={{
+      minHeight: '100vh',
+      py: { xs: 2, md: 4 },
+      background:
+        'radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%), radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 24%), linear-gradient(180deg, #f8fafc 0%, #f6f8fc 100%)',
+    }}
+  >
+    {children}
+  </Box>
+);
+
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
   return (
@@ -120,6 +136,7 @@ function TabPanel(props) {
 
 export default function AnalyticsDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -206,67 +223,103 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Container>
+      <PageShell>
+        <Container maxWidth="lg" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Container>
+      </PageShell>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 800, mb: 1 }}>
-        SOS Analytics Dashboard
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Monitor SOS demand, response patterns, and volunteer effectiveness.
-      </Typography>
+    <PageShell>
+      <Container maxWidth="lg">
+        <SurfacePaper sx={{ mb: 3, p: { xs: 2.5, md: 3 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <Stack spacing={1.2} sx={{ minWidth: 0 }}>
+              <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: 1.6 }}>
+                Operational Intelligence
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                SOS Analytics Dashboard
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
+                Monitor SOS demand, response patterns, and volunteer effectiveness from one clean operational view.
+              </Typography>
+            </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-      {/* Summary Cards */}
-      {summary && (
-        <>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: 0.3 }}>
-              SOS Overview
-            </Typography>
+            <Button
+              onClick={() => navigate('/admin')}
+              variant="outlined"
+              startIcon={<ArrowBackRoundedIcon />}
+              sx={{
+                borderRadius: 999,
+                px: 2,
+                py: 1,
+                fontWeight: 700,
+                textTransform: 'none',
+                boxShadow: '0 8px 20px rgba(37, 99, 235, 0.08)',
+                borderColor: 'rgba(37, 99, 235, 0.22)',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  backgroundColor: 'rgba(37, 99, 235, 0.04)'
+                }
+              }}
+            >
+              Back to Admin Dashboard
+            </Button>
           </Box>
+        </SurfacePaper>
 
-          <Grid container spacing={2} sx={{ mb: 4 }} justifyContent="center">
-            <Grid item xs={6} sm={4} md={3}>
-              <SummaryCard
-                label="All Time SOS"
-                value={summary.allTime.total}
-                color="primary.main"
-              />
-            </Grid>
+        {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
-            <Grid item xs={6} sm={4} md={3}>
-              <SummaryCard
-                label="This Month"
-                value={summary.thisMonth}
-                color="secondary.main"
-              />
-            </Grid>
+        {/* Summary Cards */}
+        {summary && (
+          <>
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: 0.3 }}>
+                SOS Overview
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Snapshot of current emergency activity and response performance.
+              </Typography>
+            </Box>
 
-            <Grid item xs={6} sm={4} md={3}>
-              <SummaryCard
-                label="Today"
-                value={summary.today}
-                color="info.main"
-              />
-            </Grid>
+            <Grid container spacing={2} sx={{ mb: 4 }}>
+              <Grid item xs={6} sm={4} md={3}>
+                <SummaryCard
+                  label="All Time SOS"
+                  value={summary.allTime.total}
+                  color="primary.main"
+                />
+              </Grid>
 
-            <Grid item xs={6} sm={4} md={3}>
-              <SummaryCard
-                label="Avg Response"
-                value={summary.avgResponseTimeMin}
-                color="success.main"
-              />
+              <Grid item xs={6} sm={4} md={3}>
+                <SummaryCard
+                  label="This Month"
+                  value={summary.thisMonth}
+                  color="secondary.main"
+                />
+              </Grid>
+
+              <Grid item xs={6} sm={4} md={3}>
+                <SummaryCard
+                  label="Today"
+                  value={summary.today}
+                  color="info.main"
+                />
+              </Grid>
+
+              <Grid item xs={6} sm={4} md={3}>
+                <SummaryCard
+                  label="Avg Response"
+                  value={summary.avgResponseTimeMin}
+                  color="success.main"
+                />
+              </Grid>
             </Grid>
-          </Grid>
           </>
-      )}
+        )}
 
       {/* Tabs for different views */}
       <Box sx={{ mb: 3 }}>
@@ -309,26 +362,26 @@ export default function AnalyticsDashboard() {
             <Tab label="Response Metrics" />
           </Tabs>
         </Paper>
-      </Box>
+        </Box>
 
-      {/* Date range selector */}
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          select
-          label="Days"
-          value={days}
-          onChange={(e) => setDays(parseInt(e.target.value))}
-          sx={{ width: 150 }}
-          SelectProps={{
-            native: true,
-          }}
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={14}>Last 14 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-        </TextField>
-      </Box>
+        {/* Date range selector */}
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
+          <TextField
+            select
+            label="Days"
+            value={days}
+            onChange={(e) => setDays(parseInt(e.target.value))}
+            sx={{ width: 160 }}
+            SelectProps={{
+              native: true,
+            }}
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={14}>Last 14 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+          </TextField>
+        </Box>
 
       {/* Tab 1: Volume & Trends */}
       <TabPanel value={tabValue} index={0}>
@@ -623,6 +676,7 @@ export default function AnalyticsDashboard() {
           </Grid>
         </Grid>
       </TabPanel>
-    </Container>
+      </Container>
+    </PageShell>
   );
 }

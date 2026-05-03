@@ -1,58 +1,67 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useLocation } from 'react-router-dom';
+import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
+import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 
 const Sidebar = ({ isMobile, sidebarOpen }) => {
+const location = useLocation();
 
 const sidebarStyle = {
-  width: "240px",
-  background: "linear-gradient(180deg, #2563eb 0%, #1e40af 100%)",
-  color: "#ffffff",
-  padding: "25px 20px",
-  position: "fixed",   // ALWAYS fixed
-  left: isMobile ? (sidebarOpen ? "0" : "-260px") : "0",
+  width: '248px',
+  background: 'linear-gradient(180deg, #1d4ed8 0%, #0f2f78 100%)',
+  color: '#ffffff',
+  padding: '24px 16px',
+  position: 'fixed',
+  left: isMobile ? (sidebarOpen ? '0' : '-270px') : '0',
   top: 0,
-  height: "100vh",
-  transition: "0.3s ease",
+  height: '100vh',
+  transition: '0.28s ease',
   zIndex: 1000,
+  boxShadow: '4px 0 24px rgba(15,23,42,0.18)',
+  overflowY: 'auto',
 };
+
+const navLinkStyle = (active) => ({
+  color: '#fff',
+  textDecoration: 'none',
+  padding: '12px 14px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  borderRadius: '12px',
+  backgroundColor: active ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+  marginBottom: '10px',
+  fontWeight: 700,
+  border: active ? '1px solid rgba(255,255,255,0.22)' : '1px solid transparent',
+  transition: '0.2s ease',
+});
 
   return (
     <aside style={sidebarStyle}>
-      <div style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "40px" }}>
-        LCHC Admin
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '0.3px' }}>
+          LCHC Admin
+        </div>
+        <div style={{ fontSize: '12px', opacity: 0.82, marginTop: '4px' }}>
+          Control center
+        </div>
       </div>
 
       <Link
         to="/admin"
-        style={{
-          color: "#fff",
-          textDecoration: "none",
-          padding: "10px 15px",
-          display: "block",
-          borderRadius: "6px",
-          backgroundColor: "rgba(255,255,255,0.15)",
-          marginBottom: "10px"
-        }}
+        style={navLinkStyle(location.pathname === '/admin')}
       >
+        <DashboardOutlinedIcon fontSize="small" />
         Dashboard
       </Link>
 
       <Link
         to="/admin/analytics"
-        style={{
-          color: "#fff",
-          textDecoration: "none",
-          padding: "10px 15px",
-          display: "block",
-          borderRadius: "6px",
-          backgroundColor: "rgba(255,255,255,0.1)",
-          transition: "0.2s",
-          cursor: "pointer"
-        }}
-        onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.15)"}
-        onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.1)"}
+        style={navLinkStyle(location.pathname === '/admin/analytics')}
       >
-        📊 SOS Analytics
+        <InsightsOutlinedIcon fontSize="small" />
+        SOS Analytics
       </Link>
     </aside>
   );

@@ -3,7 +3,7 @@ import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
 
 const AdminLayout = ({ children, handleLogout }) => {
-const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -15,21 +15,23 @@ const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   }, []);
 
   const layoutStyle = {
-  display: "flex",
-  minHeight: "100vh",
-  backgroundColor: "#f4f6f9",
-};
+    display: 'flex',
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)',
+  };
 
-const mainContentStyle = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-};
+  const mainContentStyle = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    marginLeft: isMobile ? 0 : '248px',
+  };
   const pageContentStyle = {
-  padding: isMobile ? "20px 15px" : "20px 40px 20px 280px",
-  flex: 1,
-};
+    padding: isMobile ? '16px 16px 24px' : '24px 28px 32px',
+    flex: 1,
+    boxSizing: 'border-box',
+  };
 
 
   return (
@@ -46,12 +48,12 @@ const mainContentStyle = {
         <div
           onClick={() => setSidebarOpen(false)}
           style={{
-            position: "fixed",
+            position: 'fixed',
             top: 0,
             left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0,0,0,0.3)",
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(15,23,42,0.28)',
             zIndex: 900,
           }}
         />

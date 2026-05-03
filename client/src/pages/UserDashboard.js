@@ -706,14 +706,15 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
             left: 16,
             bottom: 16,
             width: sidebarWidth,
-            borderRadius: 4,
+            borderRadius: 5,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            bgcolor: 'background.paper',
+            bgcolor: '#ffffff',
             color: 'text.primary',
             border: '1px solid',
             borderColor: 'divider',
+            boxShadow: '0 18px 45px rgba(15, 23, 42, 0.10)',
           }}
         >
           {renderSidebarContent(sidebarCollapsed)}
