@@ -56,7 +56,13 @@ router.get(
 router.put(
   '/:id/assign',
   verifyToken,
-  requireRole('ngo'),
+  (req, res, next) => {
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'ngo' && role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin or NGO role required.' });
+    }
+    next();
+  },
   requestController.assignVolunteer
 );
 

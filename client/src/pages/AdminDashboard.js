@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout"; // ✅ correct path
+import { Box, Button, Chip, Grid, Paper, Typography } from "@mui/material";
+import AssignVolunteerDialog from "../components/AssignVolunteerDialog";
 
 const AdminDashboard = () => {
   const [allNgos, setAllNgos] = useState([]);
@@ -13,6 +15,9 @@ const AdminDashboard = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [volSearch, setVolSearch] = useState("");
   const [volStatusFilter, setVolStatusFilter] = useState("all");
+  const [sosRequests, setSosRequests] = useState([]);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigningRequest, setAssigningRequest] = useState(null);
 
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -47,6 +52,19 @@ const AdminDashboard = () => {
         localStorage.clear();
         navigate("/login", { replace: true });
       }
+    }
+  };
+
+  const fetchSosRequests = async () => {
+    try {
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/requests?type=rescue&status=open&sort=-createdAt`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setSosRequests(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -95,6 +113,26 @@ const AdminDashboard = () => {
     navigate("/login", { replace: true });
   };
 
+  const handleOpenAssignDialog = (request) => {
+    setAssigningRequest(request);
+    setAssignDialogOpen(true);
+  };
+
+  const handleCloseAssignDialog = () => {
+    setAssignDialogOpen(false);
+    setAssigningRequest(null);
+  };
+
+  const handleAssignedSuccess = (updatedRequest) => {
+    if (!updatedRequest?._id) {
+      handleCloseAssignDialog();
+      return;
+    }
+
+    setSosRequests(prev => prev.map(req => req._id === updatedRequest._id ? updatedRequest : req));
+    handleCloseAssignDialog();
+  };
+
   /* ================= EFFECT ================= */
 
   useEffect(() => {
@@ -104,6 +142,7 @@ const AdminDashboard = () => {
     }
     fetchAllUsers();
     fetchPending();
+    fetchSosRequests();
   }, [token]);
 
   /* ================= FILTER LOGIC ================= */
@@ -146,6 +185,54 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout handleLogout={handleLogout}>
+      {/* SOS ASSIGNMENT */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+          SOS Assignment
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Admin can assign verified volunteers to open SOS requests. The NGO dashboard will update automatically after assignment.
+        </Typography>
+
+        {sosRequests.length === 0 ? (
+          <Paper sx={{ p: 3, borderRadius: 3 }}>
+            <Typography color="text.secondary">No open SOS requests right now.</Typography>
+          </Paper>
+        ) : (
+          <Grid container spacing={2}>
+            {sosRequests.map((req) => (
+              <Grid item xs={12} md={6} lg={4} key={req._id}>
+                <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 1 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      {req.title || 'SOS Alert'}
+                    </Typography>
+                    <Chip size="small" label={req.status} color="warning" sx={{ fontWeight: 700 }} />
+                  </Box>
+
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {req.description || 'No description provided'}
+                  </Typography>
+
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    Location: {req.location?.address || 'Live SOS location'}
+                  </Typography>
+
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => handleOpenAssignDialog(req)}
+                    sx={{ borderRadius: 2, fontWeight: 700 }}
+                  >
+                    Assign Volunteer
+                  </Button>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Box>
+
       {/* Stats */}
 <div
   style={{
@@ -163,6 +250,14 @@ const AdminDashboard = () => {
           <p style={statsNumber}>{volunteers.length}</p>
         </div>
       </div>
+
+      <AssignVolunteerDialog
+        open={assignDialogOpen}
+        requestId={assigningRequest?._id}
+        requestLocation={assigningRequest?.location}
+        onClose={handleCloseAssignDialog}
+        onAssigned={handleAssignedSuccess}
+      />
 
          {/* NGO SECTION */}
       <h2>Pending NGOs</h2>

@@ -320,41 +320,61 @@ exports.assignVolunteer = async (req, res) => {
       { new: true }
     ).populate('assignedTo', 'name email');
 
-    // volunteer becomes unavailable
-    vol.isAvailable = false;
-    await vol.save();
-    // send assignment email
+    if (!updated) {
+      return res.status(404).json({ error: 'Request not found after update' });
+    }
+
+    // volunteer becomes unavailable without triggering validation on legacy records
+    await Volunteer.findByIdAndUpdate(
+      volunteerId,
+      { $set: { isAvailable: false } },
+      { new: true }
+    );
+
+    // Best-effort notifications: assignment should still succeed even if these fail.
     const user = await User.findById(updated.createdBy);
 
-if (user) {
-  await sendAssignmentEmail(user, vol);
-}
-await sendVolunteerAssignmentEmail(vol, updated, user);
-
-    // Create notifications for both user and assigned volunteer.
-    await Notification.insertMany([
-      {
-        userId: updated.createdBy,
-        requestId: updated._id,
-        type: 'assigned',
-        title: 'Request Assigned',
-        message: `Volunteer ${vol.name} has been assigned to your request.`
-      },
-      {
-        volunteerId: vol._id,
-        requestId: updated._id,
-        type: 'assigned',
-        title: 'New Assignment',
-        message: `You have been assigned to a ${updated.type} request.`
+    try {
+      if (user) {
+        await sendAssignmentEmail(user, vol);
       }
-    ]);
+      await sendVolunteerAssignmentEmail(vol, updated, user);
+    } catch (emailErr) {
+      console.error('Assignment email error:', emailErr);
+    }
+
+    try {
+      await Notification.insertMany([
+        {
+          userId: updated.createdBy,
+          requestId: updated._id,
+          type: 'assigned',
+          title: 'Request Assigned',
+          message: `Volunteer ${vol.name} has been assigned to your request.`
+        },
+        {
+          volunteerId: vol._id,
+          requestId: updated._id,
+          type: 'assigned',
+          title: 'New Assignment',
+          message: `You have been assigned to a ${updated.type} request.`
+        }
+      ]);
+    } catch (notificationErr) {
+      console.error('Assignment notification error:', notificationErr);
+    }
+
     const io = req.app.get('io');
     if (io) io.emit('requestAssigned', updated);
 
     res.json(updated);
   } catch (err) {
     console.error("Assign error:", err);
-    res.status(500).json({ error: 'Assignment failed' });
+    res.status(500).json({
+      error: process.env.NODE_ENV === 'production'
+        ? 'Assignment failed'
+        : `Assignment failed: ${err.message}`
+    });
   }
 };
 
