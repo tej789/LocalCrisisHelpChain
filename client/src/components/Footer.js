@@ -60,7 +60,7 @@ function Footer({
           sx={{ maxWidth: 1200, mx: 'auto', mb: 2.5 }}
         >
           <Box sx={{ maxWidth: 430 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', mb: 0.75, letterSpacing: 0.2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.75, letterSpacing: 0.2 }}>
               Volunteer Operations Hub
             </Typography>
             <Typography variant="body2" sx={{ lineHeight: 1.6 }}>

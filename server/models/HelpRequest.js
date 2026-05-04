@@ -25,6 +25,8 @@ const HelpRequestSchema = new mongoose.Schema({
     name: { type: String },
     contact: { type: String }
   },
+  isRated: { type: Boolean, default: false },
+  ratedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Volunteer' },

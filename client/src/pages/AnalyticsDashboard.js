@@ -237,10 +237,10 @@ export default function AnalyticsDashboard() {
         <SurfacePaper sx={{ mb: 3, p: { xs: 2.5, md: 3 } }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <Stack spacing={1.2} sx={{ minWidth: 0 }}>
-              <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: 1.6 }}>
+              <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 600, letterSpacing: 1.6 }}>
                 Operational Intelligence
               </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
                 SOS Analytics Dashboard
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
@@ -277,7 +277,7 @@ export default function AnalyticsDashboard() {
         {summary && (
           <>
             <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: 0.3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', letterSpacing: 0.3 }}>
                 SOS Overview
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -499,11 +499,11 @@ export default function AnalyticsDashboard() {
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                   <Box>
                     <Typography variant="body2" color="text.secondary">SOS Notifications Sent</Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 800 }}>{notificationEffectiveness.totalSosNotifications}</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>{notificationEffectiveness.totalSosNotifications}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary">Converted to Resolved</Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 800 }}>{notificationEffectiveness.convertedToResolved}</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>{notificationEffectiveness.convertedToResolved}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary">Effectiveness Rate</Typography>

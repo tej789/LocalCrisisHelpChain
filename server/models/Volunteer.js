@@ -37,7 +37,26 @@ isDeleted: { type: Boolean, default: false },
   },
 
   otp: String,
-  otpExpire: Date
+  otpExpire: Date,
+
+  // ✅ Rating & Reputation System
+  ratings: {
+    totalRatings: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0, min: 0, max: 5 },
+    categorySums: {
+      responsiveness: { type: Number, default: 0 },
+      professionalism: { type: Number, default: 0 },
+      helpfulness: { type: Number, default: 0 }
+    },
+    categoryCount: { type: Number, default: 0 },
+    badges: [String], // e.g. 'Excellent Response', 'Very Professional'
+    mostRecentRating: { type: Date }
+  },
+
+  requestsCompleted: {
+    type: Number,
+    default: 0
+  }
 
 }, { timestamps: true });
 

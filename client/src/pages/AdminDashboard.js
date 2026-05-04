@@ -214,10 +214,10 @@ const AdminDashboard = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Paper sx={{ ...pageCard, background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)' }}>
           <Stack spacing={1}>
-            <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: 1.4 }}>
+            <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 600, letterSpacing: 1.4 }}>
               Admin Control Panel
             </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
               Admin Dashboard
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
@@ -228,7 +228,7 @@ const AdminDashboard = () => {
 
         <Box>
           <Stack spacing={0.5} sx={{ mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
               SOS Assignment
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -246,7 +246,7 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={6} lg={4} key={req._id}>
                   <Paper sx={pageCard}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                         {req.title || 'SOS Alert'}
                       </Typography>
                       <Chip size="small" label={req.status} color="warning" sx={{ fontWeight: 700 }} />
@@ -282,7 +282,7 @@ const AdminDashboard = () => {
               <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
                 Pending NGOs
               </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 900, mt: 0.5 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5 }}>
                 {ngos.length}
               </Typography>
             </Paper>
@@ -293,7 +293,7 @@ const AdminDashboard = () => {
               <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
                 Pending Volunteers
               </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 900, mt: 0.5 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5 }}>
                 {volunteers.length}
               </Typography>
             </Paper>
@@ -303,7 +303,7 @@ const AdminDashboard = () => {
         <Paper sx={pageCard}>
           <Stack spacing={2}>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Pending NGOs
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -335,7 +335,7 @@ const AdminDashboard = () => {
         <Paper sx={pageCard}>
           <Stack spacing={2}>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Pending Volunteers
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -367,7 +367,7 @@ const AdminDashboard = () => {
         <Paper sx={pageCard}>
           <Stack spacing={2}>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 All NGOs
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -415,7 +415,7 @@ const AdminDashboard = () => {
                     <Paper key={ngo._id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                       <Stack spacing={1}>
                         <Box>
-                          <Typography sx={{ fontWeight: 800 }}>{ngo.name}</Typography>
+                          <Typography sx={{ fontWeight: 700 }}>{ngo.name}</Typography>
                           <Typography variant="body2" color="text.secondary">
                             {ngo.email}
                           </Typography>
@@ -439,9 +439,9 @@ const AdminDashboard = () => {
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f8fafc' }}>
-                    <TableCell sx={{ fontWeight: 800 }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Email</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -476,7 +476,7 @@ const AdminDashboard = () => {
         <Paper sx={pageCard}>
           <Stack spacing={2}>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 All Volunteers
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -524,7 +524,7 @@ const AdminDashboard = () => {
                     <Paper key={vol._id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                       <Stack spacing={1}>
                         <Box>
-                          <Typography sx={{ fontWeight: 800 }}>{vol.name}</Typography>
+                          <Typography sx={{ fontWeight: 700 }}>{vol.name}</Typography>
                           <Typography variant="body2" color="text.secondary">
                             {vol.email}
                           </Typography>
@@ -548,9 +548,9 @@ const AdminDashboard = () => {
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f8fafc' }}>
-                    <TableCell sx={{ fontWeight: 800 }}>Name</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Email</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 800 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

@@ -15,6 +15,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip as LeafletTooltip, useMap, useMapEvents } from 'react-leaflet';
@@ -32,6 +33,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
+import VolunteerRatingCard from '../components/VolunteerRatingCard';
 import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -156,6 +158,7 @@ function VolunteerDashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [publicReviewsOpen, setPublicReviewsOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const [volunteerLocation, setVolunteerLocation] = useState(null); // { lat, lng }
   const [routeCoordinates, setRouteCoordinates] = useState([]);
@@ -406,6 +409,7 @@ const handleUseLocation = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   // Backward-compatible verified check derived directly from auth.user
   const computedVerified = (auth?.user?.isVerified === true) || (auth?.user?.isVerified === undefined && auth?.user?.verified === true);
+  const volunteerId = auth?.user?._id || auth?.user?.id;
   
   // State for routing visualization
   const [selectedMapRequest, setSelectedMapRequest] = useState(null);
@@ -443,6 +447,13 @@ const handleUseLocation = () => {
       icon: <NotificationsNoneIcon fontSize="small" />,
       active: notificationsOpen,
       onClick: () => openDialogAndClose(setNotificationsOpen),
+    },
+    {
+      key: 'reviews',
+      label: 'Public Reviews',
+      icon: <RateReviewOutlinedIcon fontSize="small" />,
+      active: publicReviewsOpen,
+      onClick: () => openDialogAndClose(setPublicReviewsOpen),
     },
     {
       key: 'active',
@@ -2067,6 +2078,33 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
             </Button>
           )}
           <Button onClick={handleCloseDetailsDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Public Reviews Dialog */}
+      <Dialog
+        open={publicReviewsOpen}
+        onClose={() => setPublicReviewsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 2
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          Public Reviews
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            See the public feedback you have received from completed requests.
+          </Typography>
+          <VolunteerRatingCard volunteerId={volunteerId} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPublicReviewsOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 

@@ -38,12 +38,12 @@ const TopNavbar = ({ handleLogout, toggleSidebar, isMobile }) => {
       )}
 
       {isMobile ? (
-        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'text.primary' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
           Admin
         </Typography>
       ) : (
         <Stack spacing={0.2}>
-          <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: 1.2, lineHeight: 1 }}>
+          <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 600, letterSpacing: 1.2, lineHeight: 1 }}>
             Admin Console
           </Typography>
           <Typography variant="body2" color="text.secondary">

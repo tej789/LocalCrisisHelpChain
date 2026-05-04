@@ -40,7 +40,7 @@ const navLinkStyle = (active) => ({
   return (
     <aside style={sidebarStyle}>
       <div style={{ marginBottom: '28px' }}>
-        <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '0.3px' }}>
+        <div style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '0.3px' }}>
           LCHC Admin
         </div>
         <div style={{ fontSize: '12px', opacity: 0.82, marginTop: '4px' }}>

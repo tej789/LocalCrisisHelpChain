@@ -38,6 +38,7 @@ import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import VolunteerLocationMap from '../components/VolunteerLocationMap';
 import Footer from '../components/Footer';
 import SosButton from '../components/SosButton';
+import RatingDialog from '../components/RatingDialog';
 
 
 
@@ -110,6 +111,8 @@ function UserDashboard() {
     message: '',
   });
   const [showResolvedOnly, setShowResolvedOnly] = useState(false);
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [selectedRequestForRating, setSelectedRequestForRating] = useState(null);
   const myRequestsRef = useRef(null);
   const feedbackRef = useRef(null);
   const navigate = useNavigate();
@@ -376,7 +379,7 @@ const allRequests = [...myRequests, ...communityRequests];
             onClick={() => openDialogAndClose(setLogoutOpen)}
             sx={{
               minHeight: 48,
-              fontWeight: 800,
+              fontWeight: 700,
               textTransform: 'none',
               borderRadius: 2.5,
               bgcolor: 'error.main',
@@ -1128,6 +1131,37 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
         Track Volunteer Location
       </Button>
     )}
+
+    {req.status === "resolved" && !req.isRated && (
+      <Button
+        variant="contained"
+        color="success"
+        size="small"
+        startIcon={<RateReviewOutlinedIcon />}
+        sx={{ 
+          mt: 1.5, 
+          borderRadius: 1.5,
+          textTransform: 'none',
+          fontWeight: 600,
+          py: 0.75
+        }}
+        onClick={() => {
+          setSelectedRequestForRating(req);
+          setRatingDialogOpen(true);
+        }}
+      >
+        Rate Volunteer
+      </Button>
+    )}
+
+    {req.status === "resolved" && req.isRated && (
+      <Chip
+        label="Rated ✓"
+        color="success"
+        variant="outlined"
+        sx={{ mt: 1.5 }}
+      />
+    )}
   </CardContent>
 </Card>
     ))
@@ -1653,6 +1687,25 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
 </Snackbar>
 
       </Container>
+
+      {/* Rating Dialog */}
+      {selectedRequestForRating && (
+        <RatingDialog
+          open={ratingDialogOpen}
+          onClose={() => {
+            setRatingDialogOpen(false);
+            setSelectedRequestForRating(null);
+          }}
+          requestId={selectedRequestForRating._id}
+          volunteerId={selectedRequestForRating.assignedTo._id}
+          volunteerName={selectedRequestForRating.assignedTo?.name}
+          onSuccess={() => {
+            // Reload requests to show updated state
+            setLoading(true);
+            // The API call will fetch updated requests
+          }}
+        />
+      )}
     </Box>
   );
 }
