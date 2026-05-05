@@ -17,6 +17,7 @@ const HelpRequestSchema = new mongoose.Schema({
     updatedAt: { type: Date }
   },
   type: { type: String, required: true }, // e.g., food, medicine, shelter, rescue
+  isSos: { type: Boolean, default: false },
   urgency: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
   description: { type: String },
   status: { type: String, enum: ['open', 'assigned', 'resolved'], default: 'open' },

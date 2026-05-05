@@ -40,8 +40,11 @@ console.log("Using sender:", process.env.BREVO_SENDER_EMAIL);
 
 // Assign Mail 
 
-exports.sendAssignmentEmail = async (user, volunteer) => {
+exports.sendAssignmentEmail = async (user, volunteer, subject = "Volunteer Assigned to Your Crisis Request") => {
   try {
+    const isSosEmail = /sos/i.test(subject);
+    const volunteerEmail = volunteer?.email || "";
+    const volunteerName = volunteer?.name || "Volunteer";
     const sendSmtpEmail = {
       sender: {
         email: process.env.BREVO_SENDER_EMAIL,
@@ -53,15 +56,15 @@ exports.sendAssignmentEmail = async (user, volunteer) => {
           name: user.name || "User",
         },
       ],
-      subject: "Volunteer Assigned to Your Crisis Request",
+      subject,
       htmlContent: `
         <p>Hello ${user.name || "User"},</p>
 
-        <p>We’re pleased to inform you that a volunteer has been assigned to assist with your request.</p>
+        <p>We’re pleased to inform you that a volunteer has been assigned to assist with your ${isSosEmail ? 'SOS' : 'request'}.</p>
 
         <p><strong>Volunteer Details:</strong><br/>
-        Name: ${volunteer.name}<br/>
-        Email: ${volunteer.email}</p>
+        Name: ${volunteerName}<br/>
+        ${volunteerEmail ? `Email: ${volunteerEmail}<br/>` : ''}</p>
 
         <p>You may reply to this email to coordinate further assistance.</p>
 
@@ -69,10 +72,12 @@ exports.sendAssignmentEmail = async (user, volunteer) => {
 
         <p>– Local Crisis HelpChain</p>
       `,
-      replyTo: {
-        email: volunteer.email,
-        name: volunteer.name,
-      },
+      ...(volunteerEmail ? {
+        replyTo: {
+          email: volunteerEmail,
+          name: volunteerName,
+        },
+      } : {}),
     };
 
     await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -84,8 +89,14 @@ exports.sendAssignmentEmail = async (user, volunteer) => {
 };
 
 // Volunteer Assigned request Mail
-exports.sendVolunteerAssignmentEmail = async (volunteer, request, user) => {
+exports.sendVolunteerAssignmentEmail = async (
+  volunteer,
+  request,
+  user,
+  subject = "New Crisis Request Assigned to You"
+) => {
   try {
+    const isSosRequest = request?.isSos === true || request?.type?.toLowerCase() === 'rescue';
     const requesterName = user?.name || "User";
     const requesterEmail = user?.email || "";
 
@@ -100,11 +111,11 @@ exports.sendVolunteerAssignmentEmail = async (volunteer, request, user) => {
           name: volunteer.name || "Volunteer",
         },
       ],
-      subject: "New Crisis Request Assigned to You",
+      subject,
       htmlContent: `
         <p>Hello ${volunteer.name || "Volunteer"},</p>
 
-        <p>You have been assigned a new crisis request.</p>
+        <p>You have been assigned a new ${isSosRequest ? 'SOS request' : 'crisis request'}.</p>
 
         <p><strong>User Details:</strong><br/>
         Name: ${requesterName}<br/>

@@ -1080,7 +1080,7 @@ useEffect(() => {
     const filtered = requests
       .filter((req) => {
         const typeMatch = req.type?.toLowerCase() === 'rescue';
-        const statusMatch = req.status !== 'resolved';
+        const statusMatch = (req.status || 'open') === 'open';
         console.log(`[Filter] Request ${req._id || req.id}: type=${req.type} (match=${typeMatch}), status=${req.status} (match=${statusMatch})`);
         return typeMatch && statusMatch;
       })
@@ -1212,11 +1212,13 @@ const displayedRequests =
     ? resolvedRequests
     : activeAssignedRequests;
 
-const sosRequests = displayedRequests.filter((req) => req.type?.toLowerCase() === 'rescue');
-const normalRequests = displayedRequests.filter((req) => req.type?.toLowerCase() !== 'rescue');
+  const isSosRequest = (req) => req.isSos === true || (req.type?.toLowerCase() === 'rescue' && Boolean(req.sosTargetVolunteer));
+
+const sosRequests = displayedRequests.filter((req) => isSosRequest(req));
+const normalRequests = displayedRequests.filter((req) => !isSosRequest(req));
 
   const renderRequestCard = (req) => {
-    const isSosRequest = req.type?.toLowerCase() === 'rescue';
+    const isSos = isSosRequest(req);
 
     return (
       <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
@@ -1233,13 +1235,13 @@ const normalRequests = displayedRequests.filter((req) => req.type?.toLowerCase()
                 ? 10
                 : 4,
             borderRadius: 4,
-            border: isSosRequest
+            border: isSos
               ? '2px solid #d32f2f'
               : req.urgency?.toLowerCase() === 'high' &&
                 (req.status || 'open') === 'open'
               ? '2px solid #d32f2f'
               : '1px solid rgba(0,0,0,0.12)',
-            background: isSosRequest
+            background: isSos
               ? 'linear-gradient(180deg, rgba(211,47,47,0.10) 0%, rgba(255,255,255,1) 45%)'
               : req.urgency?.toLowerCase() === 'high' && (req.status || 'open') === 'open'
               ? 'rgba(211,47,47,0.05)'
@@ -1262,7 +1264,7 @@ const normalRequests = displayedRequests.filter((req) => req.type?.toLowerCase()
                   <Typography variant="h6" color="primary" fontWeight={700} sx={{ letterSpacing: 0.5 }}>
                     {req.type}
                   </Typography>
-                  {isSosRequest && (
+                  {isSos && (
                     <Chip
                       label="SOS"
                       color="error"
@@ -1323,7 +1325,7 @@ const normalRequests = displayedRequests.filter((req) => req.type?.toLowerCase()
               View Details
             </Button>
             {((req.status || 'open') === 'open') &&
-              req.type === 'rescue' &&
+              isSos &&
               auth.user?.role === 'volunteer' &&
               (function() {
                 const sv = req.sosTargetVolunteer;

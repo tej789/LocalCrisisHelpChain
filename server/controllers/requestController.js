@@ -56,6 +56,7 @@ exports.sosAlert = async (req, res) => {
       contact: user?.contact || '',
       location: { type: 'Point', coordinates: [longitude, latitude], address: address || 'Live SOS' },
       type: 'rescue',
+      isSos: true,
       urgency: 'high',
       description: message || 'User triggered SOS',
       status: 'open',
@@ -194,6 +195,7 @@ exports.getRequests = async (req, res) => {
       status,
       urgency,
       type,
+      isSos,
       search,
       sort = "-createdAt",
       filter // for volunteer logic
@@ -213,6 +215,18 @@ exports.getRequests = async (req, res) => {
     if (status) query.status = status;
     if (urgency) query.urgency = urgency;
     if (type) query.type = type;
+
+    if (typeof isSos !== 'undefined') {
+      const wantsSos = String(isSos).toLowerCase() === 'true';
+      if (wantsSos) {
+        query.$or = [
+          { isSos: true },
+          { type: 'rescue', sosTargetVolunteer: { $exists: true, $ne: null } }
+        ];
+      } else {
+        query.isSos = false;
+      }
+    }
 
     // 🔍 Search
     if (search) {
@@ -284,7 +298,13 @@ exports.getRequests = async (req, res) => {
         query.status = "resolved";
       } 
       else {
-        query.assignedTo = req.user.id;
+        // Include both already-assigned requests and open SOS alerts targeted to this volunteer.
+        // This keeps the Handle SOS panel populated even after the dashboard refreshes.
+        query.$or = [
+          { assignedTo: req.user.id },
+          { isSos: true, status: 'open', sosTargetVolunteer: req.user.id },
+          { type: 'rescue', status: 'open', sosTargetVolunteer: req.user.id }
+        ];
       }
     }
 
@@ -368,6 +388,16 @@ exports.assignVolunteer = async (req, res) => {
       return res.status(404).json({ error: 'Request not found after update' });
     }
 
+    const isSosRequest =
+      reqDoc.isSos === true ||
+      (reqDoc.type === 'rescue' && reqDoc.sosTargetVolunteer);
+    const userMailSubject = isSosRequest
+      ? 'Your SOS has been assigned to a volunteer'
+      : 'Volunteer Assigned to Your Crisis Request';
+    const volunteerMailSubject = isSosRequest
+      ? 'You have been assigned an SOS request'
+      : 'New Crisis Request Assigned to You';
+
     // volunteer becomes unavailable without triggering validation on legacy records
     await Volunteer.findByIdAndUpdate(
       volunteerId,
@@ -380,9 +410,9 @@ exports.assignVolunteer = async (req, res) => {
 
     try {
       if (user) {
-        await sendAssignmentEmail(user, vol);
+        await sendAssignmentEmail(user, vol, userMailSubject);
       }
-      await sendVolunteerAssignmentEmail(vol, updated, user);
+      await sendVolunteerAssignmentEmail(vol, updated, user, volunteerMailSubject);
     } catch (emailErr) {
       console.error('Assignment email error:', emailErr);
     }
@@ -448,11 +478,11 @@ exports.claimRequest = async (req, res) => {
       return res.status(400).json({ error: 'Request already assigned' });
     }
 
-    if (reqDoc.type === 'rescue' && reqDoc.sosTargetVolunteer && reqDoc.sosTargetVolunteer.toString() !== volunteerId.toString()) {
+    if ((reqDoc.isSos || (reqDoc.type === 'rescue' && reqDoc.sosTargetVolunteer)) && reqDoc.sosTargetVolunteer && reqDoc.sosTargetVolunteer.toString() !== volunteerId.toString()) {
       return res.status(403).json({ error: 'This SOS can only be handled by the notified nearest volunteer' });
     }
 
-    const vol = await Volunteer.findById(volunteerId).select('name contact isAvailable');
+    const vol = await Volunteer.findById(volunteerId).select('name contact email isAvailable');
     if (!vol) {
       return res.status(404).json({ error: 'Volunteer not found' });
     }
@@ -483,6 +513,7 @@ exports.claimRequest = async (req, res) => {
           title: 'Request Claimed',
           message: `Volunteer ${vol.name || 'a volunteer'} has accepted the request.`
         });
+        await sendAssignmentEmail(user, vol, 'Your SOS was accepted by a volunteer');
       }
     } catch (notificationErr) {
       console.error('Claim notification error:', notificationErr);

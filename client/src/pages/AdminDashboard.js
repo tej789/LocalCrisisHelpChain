@@ -93,7 +93,7 @@ const AdminDashboard = () => {
   const fetchSosRequests = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/requests?type=rescue&status=open&sort=-createdAt`,
+        `${process.env.REACT_APP_API_URL}/api/requests?isSos=true&status=open&sort=-createdAt`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

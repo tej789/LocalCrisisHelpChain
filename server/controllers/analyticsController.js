@@ -282,6 +282,13 @@ exports.getResponseTimeAnalytics = async (req, res) => {
 // Get overall SOS dashboard summary
 exports.getSosSummary = async (req, res) => {
   try {
+    const sosMatch = {
+      $or: [
+        { isSos: true },
+        { type: 'rescue', sosTargetVolunteer: { $exists: true, $ne: null } }
+      ]
+    };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -290,21 +297,21 @@ exports.getSosSummary = async (req, res) => {
     thisMonth.setHours(0, 0, 0, 0);
 
     // All time
-    const allTime = await HelpRequest.countDocuments({ type: 'rescue' });
+    const allTime = await HelpRequest.countDocuments(sosMatch);
     const allResolved = await HelpRequest.countDocuments({
-      type: 'rescue',
+      ...sosMatch,
       status: 'resolved'
     });
 
     // Today
     const todayCount = await HelpRequest.countDocuments({
-      type: 'rescue',
+      ...sosMatch,
       createdAt: { $gte: today }
     });
 
     // This month
     const monthCount = await HelpRequest.countDocuments({
-      type: 'rescue',
+      ...sosMatch,
       createdAt: { $gte: thisMonth }
     });
 
@@ -312,7 +319,7 @@ exports.getSosSummary = async (req, res) => {
     const responseData = await HelpRequest.aggregate([
       {
         $match: {
-          type: 'rescue',
+          ...sosMatch,
           status: 'resolved'
         }
       },
@@ -330,7 +337,7 @@ exports.getSosSummary = async (req, res) => {
 
     // Active volunteers responding to SOS
     const activeVolunteers = await HelpRequest.distinct('handledBy', {
-      type: 'rescue',
+      ...sosMatch,
       handledBy: { $exists: true, $ne: null }
     });
 
@@ -353,12 +360,19 @@ exports.getSosSummary = async (req, res) => {
 // Get notification effectiveness (SOS alerts that converted to assigned/resolved)
 exports.getNotificationEffectiveness = async (req, res) => {
   try {
+    const sosMatch = {
+      $or: [
+        { isSos: true },
+        { type: 'rescue', sosTargetVolunteer: { $exists: true, $ne: null } }
+      ]
+    };
+
     const sosNotifications = await Notification.countDocuments({
       type: 'sos'
     });
 
     const sosResolved = await HelpRequest.countDocuments({
-      type: 'rescue',
+      ...sosMatch,
       status: 'resolved'
     });
 
