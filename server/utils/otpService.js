@@ -96,7 +96,7 @@ exports.sendVolunteerAssignmentEmail = async (
   subject = "New Crisis Request Assigned to You"
 ) => {
   try {
-    const isSosRequest = request?.isSos === true || request?.type?.toLowerCase() === 'rescue';
+    const isSosRequest = request?.isSos === true || (request?.type?.toLowerCase() === 'rescue' && request?.sosTargetVolunteer);
     const requesterName = user?.name || "User";
     const requesterEmail = user?.email || "";
 
