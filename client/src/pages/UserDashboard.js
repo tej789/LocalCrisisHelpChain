@@ -761,7 +761,7 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <NotificationBell />
+            <NotificationBell onViewAll={() => setNotificationsOpen(true)} />
             <SosButton />
             <IconButton
               onClick={() => setProfileOpen(true)}

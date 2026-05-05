@@ -64,55 +64,99 @@ exports.sosAlert = async (req, res) => {
 
     await helpRequest.save();
 
-    const maxDistance = parseInt(process.env.SOS_MAX_DISTANCE || '5000', 10); // meters
-
-    // Find nearby volunteers (geo query)
-    const nearby = await Volunteer.find({
+    // Find all available, verified volunteers
+    const allVolunteers = await Volunteer.find({
       isAvailable: true,
       isVerified: true,
       location: {
-        $nearSphere: {
-          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
-          $maxDistance: maxDistance
-        }
+        $exists: true,
+        $ne: null
       }
-    }).limit(10);
+    });
 
-    // Create notifications for found volunteers
-    const notifications = [];
-    for (const vol of nearby) {
-      const dist = (vol.location && Array.isArray(vol.location.coordinates) && vol.location.coordinates.length === 2)
-        ? Math.round(haversine(latitude, longitude, vol.location.coordinates[1], vol.location.coordinates[0]))
-        : null;
+    console.log(`[SOS] Found ${allVolunteers.length} available verified volunteers`);
 
-      notifications.push({
-        volunteerId: vol._id,
-        requestId: helpRequest._id,
-        type: 'sos',
-        title: 'Emergency Nearby',
-        message: `SOS from ${user?.name || 'a user'}${dist ? ` — approx ${Math.round(dist)}m away` : ''}`
-      });
+    if (allVolunteers.length === 0) {
+      console.log(`[SOS] No available verified volunteers found`);
+      return res.json({ success: true, alerted: 0, requestId: helpRequest._id });
     }
 
-    if (notifications.length) await Notification.insertMany(notifications);
+    // Calculate distance for each volunteer
+    const volunteersWithDist = allVolunteers.map(v => {
+      const vDist = (v.location && Array.isArray(v.location.coordinates) && v.location.coordinates.length === 2)
+        ? haversine(latitude, longitude, v.location.coordinates[1], v.location.coordinates[0])
+        : Infinity;
+      return { volunteer: v, distance: vDist };
+    }).sort((a, b) => a.distance - b.distance);
 
-    // Notify via socket.io so volunteers online receive real-time alert
+    // Get the minimum distance
+    const minDistance = volunteersWithDist[0].distance;
+    console.log(`[SOS] Minimum distance: ${Math.round(minDistance)}m`);
+
+    // Get all volunteers at the minimum distance (in case multiple are at same location)
+    const closestVolunteers = volunteersWithDist.filter(v => v.distance === minDistance);
+    console.log(`[SOS] Found ${closestVolunteers.length} volunteer(s) at closest distance`);
+
+    // Select ONE closest volunteer (pick first one, or randomly if preferred)
+    const selectedVolunteer = closestVolunteers[0].volunteer;
+    const selectedDistance = closestVolunteers[0].distance;
+
+    let alertedCount = 0;
+
+    // Notify ONLY the closest selected volunteer
+    if (selectedVolunteer) {
+      try {
+        // Save the target volunteer in the request
+        helpRequest.sosTargetVolunteer = selectedVolunteer._id;
+        await helpRequest.save();
+
+        // Create notification in database
+        await Notification.create({
+          volunteerId: selectedVolunteer._id,
+          requestId: helpRequest._id,
+          type: 'sos',
+          title: 'Emergency Nearby',
+          message: `SOS from ${user?.name || 'a user'} — approx ${Math.round(selectedDistance)}m away`
+        });
+
+        console.log(`[SOS] Notification created for volunteer ${selectedVolunteer._id} at ${Math.round(selectedDistance)}m`);
+        alertedCount = 1;
+      } catch (e) {
+        console.error(`[SOS] Failed to create notification:`, e);
+      }
+    }
+
+    // Notify via socket.io - ONLY the selected volunteer
     const io = req.app.get('io');
-    if (io) {
-      nearby.forEach((vol) => {
+    if (io && selectedVolunteer) {
         try {
-          io.to(`vol_${vol._id.toString()}`).emit('sosAlert', {
-            volunteerId: vol._id.toString(),
-            request: helpRequest
+          const room = `vol_${selectedVolunteer._id.toString()}`;
+          console.log(`[SOS] Emitting sosAlert to room: ${room} (distance: ${Math.round(selectedDistance)}m)`);
+          
+          io.to(room).emit('sosAlert', {
+            volunteerId: selectedVolunteer._id.toString(),
+            request: helpRequest,
+            distance: Math.round(selectedDistance)
           });
+          
+          console.log(`[SOS] sosAlert emitted successfully to ${room}`);
         } catch (e) {
-          // fallback to broadcast
-          try { io.emit('sosAlert', { volunteerId: vol._id.toString(), request: helpRequest }); } catch (e) {}
+          console.error(`[SOS] Error emitting sosAlert:`, e);
+          // Fallback: broadcast to all
+          try {
+            console.log(`[SOS] Broadcasting sosAlert to all clients as fallback`);
+            io.emit('sosAlert', { 
+              volunteerId: selectedVolunteer._id.toString(), 
+              request: helpRequest,
+              distance: Math.round(selectedDistance)
+            });
+          } catch (e) {
+            console.error(`[SOS] Fallback broadcast also failed:`, e);
+          }
         }
-      });
     }
 
-    return res.json({ success: true, alerted: nearby.length, requestId: helpRequest._id });
+    return res.json({ success: true, alerted: alertedCount, requestId: helpRequest._id });
   } catch (err) {
     console.error('SOS alert error:', err);
     return res.status(500).json({ error: 'Failed to send SOS' });
@@ -378,12 +422,100 @@ exports.assignVolunteer = async (req, res) => {
   }
 };
 
+/* =========================
+   CLAIM SOS / REQUEST BY VOLUNTEER
+========================= */
+exports.claimRequest = async (req, res) => {
+  try {
+    const reqDoc = await HelpRequest.findById(req.params.id);
+    if (!reqDoc) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const volunteerId = req.user.id;
+    const alreadyAssignedToMe = reqDoc.assignedTo && reqDoc.assignedTo.toString() === volunteerId.toString();
+
+    if (reqDoc.status !== 'open') {
+      if (alreadyAssignedToMe) {
+        return res.status(200).json({
+          success: true,
+          alreadyAssigned: true,
+          message: 'This SOS is already assigned to you.',
+          data: reqDoc
+        });
+      }
+
+      return res.status(400).json({ error: 'Request already assigned' });
+    }
+
+    if (reqDoc.type === 'rescue' && reqDoc.sosTargetVolunteer && reqDoc.sosTargetVolunteer.toString() !== volunteerId.toString()) {
+      return res.status(403).json({ error: 'This SOS can only be handled by the notified nearest volunteer' });
+    }
+
+    const vol = await Volunteer.findById(volunteerId).select('name contact isAvailable');
+    if (!vol) {
+      return res.status(404).json({ error: 'Volunteer not found' });
+    }
+
+    const updated = await HelpRequest.findByIdAndUpdate(
+      req.params.id,
+      {
+        assignedTo: volunteerId,
+        status: 'assigned',
+        assignedAt: new Date(),
+        claimedBy: {
+          name: vol.name || 'Volunteer',
+          contact: vol.contact || ''
+        }
+      },
+      { new: true }
+    ).populate('assignedTo', 'name email');
+
+    await Volunteer.findByIdAndUpdate(volunteerId, { $set: { isAvailable: false } });
+
+    const user = await User.findById(updated.createdBy);
+    try {
+      if (user) {
+        await Notification.create({
+          userId: updated.createdBy,
+          requestId: updated._id,
+          type: 'assigned',
+          title: 'Request Claimed',
+          message: `Volunteer ${vol.name || 'a volunteer'} has accepted the request.`
+        });
+      }
+    } catch (notificationErr) {
+      console.error('Claim notification error:', notificationErr);
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('requestClaimed', updated);
+      io.emit('requestAssigned', updated);
+    }
+
+    return res.json(updated);
+  } catch (err) {
+    console.error('Claim error:', err);
+    return res.status(500).json({ error: 'Failed to claim request' });
+  }
+};
+
 
 /* =========================
    RESOLVE REQUEST
 ========================= */
 exports.resolveRequest = async (req, res) => {
   try {
+    const reqDoc = await HelpRequest.findById(req.params.id);
+    if (!reqDoc) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (!reqDoc.assignedTo || reqDoc.assignedTo.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ error: 'Only the assigned volunteer can resolve this request' });
+    }
+
     const updated = await HelpRequest.findByIdAndUpdate(
       req.params.id,
       {
@@ -391,7 +523,7 @@ exports.resolveRequest = async (req, res) => {
         handledBy: req.user.id
       },
       { new: true }
-    );
+    ).populate('assignedTo', 'name email');
 
     if (!updated)
       return res.status(404).json({ error: 'Request not found' });

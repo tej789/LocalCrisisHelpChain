@@ -157,12 +157,13 @@ const AdminDashboard = () => {
   };
 
   const handleAssignedSuccess = (updatedRequest) => {
-    if (!updatedRequest?._id) {
+    const updatedId = updatedRequest?._id || updatedRequest?.id;
+    if (!updatedId) {
       handleCloseAssignDialog();
       return;
     }
 
-    setSosRequests((prev) => prev.map((req) => (req._id === updatedRequest._id ? updatedRequest : req)));
+    setSosRequests((prev) => prev.map((req) => ((req._id || req.id) === updatedId ? updatedRequest : req)));
     handleCloseAssignDialog();
   };
 

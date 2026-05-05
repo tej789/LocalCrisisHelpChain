@@ -21,6 +21,10 @@ const HelpRequestSchema = new mongoose.Schema({
   description: { type: String },
   status: { type: String, enum: ['open', 'assigned', 'resolved'], default: 'open' },
   assignedAt: { type: Date },
+  sosTargetVolunteer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Volunteer'
+  },
   claimedBy: {
     name: { type: String },
     contact: { type: String }

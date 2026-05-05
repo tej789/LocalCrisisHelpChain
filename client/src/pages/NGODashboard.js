@@ -20,8 +20,32 @@ import api from '../api/axios';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
 import Footer from '../components/Footer';
 
+// Initialize socket with auth token for server to validate connection
+const socketOptions = {
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: 5,
+  transports: ['websocket', 'polling'],
+  auth: {
+    token: localStorage.getItem('token') || ''
+  }
+};
 
-const socket = io(process.env.REACT_APP_API_URL);
+const socket = io(process.env.REACT_APP_API_URL, socketOptions);
+
+// Log socket connection events for debugging
+socket.on('connect', () => {
+  console.log('[Socket NGO] Connected with ID:', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('[Socket NGO] Disconnected. Reason:', reason);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('[Socket NGO] Connection error:', error);
+});
 
 // Distinct map marker icons for different request statuses
 const statusMarkerIcons = {

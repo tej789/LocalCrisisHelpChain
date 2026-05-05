@@ -75,7 +75,8 @@ function NotificationBell({ onViewAll }) {
               onClick={() => handleNotificationClick(notification)}
               sx={{
                 alignItems: "flex-start",
-                backgroundColor: notification.isRead ? "inherit" : "#f0f7ff"
+                backgroundColor: notification.isRead ? "inherit" : "#f0f7ff",
+                whiteSpace: 'normal'
               }}
             >
               <Box>
@@ -102,7 +103,13 @@ function NotificationBell({ onViewAll }) {
           <>
             <Divider />
             <Box p={1.5} display="flex" justifyContent="center">
-              <Button size="small" onClick={onViewAll || handleClose}>
+              <Button
+                size="small"
+                onClick={() => {
+                  handleClose();
+                  onViewAll?.();
+                }}
+              >
                 View all notifications
               </Button>
             </Box>

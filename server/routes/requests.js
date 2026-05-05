@@ -67,6 +67,13 @@ router.put(
 );
 
 router.post(
+  '/:id/claim/self',
+  verifyToken,
+  requireRole('volunteer'),
+  requestController.claimRequest
+);
+
+router.post(
   '/:id/resolve',
   verifyToken,
   requireRole('volunteer'),

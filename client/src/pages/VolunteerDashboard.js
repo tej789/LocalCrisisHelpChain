@@ -38,7 +38,32 @@ import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import LogoutIcon from '@mui/icons-material/Logout';
 
-const socket = io(process.env.REACT_APP_API_URL);
+// Initialize socket with auth token for server to validate connection
+const socketOptions = {
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: 5,
+  transports: ['websocket', 'polling'],
+  auth: {
+    token: localStorage.getItem('token') || ''
+  }
+};
+
+const socket = io(process.env.REACT_APP_API_URL, socketOptions);
+
+// Log socket connection events for debugging
+socket.on('connect', () => {
+  console.log('[Socket] Connected with ID:', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('[Socket] Disconnected. Reason:', reason);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('[Socket] Connection error:', error);
+});
 
 // Custom Leaflet Icons
 const volunteerIcon = new L.Icon({
@@ -159,6 +184,7 @@ function VolunteerDashboard() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [publicReviewsOpen, setPublicReviewsOpen] = useState(false);
+  const [sosHandlerOpen, setSosHandlerOpen] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const [volunteerLocation, setVolunteerLocation] = useState(null); // { lat, lng }
   const [routeCoordinates, setRouteCoordinates] = useState([]);
@@ -454,6 +480,13 @@ const handleUseLocation = () => {
       icon: <RateReviewOutlinedIcon fontSize="small" />,
       active: publicReviewsOpen,
       onClick: () => openDialogAndClose(setPublicReviewsOpen),
+    },
+    {
+      key: 'sos',
+      label: 'Handle SOS',
+      icon: <DirectionsRunIcon fontSize="small" />,
+      active: sosHandlerOpen,
+      onClick: () => openDialogAndClose(setSosHandlerOpen),
     },
     {
       key: 'active',
@@ -869,30 +902,94 @@ useEffect(() => {
   };
 
   useEffect(() => {
+    const matchIds = (a, b) => String(a || '') === String(b || '');
+
+    const replaceOrAddRequest = (prev, updated) => {
+      if (!updated) return prev;
+      const updatedId = updated._id || updated.id;
+      let found = false;
+      const mapped = prev.map(r => {
+        const rid = r._id || r.id;
+        if (matchIds(rid, updatedId)) {
+          found = true;
+          return updated;
+        }
+        return r;
+      });
+      if (!found) return [updated, ...prev];
+      return mapped;
+    };
+
     socket.on('newRequest', (newRequest) => {
-      setRequests(prev => [newRequest, ...prev]);
+      setRequests(prev => {
+        const newId = newRequest?._id || newRequest?.id;
+        if (!newId) return [newRequest, ...prev];
+        if (prev.some(r => matchIds(r._id || r.id, newId))) {
+          return prev.map(r => matchIds(r._id || r.id, newId) ? newRequest : r);
+        }
+        return [newRequest, ...prev];
+      });
     });
+
     socket.on('requestClaimed', (updatedRequest) => {
-      setRequests(prev => prev.map(r => r._id === updatedRequest._id ? updatedRequest : r));
+      setRequests(prev => replaceOrAddRequest(prev, updatedRequest));
     });
     socket.on('requestAssigned', (updatedRequest) => {
-      setRequests(prev => prev.map(r => r._id === updatedRequest._id ? updatedRequest : r));
+      setRequests(prev => replaceOrAddRequest(prev, updatedRequest));
     });
     socket.on('requestResolved', (updatedRequest) => {
-      setRequests(prev => prev.map(r => r._id === updatedRequest._id ? updatedRequest : r));
+      setRequests(prev => replaceOrAddRequest(prev, updatedRequest));
     });
     // SOS alerts targeted to individual volunteers
     socket.on('sosAlert', (payload) => {
       try {
+        console.log('[Socket] Received sosAlert:', payload);
+        console.log('[Socket] Payload request details:', { 
+          id: payload.request?._id || payload.request?.id,
+          type: payload.request?.type,
+          status: payload.request?.status,
+          sosTargetVolunteer: payload.request?.sosTargetVolunteer,
+          createdAt: payload.request?.createdAt
+        });
+        
         const currentId = auth?.user?._id || auth?.user?.id || null;
-        if (!currentId) return;
-        if (!payload || !payload.volunteerId) return;
-        if (payload.volunteerId.toString() === currentId.toString()) {
-          setSnackbar({ open: true, message: `Emergency nearby — open requests page to respond.`, severity: 'warning' });
-          // Optionally add to requests list
-          if (payload.request) setRequests(prev => [payload.request, ...prev]);
+        console.log('[Socket] Current volunteer ID:', currentId, 'Payload volunteerId:', payload?.volunteerId);
+        
+        if (!currentId) {
+          console.warn('[Socket] No current volunteer ID');
+          return;
         }
-      } catch (e) { }
+        
+        if (!payload || !payload.request) {
+          console.warn('[Socket] No payload or request in sosAlert');
+          return;
+        }
+
+        // Only accept if targeted to THIS volunteer
+        if (payload.volunteerId && payload.volunteerId.toString() === currentId.toString()) {
+          console.log('[Socket] SOS Alert matched for this volunteer!');
+          setSnackbar({ 
+            open: true, 
+            message: `Emergency nearby${payload.distance ? ` — ${payload.distance}m away` : ''} — open Handle SOS to respond.`, 
+            severity: 'warning' 
+          });
+          // Add request to local state so it appears immediately in Handle SOS dialog
+          if (payload.request) {
+            console.log('[Socket] Adding SOS request to state:', payload.request._id || payload.request.id);
+            setRequests(prev => {
+              console.log('[Socket] Before adding - requests count:', prev.length);
+              const updated = replaceOrAddRequest(prev, payload.request);
+              console.log('[Socket] After adding - requests count:', updated.length);
+              console.log('[Socket] Updated requests:', updated.map(r => ({ id: r._id || r.id, type: r.type, status: r.status })));
+              return updated;
+            });
+          }
+        } else {
+          console.log('[Socket] SOS Alert not targeted to this volunteer');
+        }
+      } catch (e) {
+        console.error('[Socket] sosAlert handler error:', e);
+      }
     });
     // Live movement of the requester icon
     socket.on('requestLocationUpdated', (payload) => {
@@ -926,6 +1023,85 @@ useEffect(() => {
     };
 
   }, []);
+
+  // Socket registration: register volunteer as soon as socket connects and auth is ready
+  useEffect(() => {
+    const volunteerId = auth?.user?._id || auth?.user?.id;
+    if (!volunteerId) return;
+
+    const registerVol = () => {
+      try {
+        socket.emit('registerVolunteer', volunteerId);
+        console.log('[Socket] Registered volunteer with ID:', volunteerId, 'socket connected:', socket.connected);
+      } catch (e) {
+        console.error('[Socket] registerVolunteer error', e);
+      }
+    };
+
+    // If socket is already connected, register immediately
+    if (socket.connected) {
+      registerVol();
+    }
+
+    // Also register on connect event (handles reconnects)
+    socket.on('connect', registerVol);
+
+    return () => {
+      socket.off('connect', registerVol);
+    };
+  }, [auth?.user?._id, auth?.user?.id]);
+
+  useEffect(() => {
+    if (!sosHandlerOpen) return;
+
+    const refreshRequests = async () => {
+      try {
+        const response = await api.get('/api/requests');
+        if (Array.isArray(response.data.data)) {
+          setRequests(response.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to refresh requests for SOS handler:', err);
+      }
+    };
+
+    refreshRequests();
+
+    const refreshInterval = setInterval(refreshRequests, 10000);
+
+    return () => clearInterval(refreshInterval);
+  }, [sosHandlerOpen]);
+
+  const pendingSosRequests = useMemo(() => {
+    console.log('[Filter] Total requests:', requests.length);
+    console.log('[Filter] Current volunteerId:', volunteerId);
+    console.log('[Filter] All requests:', requests.map(r => ({ id: r._id || r.id, type: r.type, status: r.status, sosTarget: r.sosTargetVolunteer })));
+    
+    const filtered = requests
+      .filter((req) => {
+        const typeMatch = req.type?.toLowerCase() === 'rescue';
+        const statusMatch = req.status !== 'resolved';
+        console.log(`[Filter] Request ${req._id || req.id}: type=${req.type} (match=${typeMatch}), status=${req.status} (match=${statusMatch})`);
+        return typeMatch && statusMatch;
+      })
+      .filter((req) => {
+          const sv = req.sosTargetVolunteer;
+          const targetVolunteerId = sv && (sv._id || sv.id || sv) || null;
+
+          // If assigned to current volunteer, show it
+          const assignedTo = req.assignedTo;
+          const assignedId = assignedTo && (assignedTo._id || assignedTo.id || assignedTo) || null;
+          
+          const shouldShow = assignedId ? String(assignedId) === String(volunteerId || '') : (!targetVolunteerId || String(targetVolunteerId) === String(volunteerId || ''));
+          console.log(`[Filter] Request ${req._id || req.id}: sosTarget=${targetVolunteerId}, assignedTo=${assignedId}, volunteerId=${volunteerId}, show=${shouldShow}`);
+          
+          return shouldShow;
+        })
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    
+    console.log('[Filter] Final pendingSosRequests count:', filtered.length);
+    return filtered;
+  }, [requests, volunteerId]);
 
   // Toggle availability for verified volunteers only
   const handleToggleAvailability = async () => {
@@ -1008,14 +1184,12 @@ const sortedRequests = useMemo(() => {
     if (!myId) return false;
   
     // assignedTo can be ObjectId string OR populated object
-    if (typeof r.assignedTo === 'string') {
-      return r.assignedTo === myId;
+    const assignedTo = r.assignedTo;
+    if (!assignedTo) return false;
+    if (typeof assignedTo === 'string') return String(assignedTo) === String(myId);
+    if (typeof assignedTo === 'object') {
+      return String(assignedTo._id || assignedTo.id || assignedTo) === String(myId);
     }
-  
-    if (typeof r.assignedTo === 'object' && r.assignedTo?._id) {
-      return r.assignedTo._id === myId;
-    }
-  
     return false;
   }
 
@@ -1038,6 +1212,155 @@ const displayedRequests =
     ? resolvedRequests
     : activeAssignedRequests;
 
+const sosRequests = displayedRequests.filter((req) => req.type?.toLowerCase() === 'rescue');
+const normalRequests = displayedRequests.filter((req) => req.type?.toLowerCase() !== 'rescue');
+
+  const renderRequestCard = (req) => {
+    const isSosRequest = req.type?.toLowerCase() === 'rescue';
+
+    return (
+      <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
+        <Card
+          variant="outlined"
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow:
+              req.urgency?.toLowerCase() === 'high' &&
+              (req.status || 'open') === 'open'
+                ? 10
+                : 4,
+            borderRadius: 4,
+            border: isSosRequest
+              ? '2px solid #d32f2f'
+              : req.urgency?.toLowerCase() === 'high' &&
+                (req.status || 'open') === 'open'
+              ? '2px solid #d32f2f'
+              : '1px solid rgba(0,0,0,0.12)',
+            background: isSosRequest
+              ? 'linear-gradient(180deg, rgba(211,47,47,0.10) 0%, rgba(255,255,255,1) 45%)'
+              : req.urgency?.toLowerCase() === 'high' && (req.status || 'open') === 'open'
+              ? 'rgba(211,47,47,0.05)'
+              : '#fff',
+            transition: 'box-shadow 0.2s, transform 0.2s',
+            '&:hover': {
+              boxShadow: 12,
+              transform: 'translateY(-4px)'
+            },
+            p: 0,
+          }}
+        >
+          <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3 }}>
+            <Stack direction="row" alignItems="center" spacing={2} mb={2}>
+              <Box sx={{ fontSize: 44 }}>
+                {typeIcons[req.type?.toLowerCase()] || <HelpOutlineIcon color="disabled" sx={{ fontSize: 44 }} />}
+              </Box>
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                  <Typography variant="h6" color="primary" fontWeight={700} sx={{ letterSpacing: 0.5 }}>
+                    {req.type}
+                  </Typography>
+                  {isSosRequest && (
+                    <Chip
+                      label="SOS"
+                      color="error"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                </Stack>
+                <Chip
+                  label={req.urgency?.charAt(0).toUpperCase() + req.urgency?.slice(1)}
+                  color={urgencyColors[req.urgency?.toLowerCase()] || 'default'}
+                  size="small"
+                  icon={urgencyIcons[req.urgency?.toLowerCase()]}
+                  sx={{ fontWeight: 600, ml: 1 }}
+                />
+              </Box>
+            </Stack>
+            <Typography
+              variant="body1"
+              sx={{
+                mb: 1,
+                fontWeight: 500,
+                minHeight: 48,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical'
+              }}
+            >
+              {req.description}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <strong>Location:</strong> {req.location?.address
+                ? req.location.address
+                : (req.location && req.location.coordinates && req.location.coordinates.length === 2
+                    ? `Lat: ${req.location.coordinates[1]}, Lng: ${req.location.coordinates[0]}`
+                    : 'N/A')}
+            </Typography>
+            <Box sx={{ mb: 1 }}>
+              <strong>Status: </strong>
+              <Chip
+                label={req.status || 'open'}
+                color={
+                  req.status === 'resolved'
+                    ? 'success'
+                    : req.status === 'assigned'
+                    ? 'primary'
+                    : 'warning'
+                }
+                size="small"
+                sx={{ ml: 1 }}
+              />
+            </Box>
+          </CardContent>
+          <Box sx={{ px: 3, pb: 2, pt: 0, display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Button variant="outlined" size="small" onClick={() => handleOpenDetailsDialog(req)}>
+              View Details
+            </Button>
+            {((req.status || 'open') === 'open') &&
+              req.type === 'rescue' &&
+              auth.user?.role === 'volunteer' &&
+              (function() {
+                const sv = req.sosTargetVolunteer;
+                const targetId = sv && (sv._id || sv.id || sv) || '';
+                return String(targetId) === String(auth.user?.id || auth.user?._id || '');
+              })() && (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => handleClaimSelf(req._id)}
+                disabled={actionLoading}
+                sx={{ fontWeight: 600 }}
+              >
+                Handle SOS
+              </Button>
+            )}
+            {((req.status || 'open') === 'assigned') &&
+              auth.user?.role === 'volunteer' &&
+              auth.user?.id &&
+              (req.assignedTo === auth.user.id || req.assignedTo?._id === auth.user.id) && (
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                onClick={() => handleResolve(req._id)}
+                disabled={actionLoading}
+                sx={{ fontWeight: 600 }}
+              >
+                Mark as Resolved
+              </Button>
+            )}
+          </Box>
+        </Card>
+      </Grid>
+    );
+  };
+
 // Debug logging for map rendering
 console.log('Map Debug:', {
   view,
@@ -1057,7 +1380,8 @@ console.log('Map Debug:', {
       await api.post(`/api/requests/${requestId}/claim/self`);
       setSnackbar({ open: true, message: 'Request claimed successfully!', severity: 'success' });
       // Optimistically update local state so it appears in "My Assigned" immediately
-      setRequests(prev => prev.map(r => r._id === requestId ? { ...r, status: 'assigned', assignedTo: auth.user?.id } : r));
+      const assignedPayload = { _id: auth.user?.id || auth.user?._id || auth.user?.id, id: auth.user?.id || auth.user?._id || auth.user?.id, name: auth.user?.name };
+      setRequests(prev => prev.map(r => (r._id === requestId || r.id === requestId) ? { ...r, status: 'assigned', assignedTo: assignedPayload } : r));
       // Ensure server state is synced (in case other fields changed) and switch to 'assigned' view
       try {
       const response = await api.get('/api/requests');
@@ -1236,7 +1560,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
             Volunteer Dashboard
           </Typography>
 
-          <NotificationBell />
+          <NotificationBell onViewAll={() => setNotificationsOpen(true)} />
 
           <Button
             onClick={() => setProfileOpen(true)}
@@ -1269,12 +1593,115 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
         {renderSidebarContent(false)}
       </Drawer>
 
-  <Container maxWidth="lg">
+  <Container sx={{ px: { xs: 1.5, sm: 2.5, md: 3.5 }, width: '100%' }}>
   <NotificationCenterDialog
     open={notificationsOpen}
     onClose={() => setNotificationsOpen(false)}
     title="Your Notifications"
   />
+  <Dialog open={sosHandlerOpen} onClose={() => setSosHandlerOpen(false)} maxWidth="md" fullWidth>
+    <DialogTitle sx={{ pb: 1 }}>
+      <Stack direction="row" spacing={1.25} alignItems="center">
+        <DirectionsRunIcon color="error" sx={{ fontSize: 28 }} />
+        <Box>
+          <Typography variant="h6" fontWeight={700}>
+            Handle Emergency SOS Requests
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Accept and manage SOS alerts sent to you
+          </Typography>
+        </Box>
+      </Stack>
+    </DialogTitle>
+
+    <DialogContent dividers sx={{ minHeight: 350 }}>
+      <Stack spacing={2}>
+        {pendingSosRequests.length === 0 ? (
+          <Paper elevation={0} sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f7fa', borderRadius: 2 }}>
+            <DirectionsRunIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+            <Typography color="text.secondary" variant="body1" fontWeight={500}>
+              No pending SOS requests
+            </Typography>
+            <Typography color="text.secondary" variant="body2">
+              You'll receive notifications for new emergency alerts.
+            </Typography>
+          </Paper>
+        ) : (
+          pendingSosRequests.map((req) => (
+                <Card
+                  key={req._id}
+                  variant="outlined"
+                  sx={{
+                    border: '2px solid #d32f2f',
+                    bgcolor: 'rgba(211,47,47,0.06)',
+                    borderRadius: 3
+                  }}
+                >
+                  <CardContent>
+                    <Stack direction="row" spacing={2} alignItems="flex-start" mb={2}>
+                      <Box sx={{ fontSize: 40 }}>
+                        <DirectionsRunIcon sx={{ fontSize: 40, color: 'error.main' }} />
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Stack direction="row" spacing={1} alignItems="center" mb={0.75} flexWrap="wrap">
+                          <Typography variant="h6" color="error" fontWeight={700}>
+                            EMERGENCY SOS
+                          </Typography>
+                          <Chip label="HIGH" color="error" size="small" sx={{ fontWeight: 700 }} />
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          <strong>Description:</strong> {req.description}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>Location:</strong> {req.location?.address || 'Check map for location'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                          Reported at: {new Date(req.createdAt).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Divider sx={{ my: 1.5 }} />
+
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setSelectedRequest(req);
+                          setDetailsDialogOpen(true);
+                          setSosHandlerOpen(false);
+                        }}
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        disabled={actionLoading}
+                        onClick={async () => {
+                          await handleClaimSelf(req._id);
+                          setSosHandlerOpen(false);
+                        }}
+                        sx={{ fontWeight: 700 }}
+                      >
+                        {actionLoading ? 'Claiming...' : 'Accept & Claim'}
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
+          ))
+        )}
+      </Stack>
+    </DialogContent>
+
+    <DialogActions sx={{ p: 2 }}>
+      <Button onClick={() => setSosHandlerOpen(false)} variant="outlined">
+        Close
+      </Button>
+    </DialogActions>
+  </Dialog>
   {/* Welcome Box - Same as User Dashboard */}
   <Paper
     elevation={2}
@@ -1353,19 +1780,20 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
     label={`Total: ${myAssignedRequests.length}`}
   />
 </Stack>
-<Box ref={requestsSectionRef} sx={{ mb: 3, maxWidth: 900, mx: 'auto' }}>
+<Box ref={requestsSectionRef} sx={{ mb: 4, width: '100%', display: 'flex', flexDirection: 'column' }}>
 
 <Paper
-  elevation={2}
+  elevation={1}
   sx={{
-    p: 2,
-    mb: 2,
+    p: 2.5,
+    mb: 3,
     display: 'flex',
     gap: 2,
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(0,0,0,0.02)'
+    background: 'rgba(0,0,0,0.02)',
+    borderRadius: 3
   }}
 >
           <FormControl variant="standard" sx={{ minWidth: 140 }}>
@@ -1387,150 +1815,65 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
             </Select>
           </FormControl>
         </Paper>
-        <Grid container spacing={3}>
-{displayedRequests.length === 0 && (           <Grid item xs={12}>
 
-              <Paper elevation={1} sx={{ p: 5, textAlign: 'center', background: '#f5f7fa' }}>
-                <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
-                <Typography variant="h6" color="text.secondary">No {view === 'assigned'
-      ? 'active requests'
-      : 'resolved requests'} found.</Typography>
-              </Paper>
-            </Grid>
-          )}
-{displayedRequests.map((req) => (            <Grid item xs={12} sm={6} md={4} key={req._id || req.id}>
-              <Card
-                variant="outlined"
-                sx={{
-  mb: 2,
-  minHeight: { xs: 'auto', md: 340 },
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-
-  boxShadow:
-    req.urgency?.toLowerCase() === 'high' &&
-    (req.status || 'open') === 'open'
-      ? 10
-      : 4,
-
-  borderRadius: 4,
-
-  border:
-    req.urgency?.toLowerCase() === 'high' &&
-    (req.status || 'open') === 'open'
-      ? '2px solid #d32f2f'
-      : '1px solid rgba(0,0,0,0.12)',
-
-  background:
-    req.urgency?.toLowerCase() === 'high' &&
-    (req.status || 'open') === 'open'
-      ? 'rgba(211,47,47,0.05)'
-      : '#fff',
-
-  transition: 'box-shadow 0.2s, transform 0.2s',
-
-  '&:hover': {
-    boxShadow: 12,
-    transform: 'translateY(-4px)'
-  },
-
-  p: 0,
-}}
-
-
-              >
-                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3 }}>
-                  <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-                    <Box sx={{ fontSize: 44 }}>
-                      {typeIcons[req.type?.toLowerCase()] || <HelpOutlineIcon color="disabled" sx={{ fontSize: 44 }} />}
-                    </Box>
-                    <Box>
-                      <Typography variant="h6" color="primary" fontWeight={700} sx={{ letterSpacing: 0.5 }}>
-                        {req.type}
-                      </Typography>
-                      <Chip
-                        label={req.urgency?.charAt(0).toUpperCase() + req.urgency?.slice(1)}
-                        color={urgencyColors[req.urgency?.toLowerCase()] || 'default'}
-                        size="small"
-                        icon={urgencyIcons[req.urgency?.toLowerCase()]}
-                        sx={{ fontWeight: 600, ml: 1 }}
-                      />
-                    </Box>
-                  </Stack>
-                  <Typography
-  variant="body1"
-  sx={{
-    mb: 1,
-    fontWeight: 500,
-    minHeight: 48,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical'
-  }}
->
-
-                    {req.description}
+        {displayedRequests.length === 0 ? (
+          <Paper elevation={1} sx={{ p: 5, textAlign: 'center', background: '#f5f7fa', borderRadius: 3, mt: 2 }}>
+            <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              No {view === 'assigned' ? 'active requests' : 'resolved requests'} found.
+            </Typography>
+          </Paper>
+        ) : (
+          <Box sx={{ width: '100%' }}>
+            {sosRequests.length > 0 && (
+              <Box sx={{ width: '100%', mb: 4 }}>
+                <Box
+                  sx={{
+                    mb: 3,
+                    p: 2.5,
+                    borderRadius: 3,
+                    border: '2px solid rgba(211,47,47,0.3)',
+                    background: 'linear-gradient(90deg, rgba(211,47,47,0.1) 0%, rgba(255,255,255,1) 100%)'
+                  }}
+                >
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'error.main', fontSize: '1.1rem' }}>
+                    🚨 SOS Requests
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    <strong>Location:</strong> {req.location?.address
-                      ? req.location.address
-                      : (req.location && req.location.coordinates && req.location.coordinates.length === 2
-                          ? `Lat: ${req.location.coordinates[1]}, Lng: ${req.location.coordinates[0]}`
-                          : 'N/A')}
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Emergency requests targeted to you and prioritized for immediate handling.
                   </Typography>
-                 <Box sx={{ mb: 1 }}>
-  <strong>Status: </strong>
-  <Chip
-    label={req.status || 'open'}
-    color={
-      req.status === 'resolved'
-        ? 'success'
-        : req.status === 'assigned'
-        ? 'primary'
-        : 'warning'
-    }
-    size="small"
-    sx={{ ml: 1 }}
-  />
-</Box>
-
-                </CardContent>
-                <Box sx={{ px: 3, pb: 2, pt: 0, display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-                  <Button variant="outlined" size="small" onClick={() => handleOpenDetailsDialog(req)}>
-                    View Details
-                  </Button>
-                  {false && ((req.status || 'open') === 'open') && ( // hidden to enforce NGO-controlled assignment
-                    <Button variant="contained" size="small" onClick={() => handleClaimSelf(req._id)} disabled={actionLoading} sx={{ fontWeight: 600 }}>
-                      Claim
-                    </Button>
-                  )}
-                 {((req.status || 'open') === 'assigned') &&
- auth.user?.role === 'volunteer' &&
- auth.user?.id &&
- (
-   req.assignedTo === auth.user.id ||
-   req.assignedTo?._id === auth.user.id
- ) && (
-   <Button
-     variant="contained"
-     color="success"
-     size="small"
-     onClick={() => handleResolve(req._id)}
-     disabled={actionLoading}
-     sx={{ fontWeight: 600 }}
-   >
-     Mark as Resolved
-   </Button>
-)}
-
                 </Box>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                <Grid container spacing={3}>
+                  {sosRequests.map((req) => renderRequestCard(req, 'sos'))}
+                </Grid>
+              </Box>
+            )}
+
+            {normalRequests.length > 0 && (
+              <Box sx={{ width: '100%', mb: 4 }}>
+                <Box
+                  sx={{
+                    mb: 3,
+                    p: 2.5,
+                    borderRadius: 3,
+                    border: '2px solid rgba(25,118,210,0.2)',
+                    background: 'linear-gradient(90deg, rgba(25,118,210,0.08) 0%, rgba(255,255,255,1) 100%)'
+                  }}
+                >
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.1rem' }}>
+                    📋 Normal Requests
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Standard active or resolved requests with the usual workflow.
+                  </Typography>
+                </Box>
+                <Grid container spacing={3}>
+                  {normalRequests.map((req) => renderRequestCard(req, 'normal'))}
+                </Grid>
+              </Box>
+            )}
+          </Box>
+        )}
       </Box>
       {/* Map at the bottom */}
       <Paper 
