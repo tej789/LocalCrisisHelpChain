@@ -5,6 +5,11 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
   InputAdornment,
   MenuItem,
@@ -37,6 +42,7 @@ const AdminDashboard = () => {
   const [sosRequests, setSosRequests] = useState([]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assigningRequest, setAssigningRequest] = useState(null);
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -142,6 +148,11 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
+    setLogoutOpen(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setLogoutOpen(false);
     localStorage.clear();
     navigate('/login', { replace: true });
   };
@@ -211,8 +222,30 @@ const AdminDashboard = () => {
   });
 
   return (
-    <AdminLayout handleLogout={handleLogout}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <>
+      <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
+        <DialogTitle>Confirm Logout</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You will be signed out of your account.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogoutOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmLogout}
+          >
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <AdminLayout handleLogout={handleLogout}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Paper sx={{ ...pageCard, background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)' }}>
           <Stack spacing={1}>
             <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 600, letterSpacing: 1.4 }}>
@@ -582,16 +615,17 @@ const AdminDashboard = () => {
             </TableContainer>
           </Stack>
         </Paper>
-      </Box>
 
-      <AssignVolunteerDialog
-        open={assignDialogOpen}
-        requestId={assigningRequest?._id}
-        requestLocation={assigningRequest?.location}
-        onClose={handleCloseAssignDialog}
-        onAssigned={handleAssignedSuccess}
-      />
+        <AssignVolunteerDialog
+          open={assignDialogOpen}
+          requestId={assigningRequest?._id}
+          requestLocation={assigningRequest?.location}
+          onClose={handleCloseAssignDialog}
+          onAssigned={handleAssignedSuccess}
+        />
+      </Box>
     </AdminLayout>
+    </>
   );
 };
 

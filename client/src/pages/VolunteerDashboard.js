@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, IconButton, AppBar, Toolbar, Container, TextField, Avatar, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, useMediaQuery, useTheme } from '@mui/material';
+import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText, Drawer, IconButton, AppBar, Toolbar, Container, TextField, Avatar, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -182,6 +182,7 @@ function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [publicReviewsOpen, setPublicReviewsOpen] = useState(false);
   const [sosHandlerOpen, setSosHandlerOpen] = useState(false);
@@ -631,7 +632,7 @@ const handleUseLocation = () => {
             <IconButton
               onClick={() => {
                 setSidebarOpen(false);
-                auth.logout();
+                setLogoutOpen(true);
               }}
               aria-label="logout"
               sx={{
@@ -659,7 +660,7 @@ const handleUseLocation = () => {
             startIcon={<LogoutIcon />}
             onClick={() => {
               setSidebarOpen(false);
-              auth.logout();
+              setLogoutOpen(true);
             }}
             sx={{
               minHeight: 48,
@@ -1489,20 +1490,47 @@ I will reach you shortly.`
     )
   : '';
 
+  const handleConfirmLogout = () => {
+    setLogoutOpen(false);
+    auth.logout();
+  };
+
 const labelZoomThreshold = 14;
 const showPersistentLabels = mapZoom >= labelZoomThreshold;
 
   return (
-    <Box
-      sx={{
-        p: { xs: 1, md: 4 },
-        pl: { md: `${sidebarWidth + 32}px` },
-        minHeight: '100vh',
-        backgroundColor: 'background.default',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'padding-left 0.25s ease',
-      }}
+    <>
+      <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
+        <DialogTitle>Confirm Logout</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You will be signed out of your account.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogoutOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmLogout}
+          >
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Box
+        sx={{
+          p: { xs: 1, md: 4 },
+          pl: { md: `${sidebarWidth + 32}px` },
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'padding-left 0.25s ease',
+        }}
     >
       {!isMobile && (
         <Paper
@@ -2603,6 +2631,7 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
 />
     </Container>
     </Box>
+    </>
   );
 }
 

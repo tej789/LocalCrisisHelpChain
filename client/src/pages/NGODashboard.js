@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Button, Chip, Snackbar, Alert, Drawer, IconButton, AppBar, Toolbar, Dialog, TextField, Container
+  Button, Chip, Snackbar, Alert, Drawer, IconButton, AppBar, Toolbar, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, Container
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -88,6 +88,7 @@ const defaultMarkerIcon = new L.Icon({
 function NGODashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const auth = useAuth();
   const [requests, setRequests] = useState([]);
   const [, setVolunteerNames] = useState({});
@@ -308,8 +309,35 @@ const urgencyPriority = {
     ? [firstWithCoords.location.coordinates[1], firstWithCoords.location.coordinates[0]]
     : defaultPosition;
 
+  const handleConfirmLogout = () => {
+    setLogoutOpen(false);
+    auth.logout();
+  };
+
   return (
-    <Box sx={{ p: { xs: 1, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
+    <>
+      <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
+        <DialogTitle>Confirm Logout</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You will be signed out of your account.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogoutOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmLogout}
+          >
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Box sx={{ p: { xs: 1, md: 4 }, minHeight: '100vh', backgroundColor: 'background.default' }}>
       
       {/* Top Navigation Bar with Hamburger Menu */}
       <AppBar position="static" color="default" elevation={1} sx={{ mb: 3 }}>
@@ -362,7 +390,7 @@ const urgencyPriority = {
             sx={{ borderRadius: 2, fontWeight: 600 }}
             onClick={() => {
               setSidebarOpen(false);
-              auth.logout();
+              setLogoutOpen(true);
             }}
           >
             Logout
@@ -856,7 +884,8 @@ const urgencyPriority = {
       </Container>
 
       <Footer text="© 2026 Local Crisis HelpChain · NGO Dashboard" />
-    </Box>
+      </Box>
+    </>
   );
 }
 
