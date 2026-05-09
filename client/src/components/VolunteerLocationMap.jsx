@@ -229,6 +229,7 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
   const previousVolunteerPosRef = useRef(null);
   const mapRef = useRef(null);
   const liveLocationWatchIdRef = useRef(null);
+  const userLiveUpdatedAtRef = useRef(null); // timestamp (ms) of most recent local user live update
   const initialCenterRef = useRef(null);
   const hasOpenedPopupsRef = useRef(false);
 
@@ -243,7 +244,7 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
     }
   };
 
-  // Fetch volunteer location
+  // Fetch volunteer location - with improved logging
   const fetchVolunteerLocation = async () => {
     try {
       if (!loading) {
@@ -253,7 +254,15 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
       const response = await api.get(`/api/requests/volunteer-location/${requestId}`);
       const data = response.data;
 
+      console.log('✅ API Response - Volunteer Location:', {
+        volunteerLat: data.latitude,
+        volunteerLng: data.longitude,
+        requestLat: data.requestLocation.latitude,
+        requestLng: data.requestLocation.longitude
+      });
+
       if (!data.latitude || !data.longitude) {
+        console.warn('⚠️ Volunteer location not available in API response');
         setError('Volunteer location not available');
         return;
       }
@@ -268,17 +277,33 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
         (previousVolunteerPosRef.current.lat !== newVolunteerLat ||
          previousVolunteerPosRef.current.lng !== newVolunteerLng);
 
+      console.log('📍 Location Update Status:', {
+        isUpdate,
+        positionChanged,
+        previous: previousVolunteerPosRef.current,
+        current: { lat: newVolunteerLat, lng: newVolunteerLng }
+      });
+
       // If position changed and marker exists, animate it
       if (isUpdate && positionChanged && volunteerMarkerRef.current) {
         const markerInstance = volunteerMarkerRef.current;
         
+        console.log('🎬 Animating marker to new position...');
+        
         // Use slideTo for smooth animation
         if (markerInstance.slideTo) {
           markerInstance.slideTo([newVolunteerLat, newVolunteerLng], {
-            duration: 4000, // 4 seconds animation
+            duration: 3000, // 3 seconds animation (reduced from 4)
             keepAtCenter: false
           });
+          console.log('✨ Marker animation started');
+        } else {
+          console.warn('⚠️ slideTo method not available on marker');
         }
+      } else if (!isUpdate) {
+        console.log('📍 Initial location load');
+      } else {
+        console.log('⏸️ Position unchanged, no animation needed');
       }
 
       // Store current position for next comparison
@@ -295,9 +320,13 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
         requestLat: data.requestLocation.latitude,
         requestLng: data.requestLocation.longitude,
         requestAddress: data.requestLocation.address
+      ,
+        // include server-provided live location for debugging/comparison
+        serverUserLiveLocation: data.userLiveLocation || null
       };
 
       setLocationData(newLocationData);
+      console.log('✅ Location data updated in state');
 
       // Optional live requester location (where the user currently is).
       // We prefer routing to this live point instead of the original
@@ -311,12 +340,24 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
         typeof data.userLiveLocation.latitude === 'number' &&
         typeof data.userLiveLocation.longitude === 'number'
       ) {
-        setUserLiveLocation({
-          lat: data.userLiveLocation.latitude,
-          lng: data.userLiveLocation.longitude
-        });
-        targetLat = data.userLiveLocation.latitude;
-        targetLng = data.userLiveLocation.longitude;
+        // Compare timestamps: prefer freshest source
+        const serverUpdatedAt = data.userLiveLocation.updatedAt ? Date.parse(data.userLiveLocation.updatedAt) : 0;
+        const localUpdatedAt = userLiveUpdatedAtRef.current || 0;
+
+        if (!localUpdatedAt || serverUpdatedAt > localUpdatedAt) {
+          // Backend has fresher data (or we have no local data) → accept it
+          setUserLiveLocation({
+            lat: data.userLiveLocation.latitude,
+            lng: data.userLiveLocation.longitude
+          });
+          userLiveUpdatedAtRef.current = serverUpdatedAt || Date.now();
+          targetLat = data.userLiveLocation.latitude;
+          targetLng = data.userLiveLocation.longitude;
+        } else {
+          // Local GPS is fresher: prefer local state
+          targetLat = userLiveLocation?.lat ?? data.requestLocation.latitude;
+          targetLng = userLiveLocation?.lng ?? data.requestLocation.longitude;
+        }
       }
 
       // Fetch route after location is set: always from volunteer to
@@ -331,9 +372,14 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
 
       setLoading(false);
       setRouteLoading(false);
+      console.log('✅ Volunteer location fetch completed successfully');
 
     } catch (err) {
-      console.error('Error fetching volunteer location:', err);
+      console.error('❌ Error fetching volunteer location:', {
+        message: err?.message,
+        response: err?.response?.data,
+        status: err?.response?.status
+      });
       setError(err.response?.data?.error || 'Failed to load volunteer location');
       setLoading(false);
       setRouteLoading(false);
@@ -377,14 +423,20 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
   }, [requestId]);
 
   // Live tracking - refresh every 5 seconds
+  // This ensures the marker is updated frequently with the latest volunteer position
   useEffect(() => {
     if (!requestId) return;
 
+    console.log('📍 Starting location polling for request:', requestId);
     const interval = setInterval(() => {
+      console.log('⏱️ Polling volunteer location (5s interval)');
       fetchVolunteerLocation();
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('📍 Stopping location polling');
+      clearInterval(interval);
+    };
   }, [requestId]);
 
   // Live tracking for the requester (user): while this map is
@@ -394,25 +446,47 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
   useEffect(() => {
     if (!requestId || !navigator.geolocation) return;
 
+    console.log('👤 Starting user live location tracking for request:', requestId);
+    let liveLocationThrottleRef = 0;
+
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          await api.patch(`/api/requests/${requestId}/live-location`, {
-            latitude,
-            longitude
-          });
-          setUserLiveLocation({ lat: latitude, lng: longitude });
-        } catch (err) {
-          console.warn('Failed to update request live location:', err?.message || err);
+        const { latitude, longitude, accuracy } = position.coords;
+        
+        console.log('👤 User GPS update:', { latitude, longitude, accuracy });
+        
+        // Update local state immediately (don't wait for API)
+        setUserLiveLocation({ lat: latitude, lng: longitude });
+        // record local update time so we don't get overwritten by older server data
+        userLiveUpdatedAtRef.current = Date.now();
+
+        // Throttle backend syncs to 5 seconds to avoid too many requests
+        const now = Date.now();
+        if (now - liveLocationThrottleRef > 5000) {
+          liveLocationThrottleRef = now;
+          try {
+            console.log('👤 Syncing user location to backend...');
+            const response = await api.patch(`/api/requests/${requestId}/live-location`, {
+              latitude,
+              longitude
+            });
+            console.log('✅ User location synced to backend:', response.data);
+          } catch (err) {
+            console.error('❌ Failed to update request live location:', {
+              message: err?.message,
+              response: err?.response?.data,
+              status: err?.response?.status
+            });
+          }
         }
       },
       (error) => {
-        console.warn('User live-location watch error:', error?.message || error);
+        console.warn('⚠️ User live-location watch error:', error?.message || error);
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 10000
+        maximumAge: 0,
+        timeout: 10000
       }
     );
 
@@ -549,6 +623,17 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
         <IconButton onClick={onClose} size="small">
           <CloseIcon />
         </IconButton>
+      </Box>
+
+      {/* DEBUG INFO: show local vs server user live locations for troubleshooting */}
+      <Box sx={{ position: 'absolute', right: 12, bottom: 140, zIndex: 1200 }}>
+        <Paper sx={{ p: 1, bgcolor: 'rgba(255,255,255,0.95)', maxWidth: 300 }} elevation={6}>
+          <Typography variant="caption" fontWeight={700}>Debug: Live location</Typography>
+          <Typography variant="caption" display="block">Local: {userLiveLocation ? `${userLiveLocation.lat.toFixed(6)}, ${userLiveLocation.lng.toFixed(6)}` : 'n/a'}</Typography>
+          <Typography variant="caption" display="block">Local updated: {userLiveUpdatedAtRef.current ? new Date(userLiveUpdatedAtRef.current).toLocaleTimeString() : 'n/a'}</Typography>
+          <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>Server: {locationData?.serverUserLiveLocation ? `${locationData.serverUserLiveLocation.latitude.toFixed(6)}, ${locationData.serverUserLiveLocation.longitude.toFixed(6)}` : 'n/a'}</Typography>
+          <Typography variant="caption" display="block">Server updated: {locationData?.serverUserLiveLocation?.updatedAt ? new Date(locationData.serverUserLiveLocation.updatedAt).toLocaleTimeString() : 'n/a'}</Typography>
+        </Paper>
       </Box>
 
       {/* Info Panel - Distance, ETA, and external navigation */}

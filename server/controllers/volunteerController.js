@@ -101,10 +101,18 @@ exports.updateLocation = async (req, res) => {
     const userId = req.user._id || req.user.id;
     let { longitude, latitude } = req.body;
 
+    console.log('📍 Location Update Request:', {
+      userId,
+      latitude,
+      longitude,
+      body: req.body
+    });
+
     longitude = Number(longitude);
     latitude = Number(latitude);
 
     if (isNaN(longitude) || isNaN(latitude)) {
+      console.warn('⚠️ Invalid coordinates provided');
       return res.status(400).json({ error: "Invalid coordinates" });
     }
 
@@ -119,10 +127,15 @@ exports.updateLocation = async (req, res) => {
       { new: true }
     );
 
+    console.log('✅ Volunteer location updated successfully:', {
+      userId,
+      newLocation: updated?.location?.coordinates
+    });
+
     res.json(updated);
 
   } catch (err) {
-    console.error("LOCATION ERROR FULL:", err);
+    console.error("❌ LOCATION ERROR FULL:", err);
     res.status(500).json({ error: err.message });
   }
 };

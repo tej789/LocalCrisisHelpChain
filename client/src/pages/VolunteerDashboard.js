@@ -797,7 +797,8 @@ useEffect(() => {
   // Live GPS tracking: watch the device location and update the
   // volunteer marker (and occasionally the backend) while the
   // dashboard is open. This makes the blue icon move as the
-  // volunteer moves.
+  // volunteer moves. IMPROVED: Reduced throttle to 5 seconds and
+  // added real-time socket.io updates so others see location immediately.
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -805,7 +806,7 @@ useEffect(() => {
       async (position) => {
         const { latitude, longitude } = position.coords;
 
-        // Update marker position in the UI
+        // Update marker position in the UI immediately
         setVolunteerLocation(prev => {
           if (!prev || prev.lat !== latitude || prev.lng !== longitude) {
             console.log('📡 Live GPS update:', { lat: latitude, lng: longitude });
@@ -814,26 +815,47 @@ useEffect(() => {
           return prev;
         });
 
-        // Throttle backend sync to at most once every 15 seconds
+        // IMPROVED: Reduced throttle from 15s to 5s for faster updates
+        // and added socket.io emit for real-time visibility to other users
         const now = Date.now();
-        if (now - liveLocationSyncRef.current > 15000) {
+        if (now - liveLocationSyncRef.current > 5000) {
           liveLocationSyncRef.current = now;
           try {
-            await api.patch('/api/volunteers/me/location', {
+            console.log('📡 Syncing location to backend:', { latitude, longitude });
+            
+            // Sync to backend
+            const response = await api.patch('/api/volunteers/me/location', {
               latitude,
               longitude
             });
+            
+            console.log('✅ Backend sync successful:', response.data);
+            
+            // IMPROVED: Emit location update via socket.io so other users
+            // see the volunteer's updated location in real-time
+            socket.emit('volunteerLocationUpdate', {
+              volunteerId: volunteerId,
+              latitude,
+              longitude,
+              timestamp: now
+            });
+
+            console.log('✅ Location synced to backend and broadcasted via socket', { lat: latitude, lng: longitude });
           } catch (err) {
-            console.warn('Live GPS sync failed:', err?.message || err);
+            console.error('❌ Live GPS sync failed:', {
+              message: err?.message,
+              response: err?.response?.data,
+              status: err?.response?.status
+            });
           }
         }
       },
       (error) => {
-        console.warn('Live GPS watch error:', error?.message || error);
+        console.warn('⚠️ Live GPS watch error:', error?.message || error);
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 10000
+        maximumAge: 0  // Don't use cached position, get fresh data
       }
     );
 
@@ -842,7 +864,7 @@ useEffect(() => {
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, []);
+  }, [volunteerId]);
 
   const handleViewAndScroll = (newView) => {
     setView(newView);

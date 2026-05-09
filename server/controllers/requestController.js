@@ -643,15 +643,19 @@ exports.getVolunteerLocation = async (req, res) => {
   try {
     const { requestId } = req.params;
 
+    console.log('📍 Getting volunteer location for request:', requestId);
+
     // Find the request
     const request = await HelpRequest.findById(requestId)
       .populate('assignedTo', 'name location profilePhoto');
 
     if (!request) {
+      console.warn('⚠️ Request not found:', requestId);
       return res.status(404).json({ error: 'Request not found' });
     }
 
     if (!request.assignedTo) {
+      console.warn('⚠️ No volunteer assigned to request:', requestId);
       return res.status(400).json({ error: 'No volunteer assigned to this request' });
     }
 
@@ -664,6 +668,12 @@ exports.getVolunteerLocation = async (req, res) => {
     if (volunteer.location && volunteer.location.coordinates && volunteer.location.coordinates.length === 2) {
       [longitude, latitude] = volunteer.location.coordinates;
     }
+
+    console.log('✅ Volunteer location retrieved:', {
+      volunteerId: volunteer._id,
+      volunteerName: volunteer.name,
+      coordinates: { latitude, longitude }
+    });
 
     res.status(200).json({
       success: true,
@@ -691,8 +701,13 @@ exports.getVolunteerLocation = async (req, res) => {
       } : null
     });
 
+    console.log('👤 Returning user live location in response:', {
+      hasLiveLocation: !!request.liveLocation,
+      coords: request.liveLocation ? [request.liveLocation.coordinates[0], request.liveLocation.coordinates[1]] : null
+    });
+
   } catch (err) {
-    console.error('Get volunteer location error:', err);
+    console.error('❌ Get volunteer location error:', err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -708,6 +723,7 @@ exports.updateRequestLiveLocation = async (req, res) => {
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return res.status(400).json({ error: 'latitude and longitude are required numbers' });
     }
+    console.log('👤 User live location update:', { requestId: id, latitude, longitude });
 
     const request = await HelpRequest.findOne({
       _id: id,
@@ -716,6 +732,7 @@ exports.updateRequestLiveLocation = async (req, res) => {
     });
 
     if (!request) {
+        console.warn('❌ Active request not found for user');
       return res.status(404).json({ error: 'Active request not found for this user' });
     }
 
@@ -725,6 +742,7 @@ exports.updateRequestLiveLocation = async (req, res) => {
     };
 
     await request.save();
+  console.log('✅ User location saved:', { coordinates: [longitude, latitude] });
 
     const io = req.app.get('io');
     if (io) {
@@ -742,6 +760,7 @@ exports.updateRequestLiveLocation = async (req, res) => {
     });
   } catch (err) {
     console.error('Update request live location error:', err);
+      console.error('❌ Update request live location error:', err);
     res.status(500).json({ error: err.message });
   }
 };

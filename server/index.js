@@ -132,6 +132,7 @@ io.on("connection", socket => {
     console.log("User disconnected:", socket.id);
   });
 });
+
 // Track volunteers who register and place them into rooms `vol_<volunteerId>`
 io.on('connection', (socket) => {
   socket.on('registerVolunteer', (volunteerId) => {
@@ -143,6 +144,28 @@ io.on('connection', (socket) => {
       }
     } catch (e) {
       console.error('registerVolunteer error', e);
+    }
+  });
+
+  // IMPROVED: Handle real-time volunteer location updates
+  // When a volunteer updates their location, broadcast it to all connected users
+  socket.on('volunteerLocationUpdate', (data) => {
+    try {
+      const { volunteerId, latitude, longitude, timestamp } = data;
+      
+      if (volunteerId && latitude !== undefined && longitude !== undefined) {
+        console.log(`📡 Broadcasting volunteer location: ${volunteerId} at (${latitude}, ${longitude})`);
+        
+        // Broadcast to all connected clients
+        io.emit('volunteerLocationUpdated', {
+          volunteerId,
+          latitude,
+          longitude,
+          timestamp: timestamp || Date.now()
+        });
+      }
+    } catch (e) {
+      console.error('volunteerLocationUpdate error:', e);
     }
   });
 });
