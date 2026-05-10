@@ -9,6 +9,7 @@ const {
 // In-memory cooldown tracker for SOS (userId -> timestamp ms)
 const sosCooldownMap = new Map();
 const SOS_COOLDOWN_MS = parseInt(process.env.SOS_COOLDOWN_MS || '120000', 10); // default 2 minutes
+const REQUEST_LIVE_LOCATION_MAX_AGE_MS = parseInt(process.env.REQUEST_LIVE_LOCATION_MAX_AGE_MS || '120000', 10); // default 2 minutes
 const haversine = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -661,6 +662,22 @@ exports.getVolunteerLocation = async (req, res) => {
 
     const volunteer = request.assignedTo;
 
+    const requestLiveLocation = (
+      request.liveLocation &&
+      Array.isArray(request.liveLocation.coordinates) &&
+      request.liveLocation.coordinates.length === 2 &&
+      request.liveLocation.updatedAt
+    ) ? {
+      latitude: request.liveLocation.coordinates[1],
+      longitude: request.liveLocation.coordinates[0],
+      updatedAt: request.liveLocation.updatedAt
+    } : null;
+
+    const requestLiveLocationAgeMs = requestLiveLocation?.updatedAt
+      ? Date.now() - new Date(requestLiveLocation.updatedAt).getTime()
+      : Infinity;
+    const isRequestLiveLocationFresh = requestLiveLocationAgeMs >= 0 && requestLiveLocationAgeMs <= REQUEST_LIVE_LOCATION_MAX_AGE_MS;
+
     // Extract volunteer location
     let latitude = null;
     let longitude = null;
@@ -690,20 +707,14 @@ exports.getVolunteerLocation = async (req, res) => {
       // Optional live position of the requester (user). This lets the
       // volunteer see where the user currently is without changing the
       // actual crisis location or route destination.
-      userLiveLocation: (
-        request.liveLocation &&
-        Array.isArray(request.liveLocation.coordinates) &&
-        request.liveLocation.coordinates.length === 2
-      ) ? {
-        latitude: request.liveLocation.coordinates[1],
-        longitude: request.liveLocation.coordinates[0],
-        updatedAt: request.liveLocation.updatedAt
-      } : null
+      userLiveLocation: isRequestLiveLocationFresh ? requestLiveLocation : null
     });
 
     console.log('👤 Returning user live location in response:', {
-      hasLiveLocation: !!request.liveLocation,
-      coords: request.liveLocation ? [request.liveLocation.coordinates[0], request.liveLocation.coordinates[1]] : null
+      hasLiveLocation: !!requestLiveLocation,
+      isFresh: isRequestLiveLocationFresh,
+      ageMs: Number.isFinite(requestLiveLocationAgeMs) ? requestLiveLocationAgeMs : null,
+      coords: requestLiveLocation ? [requestLiveLocation.coordinates[0], requestLiveLocation.coordinates[1]] : null
     });
 
   } catch (err) {

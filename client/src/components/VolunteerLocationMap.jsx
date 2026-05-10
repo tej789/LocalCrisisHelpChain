@@ -19,6 +19,18 @@ import DistanceIcon from '@mui/icons-material/Straighten';
 import InfoIcon from '@mui/icons-material/Info';
 import api from '../api/axios';
 
+const LIVE_LOCATION_MAX_AGE_MS = 120000;
+
+const isFreshLiveLocation = (updatedAt, now = Date.now()) => {
+  if (!updatedAt) return false;
+
+  const parsedTime = Date.parse(updatedAt);
+  if (!Number.isFinite(parsedTime)) return false;
+
+  const age = now - parsedTime;
+  return age >= 0 && age <= LIVE_LOCATION_MAX_AGE_MS;
+};
+
 // Custom Volunteer Icon using a styled SVG inside a divIcon
 // This avoids the default emoji look and feels more like
 // a professional map pin for an emergency vehicle.
@@ -335,29 +347,47 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
       let targetLat = data.requestLocation.latitude;
       let targetLng = data.requestLocation.longitude;
 
-      if (
+      const serverLiveLocation = (
         data.userLiveLocation &&
         typeof data.userLiveLocation.latitude === 'number' &&
         typeof data.userLiveLocation.longitude === 'number'
-      ) {
-        // Compare timestamps: prefer freshest source
-        const serverUpdatedAt = data.userLiveLocation.updatedAt ? Date.parse(data.userLiveLocation.updatedAt) : 0;
+      ) ? data.userLiveLocation : null;
+
+      const serverLiveLocationFresh = serverLiveLocation
+        ? isFreshLiveLocation(serverLiveLocation.updatedAt)
+        : false;
+
+      const localLiveLocationFresh =
+        userLiveLocation &&
+        userLiveUpdatedAtRef.current &&
+        Date.now() - userLiveUpdatedAtRef.current <= LIVE_LOCATION_MAX_AGE_MS;
+
+      if (serverLiveLocationFresh) {
+        const serverUpdatedAt = Date.parse(serverLiveLocation.updatedAt) || Date.now();
         const localUpdatedAt = userLiveUpdatedAtRef.current || 0;
 
-        if (!localUpdatedAt || serverUpdatedAt > localUpdatedAt) {
-          // Backend has fresher data (or we have no local data) → accept it
+        if (!localLiveLocationFresh || serverUpdatedAt >= localUpdatedAt) {
+          // Backend has the freshest known live location.
           setUserLiveLocation({
-            lat: data.userLiveLocation.latitude,
-            lng: data.userLiveLocation.longitude
+            lat: serverLiveLocation.latitude,
+            lng: serverLiveLocation.longitude
           });
-          userLiveUpdatedAtRef.current = serverUpdatedAt || Date.now();
-          targetLat = data.userLiveLocation.latitude;
-          targetLng = data.userLiveLocation.longitude;
+          userLiveUpdatedAtRef.current = serverUpdatedAt;
+          targetLat = serverLiveLocation.latitude;
+          targetLng = serverLiveLocation.longitude;
         } else {
-          // Local GPS is fresher: prefer local state
+          // Local GPS is fresher: keep the in-memory position.
           targetLat = userLiveLocation?.lat ?? data.requestLocation.latitude;
           targetLng = userLiveLocation?.lng ?? data.requestLocation.longitude;
         }
+      } else if (localLiveLocationFresh) {
+        // Ignore stale server data and continue using the current local reading.
+        targetLat = userLiveLocation?.lat ?? data.requestLocation.latitude;
+        targetLng = userLiveLocation?.lng ?? data.requestLocation.longitude;
+      } else {
+        // No fresh live position exists, so avoid showing an old purple marker.
+        setUserLiveLocation(null);
+        userLiveUpdatedAtRef.current = null;
       }
 
       // Fetch route after location is set: always from volunteer to
@@ -568,7 +598,11 @@ const VolunteerLocationMap = ({ requestId, onClose }) => {
   // overlap. To keep both visible, we render the live marker with a
   // tiny visual offset when they are extremely close.
   let userLiveMarkerPosition = null;
-  if (userLiveLocation) {
+  if (
+    userLiveLocation &&
+    userLiveUpdatedAtRef.current &&
+    Date.now() - userLiveUpdatedAtRef.current <= LIVE_LOCATION_MAX_AGE_MS
+  ) {
     const { lat, lng } = userLiveLocation;
     const reqLat = locationData.requestLat;
     const reqLng = locationData.requestLng;
