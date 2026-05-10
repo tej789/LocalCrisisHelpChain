@@ -177,6 +177,37 @@ const urgencyPriority = {
   low: 1,
 };
 
+const LIVE_LOCATION_MAX_AGE_MS = 120000;
+
+const getFreshLiveLocation = (request) => {
+  const liveLocation = request?.liveLocation;
+
+  if (
+    !liveLocation ||
+    !Array.isArray(liveLocation.coordinates) ||
+    liveLocation.coordinates.length !== 2 ||
+    !liveLocation.updatedAt
+  ) {
+    return null;
+  }
+
+  const updatedAt = Date.parse(liveLocation.updatedAt);
+  if (!Number.isFinite(updatedAt)) {
+    return null;
+  }
+
+  const age = Date.now() - updatedAt;
+  if (age < 0 || age > LIVE_LOCATION_MAX_AGE_MS) {
+    return null;
+  }
+
+  return {
+    lat: liveLocation.coordinates[1],
+    lng: liveLocation.coordinates[0],
+    updatedAt
+  };
+};
+
 
 function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1235,6 +1266,10 @@ const displayedRequests =
     ? resolvedRequests
     : activeAssignedRequests;
 
+const mapRequests = selectedMapRequest
+  ? displayedRequests.filter((req) => req._id === selectedMapRequest._id)
+  : displayedRequests;
+
   const isSosRequest = (req) => req.isSos === true || (req.type?.toLowerCase() === 'rescue' && Boolean(req.sosTargetVolunteer));
 
 const sosRequests = displayedRequests.filter((req) => isSosRequest(req));
@@ -2102,7 +2137,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
 
             {/* Crisis Request Markers - assigned (red), resolved (green),
                 plus optional live user position (purple) */}
-            {displayedRequests
+            {mapRequests
               .filter(r => {
                 if (!r.location || !Array.isArray(r.location.coordinates)) {
                   console.warn('Request missing location:', r._id);
@@ -2169,12 +2204,10 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       ? `${needTypeRaw.charAt(0).toUpperCase()}${needTypeRaw.slice(1)}`
                       : 'Other';
 
-                  const liveCoords =
-                    req.liveLocation &&
-                    Array.isArray(req.liveLocation.coordinates) &&
-                    req.liveLocation.coordinates.length === 2
-                      ? req.liveLocation.coordinates
-                      : null;
+                  const freshLiveLocation = getFreshLiveLocation(req);
+                  const liveCoords = freshLiveLocation
+                    ? [freshLiveLocation.lng, freshLiveLocation.lat]
+                    : null;
 
                   // Straight-line distance from volunteer to the requester's
                   // current live position (if both are available), plus a
@@ -2185,8 +2218,8 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                   let liveLngDisplay = null;
 
                   if (liveCoords) {
-                    const liveLat = liveCoords[1];
-                    const liveLng = liveCoords[0];
+                    const liveLat = freshLiveLocation.lat;
+                    const liveLng = freshLiveLocation.lng;
 
                     // Base display position is the real live coordinates
                     liveLatDisplay = liveLat;
@@ -2225,6 +2258,10 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       );
                     }
                   }
+
+                    // Prefer liveDistance when available (fresh moving user position),
+                    // otherwise fall back to the fixed request location distance.
+                    const displayDistance = (liveDistance != null && liveDistance !== undefined) ? liveDistance : distance;
 
                   return (
               <>
@@ -2281,11 +2318,11 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       ⚠ {req.urgency || 'N/A'}
                     </Typography>
                     {/* For active requests show straight-line distance; for resolved show status */}
-                    {!isResolved && distance && (
+                    {!isResolved && displayDistance && (
                       <Typography variant="caption" color="text.secondary" display="block">
-                        {parseFloat(distance) < 0.05
+                        {parseFloat(displayDistance) < 0.05
                           ? '📏 Very close to you (straight-line)'
-                          : `📏 ~${distance} km (straight-line)`}
+                          : `📏 ~${displayDistance} km (straight-line)`}
                       </Typography>
                     )}
                     {isResolved && (
@@ -2327,8 +2364,8 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       // position instead of the fixed help location.
                       setSelectedMapRequest(req);
                       if (volunteerLocation) {
-                        const liveLat = liveCoords[1];
-                        const liveLng = liveCoords[0];
+                        const liveLat = freshLiveLocation.lat;
+                        const liveLng = freshLiveLocation.lng;
                         fetchRoute(liveLat, liveLng, req._id, { fitToRoute: false });
                         setRouteTargetLabel('requester current location');
                         setMapCenterOverride([liveLat, liveLng]);
