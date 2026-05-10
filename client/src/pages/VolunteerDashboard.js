@@ -208,6 +208,21 @@ const getFreshLiveLocation = (request) => {
   };
 };
 
+const getAnyLiveLocation = (request) => {
+  const liveLocation = request?.liveLocation;
+  if (
+    !liveLocation ||
+    !Array.isArray(liveLocation.coordinates) ||
+    liveLocation.coordinates.length !== 2
+  ) return null;
+
+  return {
+    lat: liveLocation.coordinates[1],
+    lng: liveLocation.coordinates[0],
+    updatedAt: liveLocation.updatedAt ? Date.parse(liveLocation.updatedAt) : null
+  };
+};
+
 
 function VolunteerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1268,7 +1283,7 @@ const displayedRequests =
 
 const mapRequests = selectedMapRequest
   ? displayedRequests.filter((req) => req._id === selectedMapRequest._id)
-  : displayedRequests;
+  : [];
 
   const isSosRequest = (req) => req.isSos === true || (req.type?.toLowerCase() === 'rescue' && Boolean(req.sosTargetVolunteer));
 
@@ -2205,9 +2220,9 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       : 'Other';
 
                   const freshLiveLocation = getFreshLiveLocation(req);
-                  const liveCoords = freshLiveLocation
-                    ? [freshLiveLocation.lng, freshLiveLocation.lat]
-                    : null;
+                  const anyLiveLocation = getAnyLiveLocation(req);
+                  const liveSource = freshLiveLocation || anyLiveLocation;
+                  const liveCoords = liveSource ? [liveSource.lng, liveSource.lat] : null;
 
                   // Straight-line distance from volunteer to the requester's
                   // current live position (if both are available), plus a
@@ -2218,8 +2233,8 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                   let liveLngDisplay = null;
 
                   if (liveCoords) {
-                    const liveLat = freshLiveLocation.lat;
-                    const liveLng = freshLiveLocation.lng;
+                    const liveLat = liveSource.lat;
+                    const liveLng = liveSource.lng;
 
                     // Base display position is the real live coordinates
                     liveLatDisplay = liveLat;
@@ -2288,9 +2303,10 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                     // of the volunteer icon for a clearer focus.
                     setSelectedMapRequest(req);
                     if (volunteerLocation) {
-                      fetchRoute(reqLat, reqLng, req._id, { fitToRoute: false });
-                      setRouteTargetLabel('request location');
-                      setMapCenterOverride([reqLat, reqLng]);
+                      const routeTarget = freshLiveLocation || anyLiveLocation || { lat: reqLat, lng: reqLng };
+                      fetchRoute(routeTarget.lat, routeTarget.lng, req._id, { fitToRoute: false });
+                      setRouteTargetLabel(freshLiveLocation ? 'requester current location' : anyLiveLocation ? 'requester last known' : 'request location');
+                      setMapCenterOverride([routeTarget.lat, routeTarget.lng]);
                     } else {
                       // Even without volunteer location, still center on request
                       setMapCenterOverride([reqLat, reqLng]);
@@ -2494,10 +2510,13 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
               onClick={() => {
                 const reqLat = selectedRequest.location.coordinates[1];
                 const reqLng = selectedRequest.location.coordinates[0];
+                const liveTarget = getFreshLiveLocation(selectedRequest);
                 setSelectedMapRequest(selectedRequest);
                 // Here we still want to show the full route with both
                 // volunteer and request visible, so keep auto-zoom on.
-                fetchRoute(reqLat, reqLng, selectedRequest._id, { fitToRoute: true });
+                const anyLive = getAnyLiveLocation(selectedRequest);
+                fetchRoute((liveTarget?.lat ?? anyLive?.lat ?? reqLat), (liveTarget?.lng ?? anyLive?.lng ?? reqLng), selectedRequest._id, { fitToRoute: true });
+                setRouteTargetLabel(liveTarget ? 'requester current location' : anyLive ? 'requester last known' : 'request location');
                 setDetailsDialogOpen(false);
                 setTimeout(() => {
                   if (mapSectionRef.current) {
