@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Button, Typography, FormControl, InputLabel, Select, MenuItem, CircularProgress, Alert } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Button, Typography, FormControl, InputLabel, Select, MenuItem, CircularProgress, Alert, Chip } from '@mui/material';
 import api from '../api/axios';
+import { getSkillConfig } from '../utils/skillsConfig';
 
 export default function AssignVolunteerDialog({ open, requestId, requestLocation, onClose, onAssigned })
  {
@@ -14,14 +15,14 @@ export default function AssignVolunteerDialog({ open, requestId, requestLocation
     if (!open) return;
     setListLoading(true);
     setError('');
-  let url = '/api/volunteers?verified=true&available=true';
+    let url = '/api/volunteers?verified=true&available=true';
 
-if (requestLocation?.coordinates?.length === 2) {
-  const [lng, lat] = requestLocation.coordinates;
-  url += `&lng=${lng}&lat=${lat}`;
-}
+    if (requestLocation?.coordinates?.length === 2) {
+      const [lng, lat] = requestLocation.coordinates;
+      url += `&lng=${lng}&lat=${lat}`;
+    }
 
-api.get(url)
+    api.get(url)
 
       .then(res => {
         const arr = Array.isArray(res.data) ? res.data : [];
@@ -78,14 +79,36 @@ api.get(url)
                 onChange={(e) => setVolunteerId(e.target.value)}
               >
                 {volunteers.map(v => (
-<MenuItem key={v._id} value={v._id}>
-  {v.name}
-  {v.distance !== undefined
-    ? ` — ${v.distance.toFixed(1)} km`
-    : ''}
-</MenuItem>
-))}
-
+                  <MenuItem key={v._id} value={v._id} sx={{ display: 'block', py: 1.5 }}>
+                    <Typography variant="body2" fontWeight={600} sx={{ mb: 0.75 }}>
+                      {v.name}
+                      {v.distance !== undefined
+                        ? ` — ${v.distance.toFixed(1)} km`
+                        : ''}
+                    </Typography>
+                    {v.skills && v.skills.length > 0 && (
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                        {v.skills.map(skill => {
+                          const config = getSkillConfig(skill);
+                          return (
+                            <Chip
+                              key={skill}
+                              label={config.label}
+                              size="small"
+                              sx={{
+                                height: '22px',
+                                fontSize: '11px',
+                                bgcolor: config.bgColor,
+                                color: config.color,
+                                fontWeight: 700
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>

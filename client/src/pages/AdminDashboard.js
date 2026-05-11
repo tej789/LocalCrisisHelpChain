@@ -28,6 +28,7 @@ import AdminLayout from '../components/admin/AdminLayout';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import VolunteerActivismOutlinedIcon from '@mui/icons-material/VolunteerActivismOutlined';
+import { getSkillConfig } from '../utils/skillsConfig';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 
 const AdminDashboard = () => {
@@ -556,13 +557,33 @@ const AdminDashboard = () => {
                 ) : (
                   filteredVolunteers.map((vol) => (
                     <Paper key={vol._id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                      <Stack spacing={1}>
+                      <Stack spacing={1.5}>
                         <Box>
                           <Typography sx={{ fontWeight: 700 }}>{vol.name}</Typography>
                           <Typography variant="body2" color="text.secondary">
                             {vol.email}
                           </Typography>
                         </Box>
+                        {vol.skills && vol.skills.length > 0 && (
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {vol.skills.map(skill => {
+                              const config = getSkillConfig(skill);
+                              return (
+                                <Chip
+                                  key={skill}
+                                  label={config.label}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: config.bgColor,
+                                    color: config.color,
+                                    fontWeight: 700,
+                                    fontSize: '11px'
+                                  }}
+                                />
+                              );
+                            })}
+                          </Box>
+                        )}
                         <Box>
                           <Chip
                             label={vol.verified ? 'Approved' : 'Pending'}
@@ -584,13 +605,14 @@ const AdminDashboard = () => {
                   <TableRow sx={{ backgroundColor: '#f8fafc' }}>
                     <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Skills</TableCell>
                     <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredVolunteers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                      <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                         No volunteers found
                       </TableCell>
                     </TableRow>
@@ -599,6 +621,30 @@ const AdminDashboard = () => {
                       <TableRow key={vol._id} hover>
                         <TableCell>{vol.name}</TableCell>
                         <TableCell>{vol.email}</TableCell>
+                        <TableCell>
+                          {vol.skills && vol.skills.length > 0 ? (
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {vol.skills.map(skill => {
+                                const config = getSkillConfig(skill);
+                                return (
+                                  <Chip
+                                    key={skill}
+                                    label={config.label}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: config.bgColor,
+                                      color: config.color,
+                                      fontWeight: 700,
+                                      fontSize: '11px'
+                                    }}
+                                  />
+                                );
+                              })}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">—</Typography>
+                          )}
+                        </TableCell>
                         <TableCell align="center">
                           <Chip
                             label={vol.verified ? 'Approved' : 'Pending'}

@@ -70,6 +70,7 @@ exports.getVolunteers = async (req, res) => {
             name: 1,
             email: 1,
             isAvailable: 1,
+            skills: 1,
             distance: { $divide: ["$distance", 1000] }
           }
         }
@@ -80,7 +81,8 @@ exports.getVolunteers = async (req, res) => {
           name: 1,
           email: 1,
           isAvailable: 1,
-          location: 1
+          location: 1,
+          skills: 1
         })
         .sort({ name: 1 })
         .lean();
@@ -175,7 +177,7 @@ exports.updateAvailability = async (req, res) => {
 exports.updateBasicProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, profilePhoto } = req.body;
+    const { name, profilePhoto, skills } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: "Name is required" });
@@ -189,9 +191,24 @@ exports.updateBasicProfile = async (req, res) => {
       return res.status(400).json({ error: 'Profile photo is too large' });
     }
 
+    // Validate skills if provided
+    const validSkills = ['medical', 'rescue', 'food', 'shelter', 'transport', 'first-aid', 'counseling', 'logistics'];
+    if (skills !== undefined) {
+      if (!Array.isArray(skills)) {
+        return res.status(400).json({ error: 'Skills must be an array' });
+      }
+      const invalidSkills = skills.filter(s => !validSkills.includes(s));
+      if (invalidSkills.length > 0) {
+        return res.status(400).json({ error: `Invalid skills: ${invalidSkills.join(', ')}` });
+      }
+    }
+
     const update = { name };
     if (profilePhoto !== undefined) {
       update.profilePhoto = profilePhoto;
+    }
+    if (skills !== undefined) {
+      update.skills = skills;
     }
 
     const updated = await Volunteer.findByIdAndUpdate(
@@ -206,7 +223,8 @@ exports.updateBasicProfile = async (req, res) => {
 
     res.json({
       name: updated.name,
-      profilePhoto: updated.profilePhoto || ''
+      profilePhoto: updated.profilePhoto || '',
+      skills: updated.skills || []
     });
 
   } catch (err) {

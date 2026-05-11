@@ -56,6 +56,13 @@ isDeleted: { type: Boolean, default: false },
   requestsCompleted: {
     type: Number,
     default: 0
+  },
+
+  // ✅ Volunteer Skills/Categories
+  skills: {
+    type: [String],
+    enum: ['medical', 'rescue', 'food', 'shelter', 'transport', 'first-aid', 'counseling', 'logistics'],
+    default: []
   }
 
 }, { timestamps: true });

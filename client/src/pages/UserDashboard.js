@@ -39,6 +39,7 @@ import VolunteerLocationMap from '../components/VolunteerLocationMap';
 import Footer from '../components/Footer';
 import SosButton from '../components/SosButton';
 import RatingDialog from '../components/RatingDialog';
+import { getTimePendingInfo } from '../utils/timeUtils';
 
 
 
@@ -1103,6 +1104,29 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
     `Completed by ${req.assignedTo?.name || 'a volunteer'}`}
       </Typography>
     </Stack>
+
+    {/* Time Pending Indicator - Only for open/assigned requests */}
+    {req.createdAt && req.status !== 'resolved' && (
+      <Box sx={{
+        p: 1.25,
+        bgcolor: getTimePendingInfo(req.createdAt).color === 'success' ? '#e8f5e9' : 
+                 getTimePendingInfo(req.createdAt).color === 'warning' ? '#fff3e0' : '#ffebee',
+        borderRadius: 1.5,
+        borderLeft: `3px solid ${
+          getTimePendingInfo(req.createdAt).color === 'success' ? '#2e7d32' :
+          getTimePendingInfo(req.createdAt).color === 'warning' ? '#f57c00' : '#d32f2f'
+        }`,
+        mb: 2
+      }}>
+        <Typography variant="body2" sx={{ 
+          fontWeight: 600,
+          color: getTimePendingInfo(req.createdAt).color === 'success' ? '#1b5e20' : 
+                 getTimePendingInfo(req.createdAt).color === 'warning' ? '#e65100' : '#b71c1c'
+        }}>
+          {getTimePendingInfo(req.createdAt).icon} {getTimePendingInfo(req.createdAt).text}
+        </Typography>
+      </Box>
+    )}
 
     {/* Location Information */}
     {req.location?.address && (

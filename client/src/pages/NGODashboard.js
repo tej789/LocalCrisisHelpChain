@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, FormControl, InputLabel, Select, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Button, Chip, Snackbar, Alert, Drawer, IconButton, AppBar, Toolbar, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, Container
+  Button, Chip, Snackbar, Alert, Drawer, IconButton, AppBar, Toolbar, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, Container, Stack
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
 import Footer from '../components/Footer';
+import { getTimePendingInfo } from '../utils/timeUtils';
 
 // Initialize socket with auth token for server to validate connection
 const socketOptions = {
@@ -638,6 +639,13 @@ const urgencyPriority = {
                       Assigned: {req.assignedTo?.name || '-'}
                     </Typography>
                   </Box>
+                  {req.createdAt && req.status !== 'resolved' && (
+                    <Box sx={{ mt: 1.5, p: 1, bgcolor: getTimePendingInfo(req.createdAt).color === 'success' ? '#e8f5e9' : getTimePendingInfo(req.createdAt).color === 'warning' ? '#fff3e0' : '#ffebee', borderRadius: 1.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: getTimePendingInfo(req.createdAt).color === 'success' ? '#2e7d32' : getTimePendingInfo(req.createdAt).color === 'warning' ? '#f57c00' : '#d32f2f' }}>
+                        {getTimePendingInfo(req.createdAt).icon} {getTimePendingInfo(req.createdAt).text}
+                      </Typography>
+                    </Box>
+                  )}
 
                   <Box sx={{ mt: 2, textAlign: 'right' }}>
                     {req.status === 'open' && !req.assignedTo ? (
@@ -683,7 +691,7 @@ const urgencyPriority = {
               <TableCell>Description</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Assigned Volunteer</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell>Time Pending & Actions</TableCell>
             </TableRow>
           </TableHead>
 
@@ -720,25 +728,35 @@ const urgencyPriority = {
                   {req.assignedTo?.name || '-'}
                 </TableCell>
                 <TableCell>
-                  {req.status === 'open' && !req.assignedTo ? (
-                    <Button
-                      size="small"
-  variant="contained"
-  sx={{
-    fontWeight: 600,
-    borderRadius: 2,
-    px: 2,
-    boxShadow: 2,
-    "&:hover": { boxShadow: 4 }
-  }}
-                      onClick={() => handleOpenAssignDialog(req)}
-
-                    >
-                      Assign Volunteer
-                    </Button>
-                  ) : (
-                    <Button size="small" disabled>Assign</Button>
-                  )}
+                  <Stack spacing={1} alignItems="center" justifyContent="center">
+                    {req.createdAt && req.status !== 'resolved' && (
+                      <Box sx={{ p: 0.75, bgcolor: getTimePendingInfo(req.createdAt).color === 'success' ? '#e8f5e9' : getTimePendingInfo(req.createdAt).color === 'warning' ? '#fff3e0' : '#ffebee', borderRadius: 1, width: '100%', textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: getTimePendingInfo(req.createdAt).color === 'success' ? '#2e7d32' : getTimePendingInfo(req.createdAt).color === 'warning' ? '#f57c00' : '#d32f2f' }}>
+                          {getTimePendingInfo(req.createdAt).icon} {getTimePendingInfo(req.createdAt).text}
+                        </Typography>
+                      </Box>
+                    )}
+                    {req.status === 'open' && !req.assignedTo ? (
+                      <Button
+                        size="small"
+    variant="contained"
+    sx={{
+      fontWeight: 600,
+      borderRadius: 2,
+      px: 2,
+      boxShadow: 2,
+      width: '100%',
+      "&:hover": { boxShadow: 4 }
+    }}
+                        onClick={() => handleOpenAssignDialog(req)}
+  
+                      >
+                        Assign Volunteer
+                      </Button>
+                    ) : (
+                      <Button size="small" disabled sx={{ width: '100%' }}>Assign</Button>
+                    )}
+                  </Stack>
                 </TableCell>
               </TableRow>
             ))}

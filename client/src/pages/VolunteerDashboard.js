@@ -22,6 +22,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip as LeafletToo
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from "socket.io-client";
+import { getTimePendingInfo } from '../utils/timeUtils';
+import { SKILL_OPTIONS } from '../utils/skillsConfig';
 import { useNavigate } from "react-router-dom";
 import PhoneIcon from '@mui/icons-material/Phone';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
@@ -478,6 +480,7 @@ const handleUseLocation = () => {
   const [profileName, setProfileName] = useState(auth.user?.name || "");
   const profileEmail = auth.user?.email || "";
   const [profilePhoto, setProfilePhoto] = useState(auth.user?.profilePhoto || "");
+  const [profileSkills, setProfileSkills] = useState(auth.user?.skills || []);
   const fileInputRef = useRef(null);
   const [profileLoading, setProfileLoading] = useState(false);
   // Backward-compatible verified check derived directly from auth.user
@@ -1203,7 +1206,8 @@ useEffect(() => {
     try {
       const { data } = await api.patch("/api/volunteers/me/basic", {
         name: profileName,
-        profilePhoto
+        profilePhoto,
+        skills: profileSkills
       });
 
       auth.login({
@@ -1211,7 +1215,8 @@ useEffect(() => {
         user: {
           ...auth.user,
           name: data.name,
-          profilePhoto: data.profilePhoto || ''
+          profilePhoto: data.profilePhoto || '',
+          skills: data.skills || []
         }
       });
 
@@ -1377,6 +1382,29 @@ const normalRequests = displayedRequests.filter((req) => !isSosRequest(req));
                     ? `Lat: ${req.location.coordinates[1]}, Lng: ${req.location.coordinates[0]}`
                     : 'N/A')}
             </Typography>
+            
+            {/* Time Pending Indicator - Only for open/assigned requests */}
+            {req.createdAt && req.status !== 'resolved' && (
+              <Box sx={{
+                p: 1,
+                bgcolor: getTimePendingInfo(req.createdAt).color === 'success' ? '#e8f5e9' : 
+                         getTimePendingInfo(req.createdAt).color === 'warning' ? '#fff3e0' : '#ffebee',
+                borderRadius: 1.5,
+                borderLeft: `3px solid ${
+                  getTimePendingInfo(req.createdAt).color === 'success' ? '#2e7d32' :
+                  getTimePendingInfo(req.createdAt).color === 'warning' ? '#f57c00' : '#d32f2f'
+                }`,
+                mb: 1
+              }}>
+                <Typography variant="caption" sx={{ 
+                  fontWeight: 700,
+                  color: getTimePendingInfo(req.createdAt).color === 'success' ? '#1b5e20' : 
+                         getTimePendingInfo(req.createdAt).color === 'warning' ? '#e65100' : '#b71c1c'
+                }}>
+                  {getTimePendingInfo(req.createdAt).icon} {getTimePendingInfo(req.createdAt).text}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ mb: 1 }}>
               <strong>Status: </strong>
               <Chip
@@ -2632,6 +2660,48 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
           disabled
           sx={{ mb: 3 }}
         />
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+            Your Skills & Specialties
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+            Select your areas of expertise to help match you with requests
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+            {SKILL_OPTIONS.map((skill) => (
+              <Box
+                key={skill.id}
+                onClick={() => {
+                  setProfileSkills((prev) =>
+                    prev.includes(skill.id)
+                      ? prev.filter((s) => s !== skill.id)
+                      : [...prev, skill.id]
+                  );
+                }}
+                sx={{
+                  p: 1.25,
+                  px: 2,
+                  borderRadius: 2,
+                  border: `2px solid ${profileSkills.includes(skill.id) ? skill.color : '#ccc'}`,
+                  bgcolor: profileSkills.includes(skill.id) ? skill.bgColor : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontWeight: profileSkills.includes(skill.id) ? 700 : 500,
+                  color: profileSkills.includes(skill.id) ? skill.color : '#666',
+                  fontSize: '13px',
+                  '&:hover': {
+                    borderColor: skill.color,
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 8px rgba(0,0,0,0.1)`
+                  }
+                }}
+              >
+                {skill.label}
+              </Box>
+            ))}
+          </Box>
+        </Box>
 
         <Button
           fullWidth
