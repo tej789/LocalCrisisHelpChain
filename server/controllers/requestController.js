@@ -2,12 +2,11 @@ const HelpRequest = require('../models/HelpRequest');
 const Volunteer = require('../models/Volunteer');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const SosCooldown = require('../models/SosCooldown');
 const { 
   sendAssignmentEmail,
   sendVolunteerAssignmentEmail
 } = require("../utils/otpService");
-// In-memory cooldown tracker for SOS (userId -> timestamp ms)
-const sosCooldownMap = new Map();
 const SOS_COOLDOWN_MS = parseInt(process.env.SOS_COOLDOWN_MS || '120000', 10); // default 2 minutes
 const REQUEST_LIVE_LOCATION_MAX_AGE_MS = parseInt(process.env.REQUEST_LIVE_LOCATION_MAX_AGE_MS || '120000', 10); // default 2 minutes
 const haversine = (lat1, lon1, lat2, lon2) => {
@@ -26,25 +25,38 @@ const haversine = (lat1, lon1, lat2, lon2) => {
 exports.sosAlert = async (req, res) => {
   console.log('SOS endpoint called by user:', req.user?.id || 'unknown');
   console.log('Request body:', req.body);
-  // Cooldown enforcement
+  
+  // Database-backed cooldown enforcement
   try {
-    const last = sosCooldownMap.get(req.user.id);
     const now = Date.now();
-    if (last && (now - last) < SOS_COOLDOWN_MS) {
-      const wait = Math.ceil((SOS_COOLDOWN_MS - (now - last)) / 1000);
-      return res.status(429).json({ success: false, error: `Please wait ${wait}s before sending another SOS.` });
+    const cooldownRecord = await SosCooldown.findOne({ userId: req.user.id });
+    
+    if (cooldownRecord) {
+      const lastSosMs = cooldownRecord.lastSosTimestamp.getTime();
+      const timeSinceLastSos = now - lastSosMs;
+      
+      if (timeSinceLastSos < SOS_COOLDOWN_MS) {
+        const wait = Math.ceil((SOS_COOLDOWN_MS - timeSinceLastSos) / 1000);
+        console.log(`[SOS] Cooldown enforced for user ${req.user.id}. Wait ${wait}s`);
+        return res.status(429).json({ success: false, error: `Please wait ${wait}s before sending another SOS.` });
+      }
     }
-    // reserve slot
-    sosCooldownMap.set(req.user.id, Date.now());
+    
+    // Update/create cooldown record
+    await SosCooldown.findOneAndUpdate(
+      { userId: req.user.id },
+      { lastSosTimestamp: new Date() },
+      { upsert: true, new: true }
+    );
+    console.log(`[SOS] Cooldown updated for user ${req.user.id}`);
   } catch (e) {
-    // ignore errors in cooldown map
+    console.error('[SOS] Cooldown check error:', e);
+    // Don't block SOS on cooldown errors, but log it
   }
 
   try {
     const { latitude, longitude, address, message } = req.body;
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-      // clear cooldown when invalid
-      try { sosCooldownMap.delete(req.user.id); } catch (e) {}
       return res.status(400).json({ error: 'latitude and longitude required (numbers)' });
     }
 

@@ -2465,74 +2465,144 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
           </MapContainer>
         </Box>
       </Paper>
-      {/* Details Dialog */}
-      <Dialog open={detailsDialogOpen} onClose={handleCloseDetailsDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Request Details</DialogTitle>
-        <DialogContent dividers>
+      {/* Details Dialog (professional layout) */}
+      <Dialog
+        open={detailsDialogOpen}
+        onClose={handleCloseDetailsDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 2, pb: 1.5 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Request Details</Typography>
+            <Typography variant="caption" color="text.secondary">Review request information and take appropriate action</Typography>
+          </Box>
           {selectedRequest && (
-            <Box>
-              <Typography variant="subtitle1" gutterBottom><strong>Type:</strong> {selectedRequest.type}</Typography>
-              <Typography variant="subtitle1" gutterBottom><strong>Urgency:</strong> {selectedRequest.urgency}</Typography>
-              <Typography variant="subtitle1" gutterBottom><strong>Description:</strong> {selectedRequest.description}</Typography>
-              <Typography variant="subtitle1" gutterBottom><strong>Name:</strong> {selectedRequest.name}</Typography>
-              {/* <Typography variant="subtitle1" gutterBottom><strong>Contact:</strong> {selectedRequest.contact}</Typography> */}
-              {selectedRequest.status === 'assigned'&&
- selectedRequest?.contact &&
- auth.user?.id &&
- (
-   selectedRequest.assignedTo === auth.user.id ||
-   selectedRequest.assignedTo?._id === auth.user.id
- ) && (
-   <Box sx={{ mt: 2 }}>
-     <Typography variant="subtitle1" gutterBottom>
-       <strong>Contact:</strong> {selectedRequest.contact}
-     </Typography>
+            <Chip
+              label={selectedRequest.urgency ? selectedRequest.urgency.toUpperCase() : 'UNKNOWN'}
+              color={selectedRequest.urgency === 'high' ? 'error' : selectedRequest.urgency === 'medium' ? 'warning' : 'default'}
+              size="small"
+              sx={{ fontWeight: 800, textTransform: 'uppercase' }}
+            />
+          )}
+        </DialogTitle>
 
-     <Stack direction="row" spacing={2} mt={1}>
-  {/* Call */}
-  <Button
-    variant="contained"
-    color="primary"
-    size="small"
-    component="a"
-    href={`tel:${selectedRequest.contact}`}
-    startIcon={<PhoneIcon />}
-  >
-    Call
-  </Button>
+        <DialogContent dividers sx={{ pt: 2.5 }}>
+          {selectedRequest ? (
+            <Stack spacing={2.25}>
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  bgcolor: 'grey.50',
+                  border: '1px solid',
+                  borderColor: 'divider'
+                }}
+              >
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-start">
+                  <Avatar sx={{ bgcolor: 'primary.main', width: 60, height: 60, fontWeight: 700 }}>
+                    {selectedRequest.name ? selectedRequest.name.charAt(0).toUpperCase() : 'R'}
+                  </Avatar>
 
-  {/* WhatsApp */}
-<Button
-  variant="contained"
-  color="success"
-  size="small"
-  component="a"
-  target="_blank"
-  rel="noopener noreferrer"
-href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  startIcon={<WhatsAppIcon />}
->
-  WhatsApp
-</Button>
-</Stack>
-   </Box>
- )}
-              <Typography variant="subtitle1" gutterBottom><strong>Location:</strong> {selectedRequest.location?.address
-                ? selectedRequest.location.address
-                : (selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2
-                    ? `Lat: ${selectedRequest.location.coordinates[1]}, Lng: ${selectedRequest.location.coordinates[0]}`
-                    : 'N/A')}
-              </Typography>
-              <Typography variant="subtitle1" gutterBottom><strong>Status:</strong> {selectedRequest.status}</Typography>
-              {selectedRequest.claimedBy && selectedRequest.claimedBy.name && (
-                <Typography variant="subtitle1" gutterBottom><strong>Claimed By:</strong> {selectedRequest.claimedBy.name}</Typography>
-              )}
-            </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.15 }}>
+                      {selectedRequest.name || 'Unknown'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                      {selectedRequest.description || 'No description provided'}
+                    </Typography>
+
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.5 }}>
+                      <Chip label={`Type: ${selectedRequest.type || '—'}`} size="small" variant="outlined" />
+                      <Chip
+                        label={`Status: ${selectedRequest.status || '—'}`}
+                        size="small"
+                        color={selectedRequest.status === 'assigned' ? 'success' : 'default'}
+                        variant={selectedRequest.status === 'assigned' ? 'filled' : 'outlined'}
+                      />
+                      {selectedRequest.location?.address && (
+                        <Chip label="Live location available" size="small" variant="outlined" />
+                      )}
+                    </Stack>
+                  </Box>
+                </Stack>
+              </Box>
+
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    Contact
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5 }}>
+                    {selectedRequest.contact || '—'}
+                  </Typography>
+                  {selectedRequest.status === 'assigned' && selectedRequest?.contact && auth.user?.id &&
+                    (selectedRequest.assignedTo === auth.user.id || selectedRequest.assignedTo?._id === auth.user.id) && (
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          component="a"
+                          href={`tel:${selectedRequest.contact}`}
+                          startIcon={<PhoneIcon />}
+                          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 999 }}
+                        >
+                          Call
+                        </Button>
+
+                        <Button
+                          variant="outlined"
+                          color="success"
+                          size="small"
+                          component="a"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}
+                          startIcon={<WhatsAppIcon />}
+                          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 999 }}
+                        >
+                          WhatsApp
+                        </Button>
+                      </Stack>
+                    )}
+                </Box>
+
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    Location
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5 }}>
+                    {selectedRequest.location?.address
+                      ? selectedRequest.location.address
+                      : (selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2
+                          ? `Lat: ${selectedRequest.location.coordinates[1]}, Lng: ${selectedRequest.location.coordinates[0]}`
+                          : 'N/A')}
+                  </Typography>
+                </Box>
+
+                {selectedRequest.claimedBy && selectedRequest.claimedBy.name && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                      Claimed By
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5 }}>
+                      {selectedRequest.claimedBy.name}
+                    </Typography>
+                  </Box>
+                )}
+              </Stack>
+            </Stack>
+          ) : (
+            <Typography color="text.secondary">No request selected</Typography>
           )}
         </DialogContent>
-        <DialogActions>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
           {selectedRequest && selectedRequest.status === 'assigned' && selectedRequest.location && selectedRequest.location.coordinates && selectedRequest.location.coordinates.length === 2 && volunteerLocation && (
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="contained"
               color="primary"
               startIcon={<DirectionsIcon />}
               onClick={() => {
@@ -2540,8 +2610,6 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
                 const reqLng = selectedRequest.location.coordinates[0];
                 const liveTarget = getFreshLiveLocation(selectedRequest);
                 setSelectedMapRequest(selectedRequest);
-                // Here we still want to show the full route with both
-                // volunteer and request visible, so keep auto-zoom on.
                 const anyLive = getAnyLiveLocation(selectedRequest);
                 fetchRoute((liveTarget?.lat ?? anyLive?.lat ?? reqLat), (liveTarget?.lng ?? anyLive?.lng ?? reqLng), selectedRequest._id, { fitToRoute: true });
                 setRouteTargetLabel(liveTarget ? 'requester current location' : anyLive ? 'requester last known' : 'request location');
@@ -2552,11 +2620,12 @@ href={`https://wa.me/${selectedRequest.contact}?text=${whatsappMessage}`}  start
                   }
                 }, 100);
               }}
+              sx={{ mr: 1, textTransform: 'none', fontWeight: 700 }}
             >
               Show Route
             </Button>
           )}
-          <Button onClick={handleCloseDetailsDialog}>Close</Button>
+          <Button onClick={handleCloseDetailsDialog} sx={{ textTransform: 'none' }}>Close</Button>
         </DialogActions>
       </Dialog>
 

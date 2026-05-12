@@ -10,6 +10,7 @@ const AppError = require("./utils/AppError");
 const app = express();
 const server = http.createServer(app);
 const adminRoutes = require("./routes/admin");
+const { generalLimiter } = require('./middleware/rateLimiter');
 
 
 /* ==============================
@@ -34,6 +35,9 @@ app.use(express.json({ limit: '10mb' }));
 
 /* Make socket available in routes */
 app.set("io", io);
+
+// Apply a general rate limiter to all incoming requests to mitigate basic abuse
+app.use(generalLimiter);
 
 // DEBUG: log every incoming request to help diagnose route hits
 app.use((req, res, next) => {
