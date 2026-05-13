@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { useLocationTracking } from '../hooks/useLocationTracking';
 import { Card, CardContent, Typography, Select, MenuItem, InputLabel, FormControl, Button, Chip, Box, Paper, Divider, Snackbar, Alert, Stack, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText, Drawer, IconButton, AppBar, Toolbar, Container, TextField, Avatar, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -843,77 +844,43 @@ useEffect(() => {
     }
   }, []);
 
-  // Live GPS tracking: watch the device location and update the
-  // volunteer marker (and occasionally the backend) while the
-  // dashboard is open. This makes the blue icon move as the
-  // volunteer moves. IMPROVED: Reduced throttle to 5 seconds and
-  // added real-time socket.io updates so others see location immediately.
+  // Use the centralized location tracking hook for live volunteer location
+  // This reduces duplication and applies thresholding/throttling.
+  const { location: trackedVolunteerLocation, lastUpdateTime: trackedLastUpdateTime } = useLocationTracking({
+    enabled: true,
+    endpoint: '/api/volunteers/me/location',
+    minUpdateInterval: 5000,
+    distanceThreshold: 5,
+    adaptiveAccuracy: true
+  });
+
+  // Update local UI position when tracker reports a new location
   useEffect(() => {
-    if (!navigator.geolocation) return;
-
-    const watchId = navigator.geolocation.watchPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-
-        // Update marker position in the UI immediately
-        setVolunteerLocation(prev => {
-          if (!prev || prev.lat !== latitude || prev.lng !== longitude) {
-            console.log('📡 Live GPS update:', { lat: latitude, lng: longitude });
-            return { lat: latitude, lng: longitude };
-          }
-          return prev;
-        });
-
-        // IMPROVED: Reduced throttle from 15s to 5s for faster updates
-        // and added socket.io emit for real-time visibility to other users
-        const now = Date.now();
-        if (now - liveLocationSyncRef.current > 5000) {
-          liveLocationSyncRef.current = now;
-          try {
-            console.log('📡 Syncing location to backend:', { latitude, longitude });
-            
-            // Sync to backend
-            const response = await api.patch('/api/volunteers/me/location', {
-              latitude,
-              longitude
-            });
-            
-            console.log('✅ Backend sync successful:', response.data);
-            
-            // IMPROVED: Emit location update via socket.io so other users
-            // see the volunteer's updated location in real-time
-            socket.emit('volunteerLocationUpdate', {
-              volunteerId: volunteerId,
-              latitude,
-              longitude,
-              timestamp: now
-            });
-
-            console.log('✅ Location synced to backend and broadcasted via socket', { lat: latitude, lng: longitude });
-          } catch (err) {
-            console.error('❌ Live GPS sync failed:', {
-              message: err?.message,
-              response: err?.response?.data,
-              status: err?.response?.status
-            });
-          }
-        }
-      },
-      (error) => {
-        console.warn('⚠️ Live GPS watch error:', error?.message || error);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0  // Don't use cached position, get fresh data
+    if (!trackedVolunteerLocation) return;
+    setVolunteerLocation(prev => {
+      if (!prev || prev.lat !== trackedVolunteerLocation.lat || prev.lng !== trackedVolunteerLocation.lng) {
+        console.log('📡 Live GPS update (from hook):', trackedVolunteerLocation);
+        return { lat: trackedVolunteerLocation.lat, lng: trackedVolunteerLocation.lng };
       }
-    );
+      return prev;
+    });
+  }, [trackedVolunteerLocation]);
 
-    return () => {
-      if (watchId != null && navigator.geolocation.clearWatch) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [volunteerId]);
+  // When the hook successfully syncs to backend, broadcast via socket
+  useEffect(() => {
+    if (!trackedLastUpdateTime || !volunteerId || !trackedVolunteerLocation) return;
+    try {
+      socket.emit('volunteerLocationUpdate', {
+        volunteerId,
+        latitude: trackedVolunteerLocation.lat,
+        longitude: trackedVolunteerLocation.lng,
+        timestamp: trackedLastUpdateTime
+      });
+      console.log('✅ Location broadcasted via socket (from hook)');
+    } catch (e) {
+      console.warn('⚠️ Failed to emit volunteerLocationUpdate', e);
+    }
+  }, [trackedLastUpdateTime, volunteerId, trackedVolunteerLocation]);
 
   const handleViewAndScroll = (newView) => {
     setView(newView);
@@ -2407,14 +2374,22 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                       // route and ETA specifically to the moving user
                       // position instead of the fixed help location.
                       setSelectedMapRequest(req);
-                      if (volunteerLocation) {
-                        const liveLat = freshLiveLocation.lat;
-                        const liveLng = freshLiveLocation.lng;
+
+                      // Use freshest available live source (fresh or any)
+                      const liveSrc = freshLiveLocation || anyLiveLocation;
+
+                      if (volunteerLocation && liveSrc) {
+                        const liveLat = liveSrc.lat;
+                        const liveLng = liveSrc.lng;
                         fetchRoute(liveLat, liveLng, req._id, { fitToRoute: false });
-                        setRouteTargetLabel('requester current location');
+                        setRouteTargetLabel(freshLiveLocation ? 'requester current location' : 'requester last known');
                         setMapCenterOverride([liveLat, liveLng]);
+                      } else if (liveSrc) {
+                        // No volunteer location available but we have a live user position
+                        setMapCenterOverride([liveSrc.lat, liveSrc.lng]);
                       } else {
-                        setMapCenterOverride([liveCoords[1], liveCoords[0]]);
+                        // Fallback: center on the static request coordinates
+                        setMapCenterOverride([reqLat, reqLng]);
                       }
                     }
                   }}

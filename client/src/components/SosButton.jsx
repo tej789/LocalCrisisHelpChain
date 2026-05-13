@@ -3,6 +3,8 @@ import { Fab, Box, CircularProgress, Snackbar, Alert, Dialog, DialogTitle, Dialo
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import api from '../api/axios';
 import axios from 'axios';
+import { useLocationTracking } from '../hooks/useLocationTracking';
+import { enqueueSOS, startQueueProcessor } from '../utils/offlineQueue';
 
 export default function SosButton() {
   const [loading, setLoading] = useState(false);
@@ -10,6 +12,24 @@ export default function SosButton() {
   const [countdown, setCountdown] = useState(0);
   const [successState, setSuccessState] = useState(false);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
+
+  // Start lightweight local tracking to provide a recent location for SOS
+  const { location } = useLocationTracking({ enabled: true, endpoint: null, adaptiveAccuracy: false, minUpdateInterval: 5000, distanceThreshold: 5 });
+
+  // Processor that will try to send queued SOS items using the same send path
+  React.useEffect(() => {
+    const processFn = async (payload) => {
+      // reuse axios POST to send queued SOS
+      const base = (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL !== '') ? process.env.REACT_APP_API_URL : (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
+      const url = `${base}/api/requests/sos`;
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      await axios.post(url, payload, { headers });
+    };
+
+    startQueueProcessor(processFn, { pollInterval: 20000, backoffBase: 2000, maxBackoff: 60000 });
+    return () => {};
+  }, []);
 
   // Handle countdown logic
   React.useEffect(() => {
@@ -50,27 +70,24 @@ export default function SosButton() {
   };
 
   const sendSOS = async () => {
-    if (!navigator.geolocation) {
-      setSnack({ open: true, message: 'Geolocation not supported in this browser.', severity: 'error' });
-      setConfirmOpen(false);
-      return;
-    }
-
     setLoading(true);
     setConfirmOpen(false);
 
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        const latitude = pos.coords.latitude;
-        const longitude = pos.coords.longitude;
+    // Prefer last-known location from the tracking hook (if available and recent)
+    const loc = location;
+    let latitude = loc?.lat;
+    let longitude = loc?.lng;
 
+    // Fallback to a one-shot geolocation if the hook hasn't provided a fix yet
+    const doSend = async () => {
+      try {
         // Prefer configured API base, but fall back to local backend during development
         const base = (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL !== '') ? process.env.REACT_APP_API_URL : (window.location.hostname === 'localhost' ? 'http://localhost:5000' : '');
         const url = `${base}/api/requests/sos`;
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.post(url, { latitude, longitude, message: 'SOS: immediate assistance required' }, { headers });
-        
+
         // Success state locks button for 3 seconds
         setSuccessState(true);
         setSnack({ open: true, message: `SOS sent — alerted ${res.data.alerted} volunteer(s)`, severity: 'success' });
@@ -80,6 +97,41 @@ export default function SosButton() {
       } finally {
         setLoading(false);
       }
+    };
+
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+      // If offline, enqueue instead of sending
+      if (!navigator.onLine) {
+        enqueueSOS({ latitude, longitude, message: 'SOS: immediate assistance required', clientId: Date.now() });
+        setLoading(false);
+        setSuccessState(true);
+        setSnack({ open: true, message: 'No network — SOS queued and will be sent when online', severity: 'info' });
+        return;
+      }
+
+      await doSend();
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLoading(false);
+      setSnack({ open: true, message: 'Geolocation not supported in this browser.', severity: 'error' });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      latitude = pos.coords.latitude;
+      longitude = pos.coords.longitude;
+
+      if (!navigator.onLine) {
+        enqueueSOS({ latitude, longitude, message: 'SOS: immediate assistance required', clientId: Date.now() });
+        setLoading(false);
+        setSuccessState(true);
+        setSnack({ open: true, message: 'No network — SOS queued and will be sent when online', severity: 'info' });
+        return;
+      }
+
+      await doSend();
     }, (err) => {
       setLoading(false);
       setSnack({ open: true, message: 'Failed to get location. Please allow location access.', severity: 'error' });
