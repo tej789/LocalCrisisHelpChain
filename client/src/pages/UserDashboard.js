@@ -39,7 +39,24 @@ import VolunteerLocationMap from '../components/VolunteerLocationMap';
 import Footer from '../components/Footer';
 import SosButton from '../components/SosButton';
 import RatingDialog from '../components/RatingDialog';
+import RequestStatusTimeline from '../components/RequestStatusTimeline';
+import { io } from 'socket.io-client';
 import { getTimePendingInfo } from '../utils/timeUtils';
+
+const socket = io(process.env.REACT_APP_API_URL, {
+  reconnection: true,
+  transports: ['websocket', 'polling']
+});
+
+const notifyBrowser = (title, body) => {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return;
+  }
+
+  if (window.Notification.permission === 'granted') {
+    new window.Notification(title, { body });
+  }
+};
 
 
 
@@ -439,6 +456,56 @@ useEffect(() => {
 
   fetchDashboardData();
 }, [auth?.token]);
+
+useEffect(() => {
+  const matchId = (left, right) => String(left || '') === String(right || '');
+
+  const handleStatusChanged = (payload) => {
+    const updatedRequest = payload?.request;
+    if (!updatedRequest) return;
+
+    const updatedId = updatedRequest._id || updatedRequest.id;
+    let matchedMyRequest = false;
+
+    setMyRequests((prev) => prev.map((request) => {
+      if (matchId(request._id || request.id, updatedId)) {
+        matchedMyRequest = true;
+        return updatedRequest;
+      }
+      return request;
+    }));
+
+    setCommunityRequests((prev) => prev.map((request) => {
+      if (matchId(request._id || request.id, updatedId)) {
+        matchedMyRequest = true;
+        return updatedRequest;
+      }
+      return request;
+    }));
+
+    if (matchedMyRequest) {
+      const label = payload?.label || updatedRequest.status || 'updated';
+      setSnackbar({
+        open: true,
+        message: `${updatedRequest.title || 'Request'} is now ${label.toLowerCase()}.`,
+        severity: updatedRequest.status === 'resolved' ? 'success' : 'info'
+      });
+
+      notifyBrowser(
+        `${updatedRequest.title || 'Request'} ${label}`,
+        payload?.request?.assignedTo?.name
+          ? `Assigned volunteer: ${payload.request.assignedTo.name}`
+          : 'Your request has been updated.'
+      );
+    }
+  };
+
+  socket.on('requestStatusChanged', handleStatusChanged);
+
+  return () => {
+    socket.off('requestStatusChanged', handleStatusChanged);
+  };
+}, []);
 
 // useEffect(() => {
 //   const fetchRequests = async () => {
@@ -1127,6 +1194,10 @@ const urgencyCounts = allRequests.reduce((acc, r) => {
         </Typography>
       </Box>
     )}
+
+    <Box sx={{ mb: 2 }}>
+      <RequestStatusTimeline request={req} title="Request timeline" compact />
+    </Box>
 
     {/* Location Information */}
     {req.location?.address && (

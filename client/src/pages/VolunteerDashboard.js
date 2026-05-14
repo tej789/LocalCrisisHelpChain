@@ -40,6 +40,8 @@ import VolunteerRatingCard from '../components/VolunteerRatingCard';
 import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import LogoutIcon from '@mui/icons-material/Logout';
+import RequestStatusTimeline from '../components/RequestStatusTimeline';
+import RequestActivityFeed from '../components/RequestActivityFeed';
 
 // Initialize socket with auth token for server to validate connection
 const socketOptions = {
@@ -67,6 +69,16 @@ socket.on('disconnect', (reason) => {
 socket.on('connect_error', (error) => {
   console.error('[Socket] Connection error:', error);
 });
+
+const notifyBrowser = (title, body) => {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return;
+  }
+
+  if (window.Notification.permission === 'granted') {
+    new window.Notification(title, { body });
+  }
+};
 
 // Custom Leaflet Icons
 const volunteerIcon = new L.Icon({
@@ -979,6 +991,26 @@ useEffect(() => {
     socket.on('requestResolved', (updatedRequest) => {
       setRequests(prev => replaceOrAddRequest(prev, updatedRequest));
     });
+    socket.on('requestStatusChanged', (payload) => {
+      const updatedRequest = payload?.request;
+      if (!updatedRequest) return;
+
+      setRequests(prev => replaceOrAddRequest(prev, updatedRequest));
+
+      const statusLabel = payload?.label || updatedRequest.status;
+      setSnackbar({
+        open: true,
+        message: `${updatedRequest.title || 'Request'} updated to ${statusLabel}`,
+        severity: updatedRequest.status === 'resolved' ? 'success' : 'info'
+      });
+
+      notifyBrowser(
+        `${updatedRequest.title || 'Request'} ${statusLabel}`,
+        payload?.request?.claimedBy?.name
+          ? `Assigned to ${payload.request.claimedBy.name}`
+          : 'Request status has changed.'
+      );
+    });
     // SOS alerts targeted to individual volunteers
     socket.on('sosAlert', (payload) => {
       try {
@@ -1057,6 +1089,7 @@ useEffect(() => {
       socket.off('requestClaimed');
       socket.off('requestAssigned');
       socket.off('requestResolved');
+      socket.off('requestStatusChanged');
       socket.off('requestLocationUpdated');
       socket.off('sosAlert');
     };
@@ -2440,6 +2473,14 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
           </MapContainer>
         </Box>
       </Paper>
+      <Box sx={{ mb: 4 }}>
+        <RequestActivityFeed
+          requests={requests}
+          title="Live request activity"
+          subtitle="Recent state changes across the requests currently visible to you."
+          emptyText="No request activity yet."
+        />
+      </Box>
       {/* Details Dialog (professional layout) */}
       <Dialog
         open={detailsDialogOpen}
@@ -2567,6 +2608,12 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
                     </Typography>
                   </Box>
                 )}
+
+                <RequestStatusTimeline
+                  request={selectedRequest}
+                  title="Request progress"
+                  compact
+                />
               </Stack>
             </Stack>
           ) : (

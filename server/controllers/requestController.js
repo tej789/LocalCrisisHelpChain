@@ -9,6 +9,20 @@ const {
 } = require("../utils/otpService");
 const SOS_COOLDOWN_MS = parseInt(process.env.SOS_COOLDOWN_MS || '120000', 10); // default 2 minutes
 const REQUEST_LIVE_LOCATION_MAX_AGE_MS = parseInt(process.env.REQUEST_LIVE_LOCATION_MAX_AGE_MS || '120000', 10); // default 2 minutes
+const STATUS_LABELS = {
+  open: 'Open',
+  assigned: 'Assigned',
+  resolved: 'Resolved'
+};
+
+const buildStatusHistoryEntry = ({ status, source = 'system', actorName = '', note = '' }) => ({
+  status,
+  source,
+  actorName,
+  note,
+  timestamp: new Date()
+});
+
 const haversine = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -73,6 +87,12 @@ exports.sosAlert = async (req, res) => {
       urgency: 'high',
       description: message || 'User triggered SOS',
       status: 'open',
+      statusHistory: [buildStatusHistoryEntry({
+        status: 'open',
+        source: 'user',
+        actorName: user?.name || 'Requester',
+        note: 'SOS created'
+      })],
       createdBy: req.user.id
     });
 
@@ -142,6 +162,17 @@ exports.sosAlert = async (req, res) => {
 
     // Notify via socket.io - ONLY the selected volunteer
     const io = req.app.get('io');
+    if (io) {
+      io.emit('newRequest', helpRequest);
+      io.emit('requestStatusChanged', {
+        requestId: helpRequest._id.toString(),
+        request: helpRequest,
+        status: 'open',
+        label: STATUS_LABELS.open,
+        updatedAt: helpRequest.createdAt
+      });
+    }
+
     if (io && selectedVolunteer) {
         try {
           const room = `vol_${selectedVolunteer._id.toString()}`;
@@ -183,6 +214,12 @@ exports.createRequest = async (req, res) => {
   try {
     const helpRequest = new HelpRequest({
       ...req.body,
+      statusHistory: [buildStatusHistoryEntry({
+        status: 'open',
+        source: 'user',
+        actorName: req.body?.name || 'Requester',
+        note: 'Request created'
+      })],
       createdBy: req.user.id
     });
 
@@ -390,9 +427,19 @@ exports.assignVolunteer = async (req, res) => {
     const updated = await HelpRequest.findByIdAndUpdate(
       req.params.id,
       {
-        assignedTo: volunteerId,
-        status: 'assigned',
-        assignedAt: new Date()
+        $set: {
+          assignedTo: volunteerId,
+          status: 'assigned',
+          assignedAt: new Date()
+        },
+        $push: {
+          statusHistory: buildStatusHistoryEntry({
+            status: 'assigned',
+            source: 'admin',
+            actorName: 'Admin',
+            note: `Assigned to ${vol.name}`
+          })
+        }
       },
       { new: true }
     ).populate('assignedTo', 'name email');
@@ -452,7 +499,16 @@ exports.assignVolunteer = async (req, res) => {
     }
 
     const io = req.app.get('io');
-    if (io) io.emit('requestAssigned', updated);
+    if (io) {
+      io.emit('requestAssigned', updated);
+      io.emit('requestStatusChanged', {
+        requestId: updated._id.toString(),
+        request: updated,
+        status: 'assigned',
+        label: STATUS_LABELS.assigned,
+        updatedAt: updated.assignedAt || updated.updatedAt
+      });
+    }
 
     res.json(updated);
   } catch (err) {
@@ -503,12 +559,22 @@ exports.claimRequest = async (req, res) => {
     const updated = await HelpRequest.findByIdAndUpdate(
       req.params.id,
       {
-        assignedTo: volunteerId,
-        status: 'assigned',
-        assignedAt: new Date(),
-        claimedBy: {
-          name: vol.name || 'Volunteer',
-          contact: vol.contact || ''
+        $set: {
+          assignedTo: volunteerId,
+          status: 'assigned',
+          assignedAt: new Date(),
+          claimedBy: {
+            name: vol.name || 'Volunteer',
+            contact: vol.contact || ''
+          }
+        },
+        $push: {
+          statusHistory: buildStatusHistoryEntry({
+            status: 'assigned',
+            source: 'volunteer',
+            actorName: vol.name || 'Volunteer',
+            note: 'Volunteer accepted the request'
+          })
         }
       },
       { new: true }
@@ -536,6 +602,13 @@ exports.claimRequest = async (req, res) => {
     if (io) {
       io.emit('requestClaimed', updated);
       io.emit('requestAssigned', updated);
+      io.emit('requestStatusChanged', {
+        requestId: updated._id.toString(),
+        request: updated,
+        status: 'assigned',
+        label: STATUS_LABELS.assigned,
+        updatedAt: updated.assignedAt || updated.updatedAt
+      });
     }
 
     return res.json(updated);
@@ -556,6 +629,8 @@ exports.resolveRequest = async (req, res) => {
       return res.status(404).json({ error: 'Request not found' });
     }
 
+    const volunteer = await Volunteer.findById(req.user.id).select('name');
+
     if (!reqDoc.assignedTo || reqDoc.assignedTo.toString() !== req.user.id.toString()) {
       return res.status(403).json({ error: 'Only the assigned volunteer can resolve this request' });
     }
@@ -563,8 +638,18 @@ exports.resolveRequest = async (req, res) => {
     const updated = await HelpRequest.findByIdAndUpdate(
       req.params.id,
       {
-        status: 'resolved',
-        handledBy: req.user.id
+        $set: {
+          status: 'resolved',
+          handledBy: req.user.id
+        },
+        $push: {
+          statusHistory: buildStatusHistoryEntry({
+            status: 'resolved',
+            source: 'volunteer',
+            actorName: volunteer?.name || 'Volunteer',
+            note: 'Marked as resolved'
+          })
+        }
       },
       { new: true }
     ).populate('assignedTo', 'name email');
@@ -581,7 +666,16 @@ exports.resolveRequest = async (req, res) => {
     }
 
     const io = req.app.get('io');
-    if (io) io.emit('requestResolved', updated);
+    if (io) {
+      io.emit('requestResolved', updated);
+      io.emit('requestStatusChanged', {
+        requestId: updated._id.toString(),
+        request: updated,
+        status: 'resolved',
+        label: STATUS_LABELS.resolved,
+        updatedAt: updated.updatedAt
+      });
+    }
 
     res.json(updated);
 

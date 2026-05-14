@@ -14,6 +14,8 @@ import {
   InputAdornment,
   MenuItem,
   Paper,
+  Snackbar,
+  Alert,
   Stack,
   Table,
   TableBody,
@@ -28,8 +30,25 @@ import AdminLayout from '../components/admin/AdminLayout';
 import AssignVolunteerDialog from '../components/AssignVolunteerDialog';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import VolunteerActivismOutlinedIcon from '@mui/icons-material/VolunteerActivismOutlined';
+import RequestActivityFeed from '../components/RequestActivityFeed';
+import { io } from 'socket.io-client';
 import { getSkillConfig } from '../utils/skillsConfig';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+
+const socket = io(process.env.REACT_APP_API_URL, {
+  reconnection: true,
+  transports: ['websocket', 'polling']
+});
+
+const notifyBrowser = (title, body) => {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return;
+  }
+
+  if (window.Notification.permission === 'granted') {
+    new window.Notification(title, { body });
+  }
+};
 
 const AdminDashboard = () => {
   const [allNgos, setAllNgos] = useState([]);
@@ -44,6 +63,7 @@ const AdminDashboard = () => {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assigningRequest, setAssigningRequest] = useState(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [statusNotice, setStatusNotice] = useState({ open: false, message: '', severity: 'info' });
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -190,6 +210,55 @@ const AdminDashboard = () => {
     fetchSosRequests();
   }, [token]);
 
+  useEffect(() => {
+    const handleNewRequest = (request) => {
+      if (!request) return;
+
+      if (request.isSos || request.type === 'rescue') {
+        setSosRequests((prev) => {
+          const updatedId = request._id || request.id;
+          const exists = prev.some((item) => (item._id || item.id) === updatedId);
+
+          if (exists) {
+            return prev.map((item) => ((item._id || item.id) === updatedId ? request : item));
+          }
+
+          return [request, ...prev];
+        });
+      }
+    };
+
+    const handleStatusChanged = (payload) => {
+      const updatedRequest = payload?.request;
+      if (!updatedRequest) return;
+
+      setSosRequests((prev) => {
+        const updatedId = updatedRequest._id || updatedRequest.id;
+        return prev
+            .map((request) => ((request._id || request.id) === updatedId ? updatedRequest : request));
+      });
+
+      setStatusNotice({
+        open: true,
+        severity: updatedRequest.status === 'resolved' ? 'success' : 'info',
+        message: `${updatedRequest.title || 'Request'} updated to ${payload?.label || updatedRequest.status}`
+      });
+
+      notifyBrowser(
+        `${updatedRequest.title || 'Request'} ${payload?.label || updatedRequest.status}`,
+        'The request feed has been refreshed.'
+      );
+    };
+
+    socket.on('newRequest', handleNewRequest);
+    socket.on('requestStatusChanged', handleStatusChanged);
+
+    return () => {
+      socket.off('newRequest', handleNewRequest);
+      socket.off('requestStatusChanged', handleStatusChanged);
+    };
+  }, []);
+
   const filteredNgos = allNgos.filter((ngo) => {
     const name = ngo.name?.toLowerCase() || '';
     const email = ngo.email?.toLowerCase() || '';
@@ -222,6 +291,8 @@ const AdminDashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const openSosRequests = sosRequests.filter((request) => request.status === 'open');
+
   return (
     <>
       <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
@@ -246,6 +317,22 @@ const AdminDashboard = () => {
       </Dialog>
 
       <AdminLayout handleLogout={handleLogout}>
+        <Snackbar
+          open={statusNotice.open}
+          autoHideDuration={4500}
+          onClose={() => setStatusNotice((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert
+            severity={statusNotice.severity}
+            variant="filled"
+            onClose={() => setStatusNotice((prev) => ({ ...prev, open: false }))}
+            sx={{ width: '100%' }}
+          >
+            {statusNotice.message}
+          </Alert>
+        </Snackbar>
+
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Paper sx={{ ...pageCard, background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)' }}>
           <Stack spacing={1}>
@@ -261,6 +348,13 @@ const AdminDashboard = () => {
           </Stack>
         </Paper>
 
+        <RequestActivityFeed
+          requests={sosRequests}
+          title="SOS activity feed"
+          subtitle="The latest request state changes currently visible to administrators."
+          emptyText="No SOS activity yet."
+        />
+
         <Box>
           <Stack spacing={0.5} sx={{ mb: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -271,13 +365,13 @@ const AdminDashboard = () => {
             </Typography>
           </Stack>
 
-          {sosRequests.length === 0 ? (
+          {openSosRequests.length === 0 ? (
             <Paper sx={{ ...pageCard, py: 4 }}>
               <Typography color="text.secondary">No open SOS requests right now.</Typography>
             </Paper>
           ) : (
             <Grid container spacing={2}>
-              {sosRequests.map((req) => (
+              {openSosRequests.map((req) => (
                 <Grid item xs={12} md={6} lg={4} key={req._id}>
                   <Paper sx={pageCard}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 1 }}>
