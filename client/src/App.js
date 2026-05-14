@@ -13,6 +13,7 @@ import RoleProtectedRoute from './components/RoleProtectedRoute';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from "./pages/AdminDashboard";
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import VolunteerActivity from './pages/VolunteerActivity';
 
 
 function App() {
@@ -100,6 +101,16 @@ function App() {
           element={
             <RoleProtectedRoute roles={['volunteer']}>
               <VolunteerDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/volunteer/activity"
+          element={
+            <RoleProtectedRoute roles={['volunteer']}>
+              <React.Suspense fallback={null}>
+                <VolunteerActivity />
+              </React.Suspense>
             </RoleProtectedRoute>
           }
         />

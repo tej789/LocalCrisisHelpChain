@@ -6,6 +6,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -41,7 +42,6 @@ import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import LogoutIcon from '@mui/icons-material/Logout';
 import RequestStatusTimeline from '../components/RequestStatusTimeline';
-import RequestActivityFeed from '../components/RequestActivityFeed';
 
 // Initialize socket with auth token for server to validate connection
 const socketOptions = {
@@ -529,6 +529,15 @@ const handleUseLocation = () => {
       icon: <PersonOutlineIcon fontSize="small" />,
       active: profileOpen,
       onClick: () => openDialogAndClose(setProfileOpen),
+    },
+    {
+      key: 'my-activity',
+      label: 'My Activity',
+      icon: <EventNoteOutlinedIcon fontSize="small" />,
+      onClick: () => {
+        navigate('/dashboard/volunteer/activity');
+        if (isMobile) closeMobileSidebar();
+      }
     },
     {
       key: 'notifications',
@@ -2473,14 +2482,7 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
           </MapContainer>
         </Box>
       </Paper>
-      <Box sx={{ mb: 4 }}>
-        <RequestActivityFeed
-          requests={requests}
-          title="Live request activity"
-          subtitle="Recent state changes across the requests currently visible to you."
-          emptyText="No request activity yet."
-        />
-      </Box>
+      {/* Activity moved to dedicated page (My Activity in sidebar) */}
       {/* Details Dialog (professional layout) */}
       <Dialog
         open={detailsDialogOpen}
