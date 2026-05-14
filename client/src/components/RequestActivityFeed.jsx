@@ -1,13 +1,12 @@
 import React, { useMemo } from 'react';
 import { Box, Chip, Paper, Stack, Typography } from '@mui/material';
-import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined';
-import { formatRequestTimestamp, getLatestRequestActivity, getRequestStatusMeta } from '../utils/requestProgress';
+import { getLatestRequestActivity, getRequestStatusMeta } from '../utils/requestProgress';
 
 function RequestActivityFeed({
   requests = [],
-  title = 'Recent activity',
-  subtitle = 'Latest request state changes across the dashboard.',
-  limit = 5,
+  title = 'Live request activity',
+  subtitle = 'Recent state changes across the requests currently visible to you.',
+  limit = 15,
   emptyText = 'No recent activity.'
 }) {
   const entries = useMemo(() => {
@@ -26,39 +25,61 @@ function RequestActivityFeed({
       .slice(0, limit);
   }, [requests, limit]);
 
+  // Format relative time (e.g., "2 hours ago")
+  const formatRelativeTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: 2.25,
-        borderRadius: 3,
-        borderColor: 'divider',
-        background: 'linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)'
-      }}
-    >
-      <Stack spacing={1.5}>
+    <Box sx={{ width: '100%' }}>
+      <Stack spacing={3}>
+        {/* Header */}
         <Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <EventNoteOutlinedIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" fontWeight={700}>
-              {title}
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             {subtitle}
           </Typography>
         </Box>
 
-        <Stack spacing={1.25}>
+        {/* Activity List */}
+        <Stack spacing={1.5}>
           {entries.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              {emptyText}
-            </Typography>
+            <Paper
+              sx={{
+                p: 3,
+                textAlign: 'center',
+                backgroundColor: '#fafbfc',
+                borderRadius: 2,
+                border: '1px solid #e8ecf1'
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {emptyText}
+              </Typography>
+            </Paper>
           ) : (
             entries.map(({ id, request, activity }) => {
               const meta = getRequestStatusMeta(activity.status);
               const assignedName = request?.assignedTo?.name || request?.claimedBy?.name || '';
-              const detail = activity.status === 'assigned'
+              const requesterName = request?.name || 'Requester';
+              const typeLabel = request?.type?.charAt(0).toUpperCase() + request?.type?.slice(1) || 'Request';
+              const description = request?.description ? request.description.substring(0, 100) + (request.description.length > 100 ? '...' : '') : '';
+              const location = request?.location?.address || 'Location not specified';
+
+              const statusDetail = activity.status === 'assigned'
                 ? assignedName
                   ? `Assigned to ${assignedName}`
                   : 'Volunteer assigned'
@@ -67,37 +88,123 @@ function RequestActivityFeed({
                   : activity.note || meta.description;
 
               return (
-                <Box
+                <Paper
                   key={id}
+                  elevation={0}
                   sx={{
-                    p: 1.5,
                     borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    backgroundColor: 'rgba(248, 250, 252, 0.8)'
+                    border: '1px solid #e8ecf1',
+                    backgroundColor: '#ffffff',
+                    overflow: 'hidden'
                   }}
                 >
-                  <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography variant="body2" fontWeight={700} noWrap>
-                        {request?.title || request?.type || 'Request'}
+                  <Stack>
+                    {/* Top Row: Title and Chips */}
+                    <Box sx={{ p: 2 }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 1.5 }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ fontSize: '0.95rem', flex: 1 }}>
+                          {request?.title || typeLabel}
+                        </Typography>
+                      </Stack>
+
+                      {/* Chips Row */}
+                      <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <Chip
+                          label={typeLabel}
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            height: 26,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderColor: '#d0d9e8'
+                          }}
+                        />
+                        {request?.urgency && request.urgency !== 'low' && (
+                          <Chip
+                            label={request.urgency.toUpperCase()}
+                            size="small"
+                            color={request?.urgency === 'high' ? 'error' : 'warning'}
+                            sx={{
+                              height: 26,
+                              fontSize: '0.75rem',
+                              fontWeight: 700
+                            }}
+                          />
+                        )}
+                        {request?.isSos && (
+                          <Chip
+                            label="SOS"
+                            size="small"
+                            color="error"
+                            sx={{
+                              height: 26,
+                              fontSize: '0.75rem',
+                              fontWeight: 700
+                            }}
+                          />
+                        )}
+                        <Chip
+                          label={meta.label}
+                          size="small"
+                          color={meta.color === 'default' ? 'default' : meta.color}
+                          sx={{
+                            height: 26,
+                            fontSize: '0.75rem',
+                            fontWeight: 700
+                          }}
+                        />
+                      </Stack>
+                    </Box>
+
+                    {/* Requester and Location */}
+                    <Box sx={{ px: 2, py: 1.5, backgroundColor: '#fafbfc', borderTop: '1px solid #f0f2f5' }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 2, sm: 3 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#8a92a0', mb: 0.5, letterSpacing: '0.3px' }}>
+                            Requester
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            {requesterName}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#8a92a0', mb: 0.5, letterSpacing: '0.3px' }}>
+                            Location
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600} noWrap title={location}>
+                            {location}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+
+                    {/* Description */}
+                    {description && (
+                      <Box sx={{ px: 2, py: 1.5, borderLeft: '3px solid #e8ecf1', backgroundColor: '#fafbfc' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                          {description}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Status and Time */}
+                    <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f0f2f5', backgroundColor: '#ffffff' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: meta.color === 'success' ? 'success.main' : meta.color === 'warning' ? 'warning.main' : meta.color === 'info' ? 'info.main' : 'text.primary' }}>
+                        {statusDetail}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
-                        {detail}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.15 }}>
-                        {formatRequestTimestamp(activity.timestamp)}
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                        {formatRelativeTime(activity.timestamp)}
                       </Typography>
                     </Box>
-                    <Chip label={meta.label} size="small" color={meta.color === 'default' ? 'default' : meta.color} sx={{ fontWeight: 700 }} />
                   </Stack>
-                </Box>
+                </Paper>
               );
             })
           )}
         </Stack>
       </Stack>
-    </Paper>
+    </Box>
   );
 }
 
