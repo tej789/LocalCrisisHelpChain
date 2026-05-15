@@ -36,8 +36,19 @@ app.use(express.json({ limit: '10mb' }));
 /* Make socket available in routes */
 app.set("io", io);
 
-// Apply a general rate limiter to all incoming requests to mitigate basic abuse
-app.use(generalLimiter);
+// Apply a general rate limiter to most incoming requests, but keep
+// volunteer location updates responsive so GPS syncs do not get throttled.
+app.use((req, res, next) => {
+  const path = req.originalUrl || req.url || '';
+  if (
+    path.startsWith('/api/volunteers/me/location') ||
+    path.startsWith('/api/volunteers/me/nearby') ||
+    path.startsWith('/api/volunteers/me/other-locations')
+  ) {
+    return next();
+  }
+  return generalLimiter(req, res, next);
+});
 
 // DEBUG: log every incoming request to help diagnose route hits
 app.use((req, res, next) => {

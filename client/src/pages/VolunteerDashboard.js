@@ -42,6 +42,7 @@ import NotificationBell from '../components/NotificationBell';
 import NotificationCenterDialog from '../components/NotificationCenterDialog';
 import LogoutIcon from '@mui/icons-material/Logout';
 import RequestStatusTimeline from '../components/RequestStatusTimeline';
+import VolunteerMarkers from '../components/VolunteerMarkers';
 
 // Initialize socket with auth token for server to validate connection
 const socketOptions = {
@@ -259,6 +260,14 @@ function VolunteerDashboard() {
   const [shouldFitBounds, setShouldFitBounds] = useState(false);
   const [mapCenterOverride, setMapCenterOverride] = useState(null);
   const [mapZoom, setMapZoom] = useState(6);
+  const [showVolunteers, setShowVolunteers] = useState(() => {
+    try { return localStorage.getItem('showVolunteers') === 'true'; } catch { return false; }
+  });
+  const [visibleVolunteerCount, setVisibleVolunteerCount] = useState(0);
+
+  useEffect(() => {
+    try { localStorage.setItem('showVolunteers', showVolunteers ? 'true' : 'false'); } catch {}
+  }, [showVolunteers]);
 const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -391,7 +400,7 @@ const handleUseLocation = () => {
       try {
         const { latitude, longitude } = position.coords;
 
-        await api.patch('/api/volunteers/me/location', {
+        const response = await api.patch('/api/volunteers/me/location', {
           latitude,
           longitude
         });
@@ -400,9 +409,16 @@ const handleUseLocation = () => {
         setVolunteerLocation({ lat: latitude, lng: longitude });
         console.log('Location updated:', { lat: latitude, lng: longitude });
 
+        if (response?.data?.location?.coordinates?.length === 2) {
+          const [savedLng, savedLat] = response.data.location.coordinates;
+          setVolunteerLocation({ lat: savedLat, lng: savedLng });
+        }
+
         setSnackbar({ open: true, message: 'Location updated successfully', severity: 'success' });
-      } catch {
-        setSnackbar({ open: true, message: 'Failed to update location', severity: 'error' });
+      } catch (err) {
+        const message = err?.response?.data?.error || err?.message || 'Failed to update location';
+        console.error('Failed to update volunteer location:', err);
+        setSnackbar({ open: true, message, severity: 'error' });
       } finally {
         setLocLoading(false);
       }
@@ -886,22 +902,6 @@ useEffect(() => {
       return prev;
     });
   }, [trackedVolunteerLocation]);
-
-  // When the hook successfully syncs to backend, broadcast via socket
-  useEffect(() => {
-    if (!trackedLastUpdateTime || !volunteerId || !trackedVolunteerLocation) return;
-    try {
-      socket.emit('volunteerLocationUpdate', {
-        volunteerId,
-        latitude: trackedVolunteerLocation.lat,
-        longitude: trackedVolunteerLocation.lng,
-        timestamp: trackedLastUpdateTime
-      });
-      console.log('✅ Location broadcasted via socket (from hook)');
-    } catch (e) {
-      console.warn('⚠️ Failed to emit volunteerLocationUpdate', e);
-    }
-  }, [trackedLastUpdateTime, volunteerId, trackedVolunteerLocation]);
 
   const handleViewAndScroll = (newView) => {
     setView(newView);
@@ -2142,8 +2142,20 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
           height: { xs: 300, sm: 350, md: 450 }, 
           width: '100%',
           borderRadius: { xs: 1.5, sm: 2 },
-          overflow: 'hidden'
+          overflow: 'hidden',
+          position: 'relative'
         }}>
+          {/* Toggle overlay (top-right) */}
+          <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1000, display: 'flex', gap: 1 }}>
+            <Button
+              size="small"
+              variant={showVolunteers ? 'contained' : 'outlined'}
+              onClick={() => setShowVolunteers(s => !s)}
+              sx={{ bgcolor: showVolunteers ? 'rgba(33,150,243,0.95)' : undefined, color: showVolunteers ? '#fff' : undefined }}
+            >
+              {showVolunteers ? `Hide volunteers (${visibleVolunteerCount})` : 'Show volunteer locations'}
+            </Button>
+          </Box>
           <MapContainer center={mapCenter} zoom={volunteerLocation ? 12 : 6} style={{ height: '100%', width: '100%', borderRadius: 'inherit' }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -2158,6 +2170,17 @@ const showPersistentLabels = mapZoom >= labelZoomThreshold;
               zoom={volunteerLocation ? 12 : 6} 
               shouldFitBounds={shouldFitBounds}
               bounds={mapBounds}
+            />
+
+            {/* Volunteer markers (opt-in) */}
+            <VolunteerMarkers
+              socket={socket}
+              center={mapCenter}
+              mapZoom={mapZoom}
+              show={showVolunteers}
+              radiusKm={25}
+              currentVolunteerId={volunteerId}
+              onVisibleCountChange={setVisibleVolunteerCount}
             />
             
             {/* Route Polyline */}

@@ -11,6 +11,20 @@ router.get(
   volunteerController.getVolunteers
 );
 
+router.get(
+  '/me/nearby',
+  verifyToken,
+  requireRole('volunteer'),
+  volunteerController.getNearbyVolunteers
+);
+
+router.get(
+  '/me/other-locations',
+  verifyToken,
+  requireRole('volunteer'),
+  volunteerController.getOtherVolunteerLocations
+);
+
 router.patch(
   '/me/location',
   verifyToken,

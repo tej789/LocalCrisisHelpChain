@@ -74,7 +74,7 @@ export const useLocationTracking = (options = {}) => {
 
   // robust backend sync with exponential backoff on failure
   const syncLocationToBackend = useCallback(async (lat, lng) => {
-    if (!lat || !lng) return;
+    if (lat == null || lng == null) return;
     if (!endpoint) return; // skip backend sync when endpoint not provided
     if (isUpdatingRef.current) return;
 
